@@ -33,4 +33,7 @@ outcomes
 
 
 Phase 2:
-for mcp: its in the file insurance_mcp.py
+To run the mcp: find "insurance_mcp.py" and type "python .\insurance_mcp.py" in command line and test on postman like it says on the buildathon instructions. 
+
+Phase 3:
+Use a hugging face model

@@ -57,4 +57,14 @@ def get_customer_info(id: int, name: str, age: int, state: str, vehicleName: str
     }
 
 if __name__ == "__main__":
-    mcp.run()
+    # FastMCP defaults to the stdio transport, which is meant for tool-based MCP clients.
+    # When testing with Postman/curl, run an HTTP transport instead.
+    #
+    # Default: HTTP (streamable) on http://127.0.0.1:8000/mcp
+    # Opt-in to stdio: set MCP_TRANSPORT=stdio
+    transport = os.getenv("MCP_TRANSPORT", "http").strip().lower()
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+    else:
+        # FastMCP accepts: "http" (streamable-http), "sse", "streamable-http"
+        mcp.run(transport="http", host=os.getenv("MCP_HOST", "127.0.0.1"), port=int(os.getenv("MCP_PORT", "8000")))
