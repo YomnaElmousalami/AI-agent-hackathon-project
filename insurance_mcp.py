@@ -157,21 +157,16 @@ def plan_curriculum(customer_id: int) -> List[Dict]:
     ]
     return curriculum_plan
 
-#for teacher agent
-@mcp.tool()
-def explain_concept(concept: str, customer_age: int) -> str:
-    """
-    Explains insurance concepts in plain language tailored to the customer's age.
-    
-    Args:
-        concept: The insurance concept to explain,
-        customer_age: The age of the customer.
-    Returns:
-        A simplified explanation of the insurance concept.
-    """
-    # Placeholder implementation
-    return f"This is a simplified explanation of '{concept}' tailored for a {customer_age}-year-old."
+#for teacher agent, to be determined
 
+#for Knowledge Validation, to be determined
+
+#for, Resource Recommendation Agent, to be determined
+
+
+
+#Code here is for Learning & Education Mode:
+#agent stuff will be added later
 
 #to run the mcp
 if __name__ == "__main__":
