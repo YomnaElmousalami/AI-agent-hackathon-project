@@ -10,7 +10,7 @@ def init_db(db_path="insurance.db"):
           state TEXT NOT NULL,
           vehicle_name TEXT NOT NULL,
           coverage_type TEXT NOT NULL,
-          created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-          updated_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP)
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          updated_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now'))
         );
         """)
