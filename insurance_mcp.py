@@ -7,7 +7,6 @@ import sqlite3
 from database.insurance_db import init_db
 import os
 
-# Default DB file now lives under ./database/. You can override with INSURANCE_DB_PATH.
 db_path = os.getenv("INSURANCE_DB_PATH", os.path.join("database", "insurance.db"))
 mcp = FastMCP("AutoInsuranceMCP")
 init_db(db_path)
@@ -56,3 +55,6 @@ def get_customer_info(id: int, name: str, age: int, state: str, vehicleName: str
         "coverageType": coverageType,
         "updatedAt": now
     }
+
+if __name__ == "__main__":
+    mcp.run()
