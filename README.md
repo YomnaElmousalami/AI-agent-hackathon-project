@@ -5,7 +5,7 @@ providing faster guidance for new drivers while improving operational efficiency
 
 **Example Workflow:**
 Learning & Education Mode:
-- User Onboarding Agent collects basic context such as age, state, vehicle, and coverage to personalize learning for each user
+- User Onboarding Agent collects basic context such as id, name, age, state, vehicle name (like Honda Accord), and coverage type to personalize learning for each user
 - Curriculum Planner Agent breaks insurance concepts into easily digestbile driver modules. Ex: What is insurance, what deductibles mean, what happens during an accident, what to do vs. what not to do? This replaces repetitive "what is X?" calls to insurance workers.
 - Teacher Agent explains coverage, deductibles, claims, and other auto insurance terms in plain, age-appropriate language. This will be done with definitions, examples relevant to first time drivers, and metaphors. It can also context switch such as: "Explain xyz like im 16," or "I need a quick refresher on deductibles"
 - Knowledge Validation Agent uses short scenarios to confirm understanding and correct knowledge gaps (in a quizlet style way)
