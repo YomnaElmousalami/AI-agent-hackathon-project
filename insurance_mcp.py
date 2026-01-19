@@ -155,7 +155,86 @@ def plan_curriculum(customer_id: int) -> List[Dict]:
         }
         for topic in curriculum
     ]
+
+    now = datetime.now(timezone.utc).strftime("%m/%d/%Y")
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON;")
+
+        conn.execute(
+            """
+            INSERT INTO curriculum_plans (customer_id, customer_age, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(customer_id) DO UPDATE SET
+              customer_age=excluded.customer_age,
+              updated_at=excluded.updated_at;
+            """,
+            (customer_id, user_age, now, now),
+        )
+
+        plan_row = conn.execute(
+            "SELECT id FROM curriculum_plans WHERE customer_id = ?;",
+            (customer_id,),
+        ).fetchone()
+        plan_id = int(plan_row["id"])
+
+        conn.execute("DELETE FROM curriculum_modules WHERE plan_id = ?;", (plan_id,))
+        conn.executemany(
+            """
+            INSERT INTO curriculum_modules (plan_id, module_order, module_title, module_description, created_at)
+            VALUES (?, ?, ?, ?, ?);
+            """,
+            [
+                (plan_id, idx, item["module"], item["description"], now)
+                for idx, item in enumerate(curriculum_plan, start=1)
+            ],
+        )
+
     return curriculum_plan
+
+
+@mcp.tool()
+def get_curriculum(customer_id: int) -> List[Dict]:
+    """Fetch the latest stored curriculum plan for a given customer.
+
+    Args:
+        customer_id: The customer's ID.
+
+    Returns:
+        List of persisted curriculum modules (ordered).
+    """
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        plan = conn.execute(
+            "SELECT id, customer_age FROM curriculum_plans WHERE customer_id = ?;",
+            (customer_id,),
+        ).fetchone()
+
+        if plan is None:
+            raise ValueError(
+                f"No curriculum found for customer {customer_id}. Call plan_curriculum first."
+            )
+
+        modules = conn.execute(
+            """
+            SELECT module_order, module_title, module_description
+            FROM curriculum_modules
+            WHERE plan_id = ?
+            ORDER BY module_order ASC;
+            """,
+            (int(plan["id"]),),
+        ).fetchall()
+
+    return [
+        {
+            "module": m["module_title"],
+            "description": m["module_description"],
+            "customerAge": int(plan["customer_age"]),
+            "order": int(m["module_order"]),
+        }
+        for m in modules
+    ]
 
 #for teacher agent, to be determined
 
