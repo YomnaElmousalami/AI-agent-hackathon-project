@@ -87,10 +87,7 @@ async def run_agent(agent, user_query: str):
 
 
 async def onboard_then_plan_curriculum(onboarding_agent, user_query: str):
-    """Run onboarding, then (best-effort) generate a curriculum plan.
-
-    This gives a smooth demo flow: user provides their profile once, then the app
-    immediately creates a curriculum plan using the same MCP server.
+    """Run onboarding, then generate a curriculum plan.
     """
     await run_agent(onboarding_agent, user_query)
 
