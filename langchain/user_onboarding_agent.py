@@ -86,6 +86,31 @@ async def run_agent(agent, user_query: str):
         print(final_text)
 
 
+async def onboard_then_plan_curriculum(onboarding_agent, user_query: str):
+    """Run onboarding, then (best-effort) generate a curriculum plan.
+
+    This gives a smooth demo flow: user provides their profile once, then the app
+    immediately creates a curriculum plan using the same MCP server.
+    """
+    await run_agent(onboarding_agent, user_query)
+
+    import re
+
+    match = re.search(r"\b(\d+)\b", user_query)
+    if not match:
+        return
+
+    customer_id = int(match.group(1))
+
+    try:
+        from langchain.curriculum_planner_agent import initialize_agent as init_curriculum_agent
+
+        curriculum_agent = await init_curriculum_agent()
+        await run_agent(curriculum_agent, f"Plan a curriculum for customer id {customer_id}")
+    except Exception:
+        return
+
+
 async def chat():
     """
         A chat interface where users can enter their credentials for onboarding.
@@ -106,8 +131,8 @@ async def chat():
             continue
         if user_query.lower() in {"exit", "quit"}:
             break
-
-        await run_agent(agent, user_query)
+        
+        await onboard_then_plan_curriculum(agent, user_query)
 
 
 if __name__ == "__main__":
