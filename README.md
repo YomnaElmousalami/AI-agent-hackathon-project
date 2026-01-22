@@ -41,5 +41,8 @@ To run the mcp: find "insurance_mcp.py" and type "python .\insurance_mcp.py" in 
 Use a hugging face model, so far using llama3.2 but may change later: https://huggingface.co/models
 
 ## Phase 4:
-To run the user obnoarding agent:
+- To run the user obnoarding agent:
 "python -m langchain.user_onboarding_agent"
+
+- To run the curriculum planner agent:
+"python .\langchain\curriculum_planner_agent.py"

@@ -86,7 +86,7 @@ async def run_agent(agent, user_query: str):
         print(final_text)
 
 
-async def onboard_then_plan_curriculum(onboarding_agent, user_query: str):
+async def onboard(onboarding_agent, user_query: str):
     """Run onboarding, then generate a curriculum plan.
     """
     await run_agent(onboarding_agent, user_query)
@@ -129,7 +129,7 @@ async def chat():
         if user_query.lower() in {"exit", "quit"}:
             break
         
-        await onboard_then_plan_curriculum(agent, user_query)
+        await onboard(agent, user_query)
 
 
 if __name__ == "__main__":
