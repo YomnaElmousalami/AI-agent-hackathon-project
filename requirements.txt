@@ -3,3 +3,4 @@ langchain-ollama
 langgraph
 langchain-mcp-adapters
 pytest
+pytest-asyncio
