@@ -43,13 +43,23 @@ def _pick_tool(tools, name: str):
 
 
 async def run_cli():
-	tools = await setup_mcp_client()
-	start_tool = _pick_tool(tools, "start_accident_report")
-	update_tool = _pick_tool(tools, "update_accident_report")
-	finalize_tool = _pick_tool(tools, "finalize_accident_report")
+	mode = os.getenv("ACCIDENT_MODE", "local").strip().lower()
+	tools = None
+	start_tool = None
+	update_tool = None
+	finalize_tool = None
+	if mode == "mcp":
+		tools = await setup_mcp_client()
+		start_tool = _pick_tool(tools, "start_accident_report")
+		update_tool = _pick_tool(tools, "update_accident_report")
+		finalize_tool = _pick_tool(tools, "finalize_accident_report")
 
 	customer_id = int(input("Customer id: ").strip())
-	created = await start_tool.ainvoke({"customer_id": customer_id})
+	if mode == "mcp":
+		created = await start_tool.ainvoke({"customer_id": customer_id})
+	else:
+		import insurance_mcp
+		created = insurance_mcp.start_accident_report_impl(customer_id=customer_id)
 	report_id = created["reportId"]
 	print(f"\nCreated report: {report_id}")
 
@@ -65,19 +75,34 @@ async def run_cli():
 	evidence_raw = input("Evidence URLs (comma-separated, optional): ").strip()
 	evidence_urls = [u.strip() for u in evidence_raw.split(",") if u.strip()] if evidence_raw else []
 
-	updated = await update_tool.ainvoke(
-		{
-			"report_id": report_id,
-			"location": location or None,
-			"injured_count": injured,
-			"vehicles_drivable": vehicles_drivable,
-			"notes": notes or None,
-			"evidence_urls": evidence_urls,
-		}
-	)
+	if mode == "mcp":
+		updated = await update_tool.ainvoke(
+			{
+				"report_id": report_id,
+				"location": location or None,
+				"injured_count": injured,
+				"vehicles_drivable": vehicles_drivable,
+				"notes": notes or None,
+				"evidence_urls": evidence_urls,
+			}
+		)
+	else:
+		import insurance_mcp
+		updated = insurance_mcp.update_accident_report_impl(
+			report_id=report_id,
+			location=location or None,
+			injured_count=injured,
+			vehicles_drivable=vehicles_drivable,
+			notes=notes or None,
+			evidence_urls=evidence_urls,
+		)
 	print(f"\nUpdated report status: {updated['status']}")
 
-	fin = await finalize_tool.ainvoke({"report_id": report_id})
+	if mode == "mcp":
+		fin = await finalize_tool.ainvoke({"report_id": report_id})
+	else:
+		import insurance_mcp
+		fin = insurance_mcp.finalize_accident_report_impl(report_id=report_id)
 	print(f"Finalized: {fin['status']}")
 
 

@@ -22,7 +22,7 @@ Accident Mode (Real-Time Assistance):
 outcomes
 - Escalation & Routing Agent summarizes the case and routes to human support only when necessary (Hospital phone numbers, etc.).
 
-**Continuous Improvement:**
+Continuous Improvement:
 - Continuous Improvement & Feedback Agent analyzes where users get stuck and previous escalation patterns to improve future interactions. 
 
 **Technical Arcitecture Diagram:**
@@ -58,10 +58,12 @@ Learning & Education Mode:
 - To run the resource recommendation agent:
 "python .\langchain\resource_recommendation_agent.py"
 
-Accident Mode:
+Accident Mode (Real-Time Assistance) (in order):
 
 - To run the accident reporting agent:
 "python .\langchain\accident_reporting_agent.py"
+
+	(This prints an Accident Report ID — a UUID. Copy/paste that into the next agents.)
 
 - To run the accident severity assessment agent:
 "python .\langchain\accident_severity_assesment_agent.py"
@@ -82,3 +84,8 @@ Continuous Improvement:
 
 - To run the continuous improvement & feedback agent:
 "python .\langchain\continuous_improvement_and_feedback_agent.py"
+
+Notes:
+- Agents default to "local" mode for stability on Windows/Python 3.14+. If you want MCP mode, set env vars like:
+	- ACCIDENT_MODE=mcp
+	- RESOURCE_RECOMMENDATION_MODE=mcp

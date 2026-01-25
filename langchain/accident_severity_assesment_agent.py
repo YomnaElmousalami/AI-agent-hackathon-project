@@ -43,11 +43,19 @@ def _pick_tool(tools, name: str):
 
 
 async def run_cli():
-	tools = await setup_mcp_client()
-	assess_tool = _pick_tool(tools, "assess_accident_severity")
+	mode = os.getenv("ACCIDENT_MODE", "local").strip().lower()
+	tools = None
+	assess_tool = None
+	if mode == "mcp":
+		tools = await setup_mcp_client()
+		assess_tool = _pick_tool(tools, "assess_accident_severity")
 
-	report_id = input("Accident report id: ").strip()
-	res = await assess_tool.ainvoke({"report_id": report_id})
+	report_id = input("Accident report id (UUID from Accident Reporting): ").strip()
+	if mode == "mcp":
+		res = await assess_tool.ainvoke({"report_id": report_id})
+	else:
+		import insurance_mcp
+		res = insurance_mcp.assess_accident_severity_impl(report_id=report_id)
 	print("\nSeverity assessment:")
 	print(f"Severity: {res['severity']} (urgency={res['urgency']})")
 	print(f"Type: {res.get('accidentType')}")
