@@ -63,8 +63,6 @@ Accident Mode (Real-Time Assistance) (in order):
 - To run the accident reporting agent:
 "python .\langchain\accident_reporting_agent.py"
 
-	(This prints an Accident Report ID — a UUID. Copy/paste that into the next agents.)
-
 - To run the accident severity assessment agent:
 "python .\langchain\accident_severity_assesment_agent.py"
 
@@ -84,8 +82,3 @@ Continuous Improvement:
 
 - To run the continuous improvement & feedback agent:
 "python .\langchain\continuous_improvement_and_feedback_agent.py"
-
-Notes:
-- Agents default to "local" mode for stability on Windows/Python 3.14+. If you want MCP mode, set env vars like:
-	- ACCIDENT_MODE=mcp
-	- RESOURCE_RECOMMENDATION_MODE=mcp
