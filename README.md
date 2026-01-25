@@ -10,7 +10,7 @@ Learning & Education Mode:
 - User Onboarding Agent collects basic context such as id, name, age, state, vehicle name (like Honda Accord), and coverage type to personalize learning for each user
 - Curriculum Planner Agent breaks insurance concepts into easily digestbile driver modules so they can be used for the teacher agent later. Ex: What is insurance, what deductibles mean, what happens during an accident, what to do vs. what not to do? This replaces repetitive "what is X?" calls to insurance workers.
 - Teacher Agent explains coverage, deductibles, claims, and other auto insurance terms in plain, age-appropriate language. This will be done with definitions, examples relevant to first time drivers, and metaphors. It can also context switch such as: "Explain xyz like im 16," or "I need a quick refresher on deductibles"
-- Knowledge Validation Agent uses short scenarios to confirm understanding and correct knowledge gaps (in a quizlet style way)
+- Knowledge Validation Agent uses short scenarios to confirm understanding and correct knowledge gaps (like a multiple choice and true false quiz type of way)
 - Resource Recommendation Agent gathers trusted, US, state-specific resource content without overwhelming the user. This will be done through short videos and summaries of documents rather than dumping links onto the user. 
 
 Accident Mode (Real-Time Assistance):
@@ -41,7 +41,9 @@ To run the mcp: find "insurance_mcp.py" and type "python .\insurance_mcp.py" in 
 Use a hugging face model, so far using llama3.2 but may change later: https://huggingface.co/models
 
 ## Phase 4:
-- To run the user obnoarding agent:
+Learning & Education Mode:
+
+- To run the user onboarding agent:
 "python -m langchain.user_onboarding_agent"
 
 - To run the curriculum planner agent:
@@ -49,6 +51,14 @@ Use a hugging face model, so far using llama3.2 but may change later: https://hu
 
 - To run the teacher agent:
 "python -m langchain.teacher_agent"
+
+- To run the knowledge validation agent:
+"python .\langchain\knowledge_validation_agent.py"
+
+- To run the resource recommendation agent:
+"python .\langchain\resource_recommendation_agent.py"
+
+Accident Mode:
 
 - To run the accident reporting agent:
 "python .\langchain\accident_reporting_agent.py"
@@ -68,8 +78,7 @@ Use a hugging face model, so far using llama3.2 but may change later: https://hu
 - To run the escalation & routing agent:
 "python .\langchain\escalation_and_routing_agent.py"
 
-- To run the knowledge validation agent:
-"python .\langchain\knowledge_validation_agent.py"
+Continuous Improvement:
 
-- To run the resource recommendation agent:
-"python .\langchain\resource_recommendation_agent.py"
+- To run the continuous improvement & feedback agent:
+"python .\langchain\continuous_improvement_and_feedback_agent.py"

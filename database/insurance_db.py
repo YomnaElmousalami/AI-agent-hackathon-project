@@ -43,6 +43,42 @@ def init_db(db_path="insurance.db"):
         conn.execute("CREATE INDEX IF NOT EXISTS idx_curriculum_plans_customer_id ON curriculum_plans(customer_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_curriculum_modules_plan_id ON curriculum_modules(plan_id);")
 
+        # Knowledge Validation: persist quiz attempts and per-question results.
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_quiz_attempts (
+          id TEXT PRIMARY KEY,
+          customer_id INTEGER NOT NULL,
+          plan_id INTEGER NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          questions_count INTEGER NOT NULL,
+          points_possible REAL NOT NULL,
+          points_earned REAL NOT NULL,
+          mode TEXT NOT NULL DEFAULT 'question_bank',
+          FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+          FOREIGN KEY (plan_id) REFERENCES curriculum_plans(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_quiz_results (
+          id TEXT PRIMARY KEY,
+          attempt_id TEXT NOT NULL,
+          question_id TEXT NOT NULL,
+          module_order INTEGER,
+          question_type TEXT NOT NULL,
+          weight REAL NOT NULL,
+          answer_text TEXT,
+          correct INTEGER NOT NULL,
+          points_earned REAL NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          FOREIGN KEY (attempt_id) REFERENCES knowledge_quiz_attempts(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kqa_customer ON knowledge_quiz_attempts(customer_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kqa_plan ON knowledge_quiz_attempts(plan_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kqr_attempt ON knowledge_quiz_results(attempt_id);")
+
         conn.execute("""
         CREATE TABLE IF NOT EXISTS quiz_sessions (
           id TEXT PRIMARY KEY,

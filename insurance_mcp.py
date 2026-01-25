@@ -607,31 +607,349 @@ def submit_flashcard_answer_impl(session_id: str, card_id: str, answer: str) -> 
         "done": next_card is None,
     }
 
-#for Knowledge Validation, to be determined
+def _knowledge_question_weight(q_type: str) -> float:
+    """Scoring weights requested by user.
+
+    - multiple_choice: 1.0
+    - true_false: 0.5
+    """
+
+    t = (q_type or "").strip().lower()
+    if t in {"tf", "truefalse", "true_false", "true/false"}:
+        return 0.5
+    return 1.0
 
 
-def _default_knowledge_questions() -> List[Dict]:
-    """Deterministic mini-scenarios used for knowledge validation."""
+def _knowledge_bank_for_module(module_title: str, module_description: str, module_order: int) -> List[Dict]:
+    """Deterministic question bank for a single curriculum module.
 
+    Returns 10 questions per module (mixed multiple-choice and true/false).
+    This is intentionally LLM-free so tests are stable.
+    """
+
+    title_l = (module_title or "").lower()
+    desc_l = (module_description or "").lower()
+
+    def qid(suffix: str) -> str:
+        return f"kv_m{int(module_order)}_{suffix}"
+
+    # Pick a "topic" label for tagging/logging.
+    if "deduct" in title_l or "deduct" in desc_l:
+        topic = "deductible"
+    elif "premium" in title_l or "premium" in desc_l:
+        topic = "premium"
+    elif "claim" in title_l or "claim" in desc_l:
+        topic = "claim"
+    elif "cover" in title_l or "coverage" in desc_l:
+        topic = "coverage"
+    else:
+        topic = "general"
+
+    # Helper for MC questions
+    def mc(suffix: str, prompt: str, choices: List[str], correct_index: int, explanation: str) -> Dict:
+        return {
+            "id": qid(suffix),
+            "moduleOrder": int(module_order),
+            "topic": topic,
+            "type": "multiple_choice",
+            "prompt": prompt,
+            "choices": choices,
+            "correctIndex": int(correct_index),
+            "expected": choices[int(correct_index)],
+            "explanation": explanation,
+            "weight": 1.0,
+        }
+
+    # Helper for True/False questions
+    def tf(suffix: str, statement: str, correct: bool, explanation: str) -> Dict:
+        return {
+            "id": qid(suffix),
+            "moduleOrder": int(module_order),
+            "topic": topic,
+            "type": "true_false",
+            "prompt": f"True/False: {statement}",
+            "choices": ["True", "False"],
+            "correctIndex": 0 if bool(correct) else 1,
+            "expected": "True" if bool(correct) else "False",
+            "explanation": explanation,
+            "weight": 0.5,
+        }
+
+    if topic == "deductible":
+        return [
+            mc(
+                "mc1",
+                "What does a deductible mean?",
+                [
+                    "The amount you pay first on a covered claim",
+                    "A discount you always get on repairs",
+                    "The maximum your insurer will ever pay",
+                    "A fee the other driver pays",
+                ],
+                0,
+                "A deductible is the amount you pay out of pocket before insurance pays the rest of a covered claim.",
+            ),
+            mc(
+                "mc2",
+                "Your deductible is $500 and repairs cost $1,800 (covered). How much do you pay?",
+                ["$0", "$500", "$1,300", "$1,800"],
+                1,
+                "You pay the deductible ($500) first; insurance typically covers the remaining $1,300.",
+            ),
+            mc(
+                "mc3",
+                "If you raise your deductible, what often happens to your premium?",
+                ["It goes up", "It goes down", "It becomes illegal", "It becomes your limit"],
+                1,
+                "Higher deductibles usually mean lower premiums because you agree to pay more if a claim happens.",
+            ),
+            mc(
+                "mc4",
+                "When a deductible applies, it is usually:",
+                [
+                    "Charged once per claim",
+                    "Charged every day",
+                    "Charged only if police arrive",
+                    "Charged only for liability claims",
+                ],
+                0,
+                "Most deductibles apply per claim (commonly for collision/comprehensive), not per month.",
+            ),
+            mc(
+                "mc5",
+                "Which coverage commonly has a deductible?",
+                ["Collision", "Liability", "Both always", "Neither"],
+                0,
+                "Collision/comprehensive commonly have deductibles; liability typically does not.",
+            ),
+            tf(
+                "tf1",
+                "A deductible is the amount insurance pays first.",
+                False,
+                "You pay the deductible first; then insurance pays the remaining covered amount.",
+            ),
+            tf(
+                "tf2",
+                "A higher deductible can make your monthly premium lower.",
+                True,
+                "Often true: you trade a lower premium for higher out-of-pocket cost if a claim happens.",
+            ),
+            tf(
+                "tf3",
+                "If repairs cost less than your deductible, insurance usually pays nothing.",
+                True,
+                "If the claim amount doesn’t exceed the deductible, there’s typically nothing left for insurance to pay.",
+            ),
+            tf(
+                "tf4",
+                "You pay your deductible even for excluded (not covered) damage.",
+                False,
+                "If it’s excluded/not covered, the claim is denied and the deductible usually isn’t the deciding factor.",
+            ),
+            tf(
+                "tf5",
+                "Deductibles are chosen when you buy your policy, not when an accident happens.",
+                True,
+                "You pick deductibles as part of your policy terms upfront.",
+            ),
+        ]
+
+    if topic == "claim":
+        return [
+            mc(
+                "mc1",
+                "What is an insurance claim?",
+                [
+                    "A request to your insurer to cover/pay for a loss",
+                    "A traffic ticket",
+                    "Your monthly premium",
+                    "A type of deductible",
+                ],
+                0,
+                "A claim is what you file with your insurer to request coverage/payment for a covered loss.",
+            ),
+            mc(
+                "mc2",
+                "Which detail helps a claim go smoother?",
+                ["Photos and a clear timeline", "Guessing the other driver’s name", "Deleting messages", "Waiting weeks"],
+                0,
+                "Documentation like photos, locations, and timelines helps insurers evaluate the claim faster.",
+            ),
+            mc(
+                "mc3",
+                "Accident vs claim: which statement is correct?",
+                ["They mean the same thing", "Accident is the event; claim is what you file", "Claim happens first", "Accident is optional"],
+                1,
+                "The accident is the event; the claim is the request you submit to your insurance.",
+            ),
+            mc(
+                "mc4",
+                "If you’re not sure who is at fault, what should you do?",
+                ["Make up a story", "Collect facts and report honestly", "Hide evidence", "Stop cooperating"],
+                1,
+                "Stick to facts (photos, statements) and let insurers decide fault based on evidence.",
+            ),
+            mc(
+                "mc5",
+                "A common first step after a crash is:",
+                ["Ensure safety and check injuries", "Argue with the other driver", "Leave immediately", "Post on social media"],
+                0,
+                "Safety comes first: check for injuries and move to a safe location if possible.",
+            ),
+            tf("tf1", "Filing a claim always means your insurance will definitely pay.", False,
+               "Not always—coverage depends on policy terms, exclusions, and what happened."),
+            tf("tf2", "Photos of damage can help support your claim.", True,
+               "Photos provide evidence of what happened and the extent of damage."),
+            tf("tf3", "A claim is filed with your insurance company (or theirs).", True,
+               "Claims are submitted to insurers."),
+            tf("tf4", "It’s fine to wait months to report a brand-new accident.", False,
+               "Policies often require prompt notice."),
+            tf("tf5", "A police report can sometimes help clarify what happened.", True,
+               "A report can document facts, especially for serious accidents or disputes."),
+        ]
+
+    if topic == "coverage":
+        return [
+            mc(
+                "mc1",
+                "What does coverage tell you?",
+                [
+                    "What the policy will pay for and under what conditions",
+                    "Your car’s color",
+                    "The other driver’s opinion",
+                    "A guaranteed payout amount for any event",
+                ],
+                0,
+                "Coverage defines what’s included (and excluded) and the conditions/limits for payment.",
+            ),
+            mc(
+                "mc2",
+                "What is an exclusion?",
+                ["Something the policy does NOT cover", "A bonus feature", "A deductible", "A payment plan"],
+                0,
+                "Exclusions are situations or damage types the policy won’t cover.",
+            ),
+            mc(
+                "mc3",
+                "Policy limits are best described as:",
+                ["The max the insurer will pay", "The deductible amount", "A ticket limit", "A repair estimate"],
+                0,
+                "Limits cap how much the insurer can pay.",
+            ),
+            mc(
+                "mc4",
+                "State minimum coverage is:",
+                ["Always enough", "The legal minimum, not always enough protection", "A luxury upgrade", "Only for teens"],
+                1,
+                "Minimums meet legal requirements but might not cover all costs in serious accidents.",
+            ),
+            mc(
+                "mc5",
+                "If damage is excluded, what happens?",
+                ["Insurance pays anyway", "Insurance usually doesn’t pay", "Deductible doubles", "Premium becomes zero"],
+                1,
+                "Excluded means not covered.",
+            ),
+            tf("tf1", "Coverage includes limits.", True, "Coverage is defined alongside limits and conditions."),
+            tf("tf2", "Exclusions mean 'not covered'.", True, "That’s what exclusions are."),
+            tf("tf3", "If something isn’t covered, you can force the insurer to pay by filing anyway.", False,
+               "Filing doesn’t create coverage—policy terms control."),
+            tf("tf4", "Coverage can differ depending on the policy you bought.", True,
+               "Policies vary by selections and endorsements."),
+            tf("tf5", "Coverage answers what will be paid for.", True, "That’s the core purpose of coverage."),
+        ]
+
+    if topic == "premium":
+        return [
+            mc(
+                "mc1",
+                "What is a premium?",
+                ["The amount you pay to keep insurance active", "A deductible", "A claim", "A police report"],
+                0,
+                "Premium is the payment to keep coverage active (monthly/6-month/annual).",
+            ),
+            mc(
+                "mc2",
+                "Which factor can raise a premium?",
+                ["More risk (tickets/accidents)", "Driving less safely", "Moving to a higher-risk area", "All of the above"],
+                3,
+                "Premium is tied to risk and coverage.",
+            ),
+            mc(
+                "mc3",
+                "If you stop paying premium, what can happen?",
+                ["Policy stays active forever", "Policy can lapse/cancel", "Deductible disappears", "Coverage becomes unlimited"],
+                1,
+                "Nonpayment can lead to lapse/cancellation.",
+            ),
+            mc(
+                "mc4",
+                "Premium frequency can be:",
+                ["Monthly", "6-month", "Annual", "All of the above"],
+                3,
+                "Premiums can be billed in different cycles.",
+            ),
+            mc(
+                "mc5",
+                "More coverage typically means:",
+                ["Lower premium", "Higher premium", "No change", "Illegal"],
+                1,
+                "More coverage shifts more risk to insurer, often raising premium.",
+            ),
+            tf("tf1", "Premium is what you pay to keep coverage active.", True, "That’s the definition."),
+            tf("tf2", "Riskier driving can increase premium.", True, "Premiums reflect risk."),
+            tf("tf3", "Premium and deductible are the same thing.", False, "They are different concepts."),
+            tf("tf4", "A premium can be paid monthly.", True, "Common billing cycle."),
+            tf("tf5", "If you lapse, you may have no coverage.", True, "That’s the consequence of cancellation/lapse."),
+        ]
+
+    # General fallback: still produce 10 questions.
     return [
-        {
-            "id": "kv1",
-            "topic": "deductible",
-            "scenario": "Your deductible is $500 and repairs cost $1,800 (covered). What do you pay?",
-            "expected": "You pay $500 out of pocket and insurance pays the rest",
-        },
-        {
-            "id": "kv2",
-            "topic": "claim",
-            "scenario": "You got rear-ended. What is a 'claim' in this situation?",
-            "expected": "A request to your insurer to pay for a covered loss",
-        },
-        {
-            "id": "kv3",
-            "topic": "coverage",
-            "scenario": "True/False: If something is excluded, insurance still pays if you ask.",
-            "expected": "False",
-        },
+        mc(
+            "mc1",
+            f"Which best describes the main idea of '{module_title}'?",
+            [
+                "A key insurance concept you should be able to explain",
+                "A type of car model",
+                "A phone plan",
+                "A weather report",
+            ],
+            0,
+            "The module is teaching an insurance concept.",
+        ),
+        mc(
+            "mc2",
+            "What should you do if you're unsure what your policy covers?",
+            ["Check your policy details (coverage/limits/exclusions)", "Assume it covers everything", "Ignore it", "Wait for an accident"],
+            0,
+            "Policies define coverage, limits, and exclusions.",
+        ),
+        mc(
+            "mc3",
+            "Why do insurers care about risk?",
+            ["Because it affects how likely a claim is", "Because it changes the color of your car", "Because it changes the weather", "Because it changes your phone"],
+            0,
+            "Risk influences pricing and coverage decisions.",
+        ),
+        mc(
+            "mc4",
+            "Which is an example of good documentation after an event?",
+            ["Photos and notes", "Deleting evidence", "Guessing details", "Making up numbers"],
+            0,
+            "Evidence helps decisions.",
+        ),
+        mc(
+            "mc5",
+            "What’s a good habit as you learn insurance?",
+            ["Ask questions and learn key terms", "Avoid reading policy", "Ignore definitions", "Only learn after crashes"],
+            0,
+            "Learning key terms helps you make better decisions.",
+        ),
+        tf("tf1", "Insurance terms can affect what you pay.", True, "They impact costs and coverage."),
+        tf("tf2", "Policies can include exclusions.", True, "Exclusions define what’s not covered."),
+        tf("tf3", "You never need to read your policy.", False, "Reading policy helps you know coverage."),
+        tf("tf4", "Good evidence can speed up processes.", True, "Documentation helps."),
+        tf("tf5", "Coverage and cost depend on what you purchased.", True, "Your selections matter."),
     ]
 
 
@@ -641,9 +959,33 @@ def get_knowledge_questions(customer_id: int, limit: int = 3) -> List[Dict]:
 
 
 def get_knowledge_questions_impl(customer_id: int, limit: int = 3) -> List[Dict]:
-    """Return short scenario questions for knowledge validation."""
-    qs = _default_knowledge_questions()
-    return qs[: int(limit)]
+    """Return a mixed question bank (MC + True/False) based on the user's curriculum.
+
+    Design notes:
+    - Generates 10 questions per curriculum module (so typically 10–20+ total depending on modules)
+    - Multiple-choice questions are worth 1 point; True/False are worth 0.5 points
+
+    Args:
+        customer_id: Customer id whose curriculum we use
+        limit: Maximum number of questions to return
+    """
+
+    curriculum = get_curriculum_impl(int(customer_id))
+
+    bank: List[Dict] = []
+    for m in curriculum:
+        bank.extend(
+            _knowledge_bank_for_module(
+                module_title=str(m.get("module")),
+                module_description=str(m.get("description")),
+                module_order=int(m.get("order")),
+            )
+        )
+
+    # Stable deterministic ordering: by module then question id
+    bank.sort(key=lambda q: (int(q.get("moduleOrder", 0)), str(q.get("id", ""))))
+
+    return bank[: int(limit)]
 
 
 @mcp.tool()
@@ -654,19 +996,70 @@ def grade_knowledge_answer(customer_id: int, question_id: str, answer: str) -> D
 def grade_knowledge_answer_impl(customer_id: int, question_id: str, answer: str) -> Dict:
     """Grade a knowledge validation answer and log a feedback event."""
 
-    q = next((x for x in _default_knowledge_questions() if x["id"] == question_id), None)
+    # Find the question within the same deterministic bank slice returned by get_knowledge_questions.
+    # This keeps MCP/CLI behavior consistent even if the caller only fetched a limited subset.
+    # We use a generous limit so typical quiz sessions (10–20) are always covered.
+    bank = get_knowledge_questions_impl(int(customer_id), limit=200)
+    q = next((x for x in bank if x["id"] == question_id), None)
     if not q:
         raise ValueError("Unknown question_id")
 
-    expected = q["expected"]
-    score = _keyword_score(answer, expected)
-    correct = bool(score >= 0.6)
+    expected = str(q.get("expected", ""))
+    q_type = str(q.get("type", "multiple_choice"))
+    weight = float(q.get("weight", _knowledge_question_weight(q_type)))
+
+    # Grading rules:
+    # - multiple_choice: accept A/B/C/D or 1/2/3/4 or exact choice text
+    # - true_false: accept true/false strings
+    # Score returned is *points earned* (0 or weight).
+    ans = (answer or "").strip()
+    ans_l = ans.lower().strip()
+
+    choices: List[str] = list(q.get("choices", []))
+    correct_index = int(q.get("correctIndex", 0))
+
+    selected_index: int | None = None
+    if q_type == "true_false":
+        if ans_l in {"t", "true"}:
+            selected_index = 0
+        elif ans_l in {"f", "false"}:
+            selected_index = 1
+        else:
+            # try to match by text
+            if ans_l == "true":
+                selected_index = 0
+            elif ans_l == "false":
+                selected_index = 1
+    else:
+        # multiple choice mapping
+        if ans_l in {"a", "b", "c", "d"}:
+            selected_index = {"a": 0, "b": 1, "c": 2, "d": 3}[ans_l]
+        elif ans_l.isdigit():
+            n = int(ans_l)
+            # treat 1-based input
+            if 1 <= n <= len(choices):
+                selected_index = n - 1
+        else:
+            # match by text
+            for idx, c in enumerate(choices):
+                if ans_l == str(c).lower().strip():
+                    selected_index = idx
+                    break
+
+    correct = selected_index is not None and int(selected_index) == int(correct_index)
+    score = float(weight if correct else 0.0)
 
     log_feedback_event_impl(
         customer_id=customer_id,
         agent_name="knowledge_validation",
         event_type="graded",
-        payload={"questionId": question_id, "score": score, "correct": correct},
+        payload={
+            "questionId": question_id,
+            "type": q_type,
+            "weight": weight,
+            "score": score,
+            "correct": correct,
+        },
     )
 
     return {
@@ -674,9 +1067,183 @@ def grade_knowledge_answer_impl(customer_id: int, question_id: str, answer: str)
         "questionId": question_id,
         "correct": correct,
         "score": score,
+        "weight": weight,
+        "type": q_type,
         "expected": expected,
         "feedback": "Nice!" if correct else "Not quite — review the concept and try again.",
+        "explanation": q.get("explanation", ""),
     }
+
+
+def _get_plan_id_for_customer(customer_id: int) -> int:
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT id FROM curriculum_plans WHERE customer_id = ?;", (int(customer_id),)
+        ).fetchone()
+    if row is None:
+        raise ValueError("No curriculum plan found for this customer.")
+    return int(row["id"])
+
+
+@mcp.tool()
+def start_knowledge_quiz_attempt(customer_id: int, questions_limit: int = 10) -> Dict:
+    return start_knowledge_quiz_attempt_impl(customer_id=customer_id, questions_limit=questions_limit)
+
+
+def start_knowledge_quiz_attempt_impl(customer_id: int, questions_limit: int = 10) -> Dict:
+    """Create a knowledge validation quiz attempt tied to the customer's curriculum plan.
+
+    This enables saving scores and unlimited reattempts.
+    """
+
+    plan_id = _get_plan_id_for_customer(int(customer_id))
+    attempt_id = str(uuid.uuid4())
+    now = _now_date()
+
+    # We store a snapshot summary at creation time (counts/possible points) so scoring is stable.
+    qs = get_knowledge_questions_impl(int(customer_id), limit=int(questions_limit))
+    points_possible = float(sum(float(q.get("weight", _knowledge_question_weight(q.get("type", "")))) for q in qs))
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO knowledge_quiz_attempts
+              (id, customer_id, plan_id, created_at, questions_count, points_possible, points_earned, mode)
+            VALUES
+              (?, ?, ?, ?, ?, ?, 0.0, 'question_bank');
+            """,
+            (
+                attempt_id,
+                int(customer_id),
+                int(plan_id),
+                now,
+                int(len(qs)),
+                float(points_possible),
+            ),
+        )
+
+    return {
+        "attemptId": attempt_id,
+        "customerId": int(customer_id),
+        "planId": int(plan_id),
+        "questionsCount": int(len(qs)),
+        "pointsPossible": float(points_possible),
+        "createdAt": now,
+    }
+
+
+@mcp.tool()
+def record_knowledge_quiz_answer(customer_id: int, attempt_id: str, question_id: str, answer: str) -> Dict:
+    return record_knowledge_quiz_answer_impl(
+        customer_id=customer_id, attempt_id=attempt_id, question_id=question_id, answer=answer
+    )
+
+
+def record_knowledge_quiz_answer_impl(customer_id: int, attempt_id: str, question_id: str, answer: str) -> Dict:
+    """Grade + persist a single answer for a given attempt.
+
+    Allows reattempts by simply creating a new attempt id.
+    """
+
+    # Ensure the attempt exists and is tied to this customer.
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        attempt = conn.execute(
+            "SELECT id, customer_id, plan_id FROM knowledge_quiz_attempts WHERE id = ?;",
+            (str(attempt_id),),
+        ).fetchone()
+    if attempt is None or int(attempt["customer_id"]) != int(customer_id):
+        raise ValueError("Unknown attempt_id")
+
+    # Grade using the same logic.
+    graded = grade_knowledge_answer_impl(customer_id=int(customer_id), question_id=question_id, answer=answer)
+
+    # Pull module/type/weight for storage
+    bank = get_knowledge_questions_impl(int(customer_id), limit=200)
+    q = next((x for x in bank if x["id"] == question_id), None)
+    if not q:
+        raise ValueError("Unknown question_id")
+
+    module_order = q.get("moduleOrder")
+    q_type = str(q.get("type", "multiple_choice"))
+    weight = float(q.get("weight", _knowledge_question_weight(q_type)))
+    points_earned = float(graded.get("score", 0.0))
+    correct = 1 if bool(graded.get("correct")) else 0
+    now = _now_date()
+
+    result_id = str(uuid.uuid4())
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO knowledge_quiz_results
+              (id, attempt_id, question_id, module_order, question_type, weight, answer_text, correct, points_earned, created_at)
+            VALUES
+              (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """,
+            (
+                result_id,
+                str(attempt_id),
+                str(question_id),
+                int(module_order) if module_order is not None else None,
+                q_type,
+                float(weight),
+                str(answer),
+                int(correct),
+                float(points_earned),
+                now,
+            ),
+        )
+
+        # Update attempt summary (sum of earned points across all recorded answers for this attempt)
+        total = conn.execute(
+            "SELECT COALESCE(SUM(points_earned), 0.0) AS total FROM knowledge_quiz_results WHERE attempt_id = ?;",
+            (str(attempt_id),),
+        ).fetchone()[0]
+        conn.execute(
+            "UPDATE knowledge_quiz_attempts SET points_earned = ? WHERE id = ?;",
+            (float(total), str(attempt_id)),
+        )
+
+    return {
+        "attemptId": str(attempt_id),
+        "resultId": result_id,
+        **graded,
+    }
+
+
+@mcp.tool()
+def get_knowledge_quiz_attempts(customer_id: int, limit: int = 20) -> List[Dict]:
+    return get_knowledge_quiz_attempts_impl(customer_id=customer_id, limit=limit)
+
+
+def get_knowledge_quiz_attempts_impl(customer_id: int, limit: int = 20) -> List[Dict]:
+    """List recent knowledge quiz attempts for a customer (reattempt history)."""
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT id, plan_id, created_at, questions_count, points_possible, points_earned
+            FROM knowledge_quiz_attempts
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?;
+            """,
+            (int(customer_id), int(limit)),
+        ).fetchall()
+
+    return [
+        {
+            "attemptId": r["id"],
+            "planId": int(r["plan_id"]),
+            "createdAt": r["created_at"],
+            "questionsCount": int(r["questions_count"]),
+            "pointsPossible": float(r["points_possible"]),
+            "pointsEarned": float(r["points_earned"]),
+        }
+        for r in rows
+    ]
 
 #for, Resource Recommendation Agent, to be determined
 
@@ -687,7 +1254,13 @@ def recommend_resources(customer_id: int, topic: str, state: str | None = None, 
 
 
 def recommend_resources_impl(customer_id: int, topic: str, state: str | None = None, limit: int = 5) -> List[Dict]:
-    """Return curated, state-aware resources (deterministic, no external calls)."""
+    """Return curated, state-aware resources (deterministic, no external calls).
+
+    Contract:
+    - Uses the customer's saved state when `state` isn't provided.
+    - Produces simple, deterministic resource cards with the state encoded in titles/summaries.
+    - Persists the result list to `recommended_resources`.
+    """
 
     if state is None:
         with sqlite3.connect(db_path) as conn:
@@ -698,6 +1271,7 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
     t = (topic or "").strip().lower()
     st = (state or "").strip().upper() if state else ""
 
+    # Always return meaningful placeholders (never None) so the CLI doesn't print "None: None (None)".
     base = [
         {
             "type": "video",
@@ -742,18 +1316,36 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
             }
         )
 
+    # Add state-aware keywording (still deterministic, no external browsing).
+    # In a real build you'd search APIs; here we shape the result so the UI can present state-scoped options.
     state_note: List[Dict] = []
     if st:
-        state_note.append(
-            {
-                "type": "state",
-                "title": f"{st} insurance department (find official state resources)",
-                "summary": "Look up your state's department of insurance for minimum requirements and complaint options.",
-                "url": "https://content.naic.org/state-insurance-departments",
-            }
+        kw = f"{st} {t}".strip()
+        state_note.extend(
+            [
+                {
+                    "type": "state",
+                    "title": f"{st} insurance department (official requirements + complaints)",
+                    "summary": f"Use keywords like '{kw} minimum coverage' and '{kw} file complaint' when searching official sources.",
+                    "url": "https://content.naic.org/state-insurance-departments",
+                },
+                {
+                    "type": "article",
+                    "title": f"{st}: common '{t}' questions (what locals ask most)",
+                    "summary": f"A state-scoped checklist of what to verify for '{t}' (limits, deductibles, timelines).",
+                    "url": "https://www.usa.gov/insurance",
+                },
+            ]
         )
 
     resources = (by_topic + base + state_note)[: int(limit)]
+
+    # Normalize any missing fields defensively.
+    for r in resources:
+        r.setdefault("type", "article")
+        r.setdefault("title", "Resource")
+        r.setdefault("summary", "")
+        r.setdefault("url", "")
 
     now = _now_date()
     with sqlite3.connect(db_path) as conn:
@@ -773,6 +1365,43 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
     )
 
     return resources
+
+
+def summarize_resources_impl(resources: List[Dict], style: str = "general") -> Dict:
+    """Generate a one-paragraph deterministic summary for a list of resources.
+
+    style:
+      - 'general': summary across all resources
+      - 'video': a short 'video-style' summary for a single resource
+    """
+
+    items = resources or []
+    if not items:
+        return {"style": style, "summary": "No resources found."}
+
+    if style == "video":
+        r = items[0]
+        title = (r.get("title") or "this resource").strip()
+        summary = (r.get("summary") or "").strip()
+        # "Video summary" here is a formatted short narration (no real video generation).
+        video = (
+            f"In this quick video, we cover {title}. "
+            f"Main takeaway: {summary or 'focus on the key steps and definitions.'} "
+            f"At the end, you should know what to do next and what details matter most."
+        )
+        return {"style": style, "summary": video}
+
+    # general
+    # Combine the top few titles into a single paragraph.
+    titles = [str(r.get("title") or "").strip() for r in items if str(r.get("title") or "").strip()]
+    titles = titles[:5]
+    joined = "; ".join(titles)
+    general = (
+        "Here are the key resources you can use right now: "
+        f"{joined}. "
+        "Together, they explain the basics, what to collect or verify, and where to find official state guidance."
+    )
+    return {"style": style, "summary": general}
 
 #for, Accident Reporting Agent 
 

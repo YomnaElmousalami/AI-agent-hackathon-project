@@ -12,7 +12,7 @@ def test_build_khan_style_lesson_deductible_teen():
 	assert "deductible" in lesson.objective.lower()
 	assert any("deductible" in p.lower() for p in lesson.key_points)
 	assert "out of your own money" in lesson.worked_example_a.lower()
-	assert "deductible" in lesson.checkpoint_q.lower()
+	assert "deductible" in lesson.recap.lower()
 
 
 def test_render_lesson_script_contains_sections():
@@ -26,4 +26,4 @@ def test_render_lesson_script_contains_sections():
 	assert "Objective:" in script
 	assert "Key points:" in script
 	assert "Worked example:" in script
-	assert "Checkpoint:" in script
+	assert "Recap:" in script

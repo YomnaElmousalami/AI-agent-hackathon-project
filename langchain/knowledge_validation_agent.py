@@ -11,6 +11,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
 	sys.path.insert(0, str(REPO_ROOT))
 
+import insurance_mcp
+
 
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
@@ -46,23 +48,139 @@ def _pick_tool(tools, name: str):
 
 
 async def run_cli():
-	tools = await setup_mcp_client()
-	questions_tool = _pick_tool(tools, "get_knowledge_questions")
-	grade_tool = _pick_tool(tools, "grade_knowledge_answer")
+	# Default to local mode so the question bank matches curriculum/teacher behavior
+	# even when an MCP server isn't running.
+	mode = os.getenv("KNOWLEDGE_VALIDATION_MODE", "local").strip().lower()
+
+	questions_tool = None
+	start_attempt_tool = None
+	record_tool = None
+	if mode == "mcp":
+		tools = await setup_mcp_client()
+		questions_tool = _pick_tool(tools, "get_knowledge_questions")
+		start_attempt_tool = _pick_tool(tools, "start_knowledge_quiz_attempt")
+		record_tool = _pick_tool(tools, "record_knowledge_quiz_answer")
 
 	customer_id = int(input("Customer id: ").strip())
-	qs = await questions_tool.ainvoke({"customer_id": customer_id, "limit": 3})
 
-	print("\nKnowledge check:")
-	for q in qs:
-		print("\n---")
-		print(q["scenario"])
-		ans = input("Answer: ")
-		result: Dict[str, Any] = await grade_tool.ainvoke(
-			{"customer_id": customer_id, "question_id": q["id"], "answer": ans}
+	print("\nTip: You can reattempt the quiz as many times as you want.")
+
+	def _letter(idx0: int) -> str:
+		return chr(ord("A") + int(idx0))
+
+	def _format_header(idx: int, module_order: Any, weight: float) -> str:
+		# Match the user's desired look: question text first, then choices. Keep header minimal.
+		if module_order is None:
+			return f"Q{idx} ({weight:g} pt)"
+		return f"Q{idx} (Module {module_order} | {weight:g} pt)"
+
+	while True:
+		# Start a persisted attempt (tied to the curriculum plan).
+		if mode == "mcp":
+			attempt = await start_attempt_tool.ainvoke(
+				{"customer_id": customer_id, "questions_limit": 10}
+			)
+			attempt_id = attempt["attemptId"]
+			qs = await questions_tool.ainvoke({"customer_id": customer_id, "limit": 10})
+		else:
+			attempt = insurance_mcp.start_knowledge_quiz_attempt_impl(customer_id=customer_id, questions_limit=10)
+			attempt_id = attempt["attemptId"]
+			qs = insurance_mcp.get_knowledge_questions_impl(customer_id=customer_id, limit=10)
+
+		print("\nKnowledge Validation Quiz (question bank):")
+		print("Scoring: multiple-choice = 1 point, true/false = 0.5 point")
+		print(f"Attempt saved to DB: {attempt_id}")
+
+		points_earned = 0.0
+		points_possible = 0.0
+		points_missed = 0.0
+		questions_done = 0
+
+		for idx, q in enumerate(qs, start=1):
+			print("\n---")
+			q_type = str(q.get("type", "multiple_choice"))
+			weight = float(q.get("weight", 1.0))
+			points_possible += weight
+			questions_done += 1
+
+			module_order = q.get("moduleOrder")
+			print(_format_header(idx, module_order, weight))
+
+			prompt = q.get("prompt") or q.get("scenario")
+			if not prompt:
+				prompt = "(question missing prompt)"
+			print(prompt)
+
+			choices = q.get("choices")
+			if isinstance(choices, list) and q_type == "multiple_choice":
+				for c_idx, c in enumerate(choices):
+					print(f"{_letter(c_idx)}) {c}")
+				print("")
+				print("Answer choices: A-D (or 1-4)")
+			elif q_type == "true_false":
+				print("A) True")
+				print("B) False")
+				print("")
+				print("Answer choices: A/B (or True/False)")
+
+			ans = input("Answer: ")
+			if mode == "mcp":
+				result = await record_tool.ainvoke(
+					{
+						"customer_id": customer_id,
+						"attempt_id": attempt_id,
+						"question_id": q["id"],
+						"answer": ans,
+					}
+				)
+			else:
+				result = insurance_mcp.record_knowledge_quiz_answer_impl(
+					customer_id=customer_id,
+					attempt_id=attempt_id,
+					question_id=q["id"],
+					answer=ans,
+				)
+			earned_now = float(result.get("score", 0.0))
+			points_earned += earned_now
+			missed_now = float(weight) - earned_now
+			points_missed += missed_now
+
+			print("")
+			print(f"Marked: {'Correct' if result.get('correct') else 'Incorrect'}")
+			print(f"Points: +{earned_now:g} / {weight:g}")
+
+			# Show correct answer as a letter + text when possible.
+			correct_letter = None
+			try:
+				correct_idx = int(q.get("correctIndex", 0))
+				correct_letter = _letter(correct_idx)
+			except Exception:
+				correct_letter = None
+			correct_expected = result.get("expected")
+			if correct_letter:
+				print(f"Correct Answer: {correct_letter}")
+				if correct_expected:
+					print(f"({correct_expected})")
+			else:
+				print(f"Correct Answer: {correct_expected}")
+			expl = (result.get("explanation") or "").strip()
+			if expl:
+				print(f"Why: {expl}")
+
+			print(
+				f"Score so far: {points_earned:g} points right, {points_missed:g} points wrong "
+				f"(out of {points_possible:g} total) — {questions_done} questions done"
+			)
+
+		print("\n=== Final Score ===")
+		print(
+			f"Right: {points_earned:g} points | Wrong: {points_missed:g} points | "
+			f"Total: {points_possible:g} points ({questions_done} questions done)"
 		)
-		print(f"Result: {'correct' if result['correct'] else 'wrong'} (score={result['score']:.2f})")
-		print(f"Expected: {result['expected']}")
+
+		again = input("\nReattempt quiz? (y/n): ").strip().lower()
+		if again not in {"y", "yes"}:
+			break
 
 
 if __name__ == "__main__":

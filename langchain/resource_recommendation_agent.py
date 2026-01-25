@@ -10,6 +10,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
 	sys.path.insert(0, str(REPO_ROOT))
 
+import insurance_mcp
+
 
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
@@ -43,19 +45,82 @@ def _pick_tool(tools, name: str):
 
 
 async def run_cli():
-	tools = await setup_mcp_client()
-	rec_tool = _pick_tool(tools, "recommend_resources")
+	"""Interactive CLI.
+
+	Behavior:
+	- Finds the user's state from the stored customer profile.
+	- Accepts a resource topic.
+	- Prints state-aware resources.
+	- Lets the user request a short 'video-style' summary for any item.
+	  Otherwise, prints one paragraph summarizing all resources.
+	"""
+
+	mode = os.getenv("RESOURCE_RECOMMENDATION_MODE", "local").strip().lower()
+
+	tools = None
+	rec_tool = None
+	if mode == "mcp":
+		tools = await setup_mcp_client()
+		rec_tool = _pick_tool(tools, "recommend_resources")
 
 	customer_id = int(input("Customer id: ").strip())
-	topic = input("Topic (deductible/claim/coverage/...): ").strip()
+	topic = input("Topic you want resources for (deductible/claim/coverage/...): ").strip()
 
-	resources = await rec_tool.ainvoke(
-		{"customer_id": customer_id, "topic": topic, "limit": 5}
-	)
+	# Use the user's state from the DB by default (handled by recommend_resources_impl).
+	if mode == "mcp":
+		resources = await rec_tool.ainvoke(
+			{"customer_id": customer_id, "topic": topic, "limit": 8}
+		)
+	else:
+		resources = insurance_mcp.recommend_resources_impl(
+			customer_id=customer_id,
+			topic=topic,
+			limit=8,
+		)
+
+	# Best-effort state display (from the first state-scoped resource title if present)
+	state_guess = None
+	for r in resources:
+		t = (r.get("title") or "").strip()
+		if " insurance department" in t.lower() and len(t) >= 2:
+			state_guess = t.split(" ", 1)[0].upper()
+			break
+	if state_guess:
+		print(f"\nDetected state: {state_guess}")
 
 	print("\nRecommended resources:")
-	for r in resources:
-		print(f"- [{r.get('type')}] {r.get('title')}: {r.get('summary')} ({r.get('url')})")
+	for i, r in enumerate(resources, start=1):
+		print(
+			f"{i}) [{r.get('type')}] {r.get('title')}\n"
+			f"   - {r.get('summary')}\n"
+			f"   - {r.get('url')}"
+		)
+
+	choice = input(
+		"\nDo you want a video summary of any specific resource? "
+		"Enter a number (e.g., 2), or press Enter for a general summary: "
+	).strip()
+
+	if choice:
+		try:
+			idx = int(choice)
+		except ValueError:
+			idx = -1
+		if idx < 1 or idx > len(resources):
+			print("\nInvalid selection. Showing general summary instead.\n")
+			summary = insurance_mcp.summarize_resources_impl(resources, style="general")
+			print(summary["summary"])
+			return
+
+		picked = resources[idx - 1]
+		summary = insurance_mcp.summarize_resources_impl([picked], style="video")
+		print("\nVideo-style summary:")
+		print(summary["summary"])
+		return
+
+	summary = insurance_mcp.summarize_resources_impl(resources, style="general")
+	print("\nGeneral summary:")
+	print(summary["summary"])
 
 
 if __name__ == "__main__":
