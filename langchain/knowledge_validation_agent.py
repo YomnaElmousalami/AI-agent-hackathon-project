@@ -48,8 +48,6 @@ def _pick_tool(tools, name: str):
 
 
 async def run_cli():
-	# Default to local mode so the question bank matches curriculum/teacher behavior
-	# even when an MCP server isn't running.
 	mode = os.getenv("KNOWLEDGE_VALIDATION_MODE", "local").strip().lower()
 
 	questions_tool = None
@@ -69,13 +67,11 @@ async def run_cli():
 		return chr(ord("A") + int(idx0))
 
 	def _format_header(idx: int, module_order: Any, weight: float) -> str:
-		# Match the user's desired look: question text first, then choices. Keep header minimal.
 		if module_order is None:
 			return f"Q{idx} ({weight:g} pt)"
 		return f"Q{idx} (Module {module_order} | {weight:g} pt)"
 
 	while True:
-		# Start a persisted attempt (tied to the curriculum plan).
 		if mode == "mcp":
 			attempt = await start_attempt_tool.ainvoke(
 				{"customer_id": customer_id, "questions_limit": 10}
@@ -149,7 +145,6 @@ async def run_cli():
 			print(f"Marked: {'Correct' if result.get('correct') else 'Incorrect'}")
 			print(f"Points: +{earned_now:g} / {weight:g}")
 
-			# Show correct answer as a letter + text when possible.
 			correct_letter = None
 			try:
 				correct_idx = int(q.get("correctIndex", 0))

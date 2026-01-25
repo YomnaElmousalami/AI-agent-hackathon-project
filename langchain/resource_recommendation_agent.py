@@ -66,7 +66,6 @@ async def run_cli():
 	customer_id = int(input("Customer id: ").strip())
 	topic = input("Topic you want resources for (deductible/claim/coverage/...): ").strip()
 
-	# Use the user's state from the DB by default (handled by recommend_resources_impl).
 	if mode == "mcp":
 		resources = await rec_tool.ainvoke(
 			{"customer_id": customer_id, "topic": topic, "limit": 8}
@@ -78,7 +77,6 @@ async def run_cli():
 			limit=8,
 		)
 
-	# Best-effort state display (from the first state-scoped resource title if present)
 	state_guess = None
 	for r in resources:
 		t = (r.get("title") or "").strip()

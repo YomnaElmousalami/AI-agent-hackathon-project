@@ -43,7 +43,6 @@ def init_db(db_path="insurance.db"):
         conn.execute("CREATE INDEX IF NOT EXISTS idx_curriculum_plans_customer_id ON curriculum_plans(customer_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_curriculum_modules_plan_id ON curriculum_modules(plan_id);")
 
-        # Knowledge Validation: persist quiz attempts and per-question results.
         conn.execute("""
         CREATE TABLE IF NOT EXISTS knowledge_quiz_attempts (
           id TEXT PRIMARY KEY,

@@ -56,7 +56,6 @@ def build_khan_style_lesson(module_title: str, module_description: str, age: int
             return s
         return s.replace("out of pocket", "out of your own money")
 
-    # Defaults (fallback) — keep it specific and "video-like" instead of boilerplate
     hook = teenify(
         "Quick story: imagine you use your car for deliveries for a week, then you get into a fender bender."
         " The big question becomes: does your insurance treat that trip differently?"
@@ -163,14 +162,12 @@ def render_lesson_script(lesson: Lesson) -> str:
 
     lines: List[str] = []
 
-    # Lightweight "playlist" (fake, but feels like a video library)
     lines.append("Video playlist (Khan style):")
     lines.append(f"1) {lesson.title} — 6:00")
     lines.append(f"2) {lesson.title}: Real-life Scenario Walkthrough — 3:00")
     lines.append(f"3) {lesson.title}: Summary & Common Mistakes — 1:30")
     lines.append("")
 
-    # Transcript
     lines.append(f"Lesson: {lesson.title}")
     lines.append("")
     lines.append(f"[00:00] Hook: {lesson.hook}")
@@ -269,7 +266,6 @@ async def run_cli():
 
     tools = await setup_mcp_client()
     get_curriculum_tool = _pick_tool(tools, "get_curriculum")
-    # Teacher Agent focuses on instruction. Practice (flashcards/quiz) is handled by other agents/tools.
 
     customer_id_in = input("Customer id: ").strip()
     customer_id = _extract_int(customer_id_in)
