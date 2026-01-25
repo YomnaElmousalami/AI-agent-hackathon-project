@@ -2,6 +2,7 @@ import sqlite3
 
 def init_db(db_path="insurance.db"):
     with sqlite3.connect(db_path) as conn:
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute("""
         CREATE TABLE IF NOT EXISTS customers (
           id INTEGER PRIMARY KEY,
@@ -41,3 +42,146 @@ def init_db(db_path="insurance.db"):
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_curriculum_plans_customer_id ON curriculum_plans(customer_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_curriculum_modules_plan_id ON curriculum_modules(plan_id);")
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_sessions (
+          id TEXT PRIMARY KEY,
+          customer_id INTEGER NOT NULL,
+          module_order INTEGER,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          updated_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          status TEXT NOT NULL DEFAULT 'active',
+          FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_cards (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          module_order INTEGER NOT NULL,
+          module_title TEXT NOT NULL,
+          front TEXT NOT NULL,
+          back TEXT NOT NULL,
+          difficulty TEXT NOT NULL DEFAULT 'easy',
+          tags TEXT NOT NULL DEFAULT '[]',
+          status TEXT NOT NULL DEFAULT 'new',
+          attempts INTEGER NOT NULL DEFAULT 0,
+          correct_count INTEGER NOT NULL DEFAULT 0,
+          wrong_count INTEGER NOT NULL DEFAULT 0,
+          last_answer TEXT,
+          updated_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          FOREIGN KEY (session_id) REFERENCES quiz_sessions(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_sessions_customer ON quiz_sessions(customer_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_cards_session ON quiz_cards(session_id);")
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS accident_reports (
+          id TEXT PRIMARY KEY,
+          customer_id INTEGER NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          updated_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          location TEXT,
+          injured_count INTEGER NOT NULL DEFAULT 0,
+          vehicles_drivable INTEGER,
+          notes TEXT,
+          evidence_urls TEXT NOT NULL DEFAULT '[]',
+          status TEXT NOT NULL DEFAULT 'collecting',
+          FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS severity_assessments (
+          id TEXT PRIMARY KEY,
+          report_id TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          severity TEXT NOT NULL,
+          accident_type TEXT,
+          urgency TEXT NOT NULL,
+          rationale TEXT,
+          recommended_actions TEXT NOT NULL DEFAULT '[]',
+          FOREIGN KEY (report_id) REFERENCES accident_reports(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS policy_interpretations (
+          id TEXT PRIMARY KEY,
+          report_id TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          coverage_summary TEXT NOT NULL,
+          estimated_deductible REAL,
+          estimated_out_of_pocket REAL,
+          assumptions TEXT NOT NULL DEFAULT '[]',
+          exclusions TEXT NOT NULL DEFAULT '[]',
+          FOREIGN KEY (report_id) REFERENCES accident_reports(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS claim_packets (
+          id TEXT PRIMARY KEY,
+          report_id TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          status TEXT NOT NULL DEFAULT 'draft',
+          missing_items TEXT NOT NULL DEFAULT '[]',
+          packet_json TEXT NOT NULL DEFAULT '{}',
+          FOREIGN KEY (report_id) REFERENCES accident_reports(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS action_plans (
+          id TEXT PRIMARY KEY,
+          report_id TEXT NOT NULL UNIQUE,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          steps_json TEXT NOT NULL DEFAULT '[]',
+          timelines_json TEXT NOT NULL DEFAULT '[]',
+          FOREIGN KEY (report_id) REFERENCES accident_reports(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS escalations (
+          id TEXT PRIMARY KEY,
+          report_id TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          reason TEXT NOT NULL,
+          routed_to TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          FOREIGN KEY (report_id) REFERENCES accident_reports(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS recommended_resources (
+          id TEXT PRIMARY KEY,
+          customer_id INTEGER NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          state TEXT,
+          topic TEXT NOT NULL,
+          resources_json TEXT NOT NULL DEFAULT '[]',
+          FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS feedback_events (
+          id TEXT PRIMARY KEY,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          customer_id INTEGER,
+          agent_name TEXT NOT NULL,
+          event_type TEXT NOT NULL,
+          payload_json TEXT NOT NULL DEFAULT '{}',
+          FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+        );
+        """)
+
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_accident_reports_customer ON accident_reports(customer_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_escalations_report ON escalations(report_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_resources_customer ON recommended_resources(customer_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_customer ON feedback_events(customer_id);")

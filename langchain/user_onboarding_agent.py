@@ -3,6 +3,10 @@ import os
 import sys
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langgraph.prebuilt import create_react_agent
 
@@ -61,26 +65,36 @@ async def run_agent(agent, user_query: str):
 
     final_text: str | None = None
 
-    async for chunk in agent.astream({
-        "messages": [{"role": "user", "content": user_query}]
-    }):
-        if not isinstance(chunk, dict):
-            continue
+    try:
+        async for chunk in agent.astream({
+            "messages": [{"role": "user", "content": user_query}]
+        }):
+            if not isinstance(chunk, dict):
+                continue
 
-        messages = chunk.get("messages")
-        if not messages:
-            continue
+            messages = chunk.get("messages")
+            if not messages:
+                continue
 
-        last = messages[-1]
+            last = messages[-1]
 
-        if isinstance(last, dict):
-            if last.get("role") == "assistant" and last.get("content"):
-                final_text = last["content"]
-        else:
-            role = getattr(last, "type", None) or getattr(last, "role", None)
-            content = getattr(last, "content", None)
-            if role in {"ai", "assistant"} and content:
-                final_text = content
+            if isinstance(last, dict):
+                if last.get("role") == "assistant" and last.get("content"):
+                    final_text = last["content"]
+            else:
+                role = getattr(last, "type", None) or getattr(last, "role", None)
+                content = getattr(last, "content", None)
+                if role in {"ai", "assistant"} and content:
+                    final_text = content
+    except KeyboardInterrupt:
+        raise
+    except Exception as e:
+        print(
+            "The onboarding agent couldn't reach the LLM backend.\n"
+            "If you're using Ollama, make sure it's running and your model is available.\n"
+            f"Details: {e}"
+        )
+        return
 
     if final_text:
         print(final_text)

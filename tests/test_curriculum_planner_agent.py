@@ -63,7 +63,6 @@ async def test_handle_query_plan_skips_if_curriculum_exists(monkeypatch, capsys)
 
 @pytest.mark.asyncio
 async def test_handle_query_plan_creates_when_missing(monkeypatch, capsys):
-    # Simulate get_curriculum saying "missing" by raising ValueError with 'no curriculum' in msg.
     get_tool = _FakeTool("get_curriculum", exc=ValueError("No curriculum found for customer 7"))
     plan_tool = _FakeTool("plan_curriculum", ret=[{"module": "Intro"}, {"module": "Deductibles"}])
 

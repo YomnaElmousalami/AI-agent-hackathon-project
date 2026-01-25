@@ -46,3 +46,30 @@ Use a hugging face model, so far using llama3.2 but may change later: https://hu
 
 - To run the curriculum planner agent:
 "python .\langchain\curriculum_planner_agent.py"
+
+- To run the teacher agent:
+"python -m langchain.teacher_agent"
+
+- To run the accident reporting agent:
+"python .\langchain\accident_reporting_agent.py"
+
+- To run the accident severity assessment agent:
+"python .\langchain\accident_severity_assesment_agent.py"
+
+- To run the policy interpretation agent:
+"python .\langchain\policy_interpretation_agent.py"
+
+- To run the claims preparation agent:
+"python .\langchain\claims_preparation_agent.py"
+
+- To run the action plan agent:
+"python .\langchain\action_plan_agent.py"
+
+- To run the escalation & routing agent:
+"python .\langchain\escalation_and_routing_agent.py"
+
+- To run the knowledge validation agent:
+"python .\langchain\knowledge_validation_agent.py"
+
+- To run the resource recommendation agent:
+"python .\langchain\resource_recommendation_agent.py"
