@@ -58,7 +58,7 @@ Learning & Education Mode:
 - To run the resource recommendation agent:
 "python .\langchain\resource_recommendation_agent.py"
 
-Accident Mode (Real-Time Assistance) (in order):
+Accident Mode (Real-Time Assistance):
 
 - To run the accident reporting agent:
 "python .\langchain\accident_reporting_agent.py"
