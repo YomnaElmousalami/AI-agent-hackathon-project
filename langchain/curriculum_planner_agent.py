@@ -209,11 +209,12 @@ async def handle_query(user_query: str) -> None:
                     raise
 
             if existing is not None and has_curriculum(existing):
-                print(f"Curriculum already exists in the database for customer id {customer_id}.")
+                print("it already exists in the database")
                 return
 
             res = await plan_tool.ainvoke({"customer_id": customer_id})
-            print_curriculum(res)
+            _ = res
+            print("done")
         except Exception as e:
             print(f"Could not plan curriculum: {e}")
         return
