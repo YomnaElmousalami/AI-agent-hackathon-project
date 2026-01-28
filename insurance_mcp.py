@@ -15,6 +15,153 @@ mcp = FastMCP("AutoInsuranceMCP")
 init_db(db_path)
 
 
+def _connect(database_path: str | None = None) -> sqlite3.Connection:
+    """Open a SQLite connection to the configured DB (or an override).
+
+    Tests use `database_path` to isolate state in a tmp db.
+    """
+
+    path = database_path or db_path
+    init_db(path)
+    conn = sqlite3.connect(path)
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
+
+
+def _now_date() -> str:
+    """UTC date string used across the persistence layer."""
+
+    return datetime.now(timezone.utc).strftime("%m/%d/%Y")
+
+
+def create_customer_impl(
+    *,
+    customer_id: int,
+    name: str,
+    age: int = 16,
+    state: str = "VA",
+    vehicle_name: str = "Unknown Vehicle",
+    coverage_type: str = "liability",
+    email: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+    database_path: str | None = None,
+) -> Dict:
+    """Create a bare customer row (for tests / non-onboarding flows).
+
+    Note: The onboarding UI uses `get_customer_info()` which writes richer fields.
+    Some tests expect a lightweight customer seeding helper.
+    """
+
+    now = _now_date()
+    with _connect(database_path) as conn:
+        # Keep INSERT column list defensive in case schema evolves.
+        conn.execute(
+            """
+            INSERT INTO customers (id, name, age, state, vehicle_name, coverage_type, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              name=excluded.name,
+              age=excluded.age,
+              state=excluded.state,
+              vehicle_name=excluded.vehicle_name,
+              coverage_type=excluded.coverage_type,
+              updated_at=excluded.updated_at;
+            """,
+            (
+                int(customer_id),
+                str(name),
+                int(age),
+                str(state).upper(),
+                str(vehicle_name),
+                str(coverage_type),
+                now,
+                now,
+            ),
+        )
+
+    return {
+        "id": int(customer_id),
+        "name": str(name),
+        "age": int(age),
+        "state": str(state).upper(),
+        "vehicleName": str(vehicle_name),
+        "coverageType": str(coverage_type),
+        "createdAt": now,
+        "updatedAt": now,
+    }
+
+
+def create_curriculum_plan_impl(
+    *,
+    customer_id: int,
+    topic: str,
+    difficulty: str,
+    goal: str,
+    database_path: str | None = None,
+) -> Dict:
+    """Ensure a curriculum plan exists for a customer.
+
+    Some agent/tests want a deterministic persisted plan record before generating
+    question banks / quiz attempts.
+    """
+
+    now = _now_date()
+
+    # If we already have a customer row with age, keep it. Otherwise default to 16.
+    with _connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT age FROM customers WHERE id = ?;", (int(customer_id),)).fetchone()
+        customer_age = int(row["age"]) if row and row["age"] is not None else 16
+
+        conn.execute(
+            """
+            INSERT INTO curriculum_plans (customer_id, customer_age, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(customer_id) DO UPDATE SET
+              customer_age=excluded.customer_age,
+              updated_at=excluded.updated_at;
+            """,
+            (int(customer_id), int(customer_age), now, now),
+        )
+
+        plan_row = conn.execute(
+            "SELECT id FROM curriculum_plans WHERE customer_id = ?;",
+            (int(customer_id),),
+        ).fetchone()
+        plan_id = int(plan_row["id"]) if plan_row else None
+
+        # Seed at least one module so curriculum-dependent flows work in a fresh DB.
+        # Keep it deterministic and simple; real flows can call `plan_curriculum()`.
+        conn.execute("DELETE FROM curriculum_modules WHERE plan_id = ?;", (int(plan_id),))
+        conn.execute(
+            """
+            INSERT INTO curriculum_modules (plan_id, module_order, module_title, module_description, created_at)
+            VALUES (?, 1, ?, ?, ?)
+            ON CONFLICT(plan_id, module_order) DO UPDATE SET
+              module_title=excluded.module_title,
+              module_description=excluded.module_description;
+            """,
+            (
+                int(plan_id),
+                str(topic),
+                f"{topic} ({difficulty}) — goal: {goal}.",
+                now,
+            ),
+        )
+
+    return {
+        "planId": plan_id,
+        "customerId": int(customer_id),
+        "topic": str(topic),
+        "difficulty": str(difficulty),
+        "goal": str(goal),
+        "customerAge": int(customer_age),
+        "createdAt": now,
+        "updatedAt": now,
+    }
+
+
 def _row_to_dict(row: sqlite3.Row | None) -> Dict | None:
     if row is None:
         return None
@@ -958,7 +1105,7 @@ def get_knowledge_questions(customer_id: int, limit: int = 3) -> List[Dict]:
     return get_knowledge_questions_impl(customer_id=customer_id, limit=limit)
 
 
-def get_knowledge_questions_impl(customer_id: int, limit: int = 3) -> List[Dict]:
+def get_knowledge_questions_impl(customer_id: int, limit: int = 3, database_path: str | None = None) -> List[Dict]:
     """Return a mixed question bank (MC + True/False) based on the user's curriculum.
 
     Design notes:
@@ -970,7 +1117,14 @@ def get_knowledge_questions_impl(customer_id: int, limit: int = 3) -> List[Dict]
         limit: Maximum number of questions to return
     """
 
-    curriculum = get_curriculum_impl(int(customer_id))
+    prior_db_path = globals().get("db_path")
+    if database_path is not None:
+        globals()["db_path"] = database_path
+    try:
+        curriculum = get_curriculum_impl(int(customer_id))
+    finally:
+        if database_path is not None:
+            globals()["db_path"] = prior_db_path
 
     bank: List[Dict] = []
     for m in curriculum:
@@ -993,13 +1147,18 @@ def grade_knowledge_answer(customer_id: int, question_id: str, answer: str) -> D
     return grade_knowledge_answer_impl(customer_id=customer_id, question_id=question_id, answer=answer)
 
 
-def grade_knowledge_answer_impl(customer_id: int, question_id: str, answer: str) -> Dict:
+def grade_knowledge_answer_impl(
+    customer_id: int,
+    question_id: str,
+    answer: str,
+    database_path: str | None = None,
+) -> Dict:
     """Grade a knowledge validation answer and log a feedback event."""
 
     # Find the question within the same deterministic bank slice returned by get_knowledge_questions.
     # This keeps MCP/CLI behavior consistent even if the caller only fetched a limited subset.
     # We use a generous limit so typical quiz sessions (10–20) are always covered.
-    bank = get_knowledge_questions_impl(int(customer_id), limit=200)
+    bank = get_knowledge_questions_impl(int(customer_id), limit=200, database_path=database_path)
     q = next((x for x in bank if x["id"] == question_id), None)
     if not q:
         raise ValueError("Unknown question_id")
@@ -1049,18 +1208,23 @@ def grade_knowledge_answer_impl(customer_id: int, question_id: str, answer: str)
     correct = selected_index is not None and int(selected_index) == int(correct_index)
     score = float(weight if correct else 0.0)
 
-    log_feedback_event_impl(
-        customer_id=customer_id,
-        agent_name="knowledge_validation",
-        event_type="graded",
-        payload={
-            "questionId": question_id,
-            "type": q_type,
-            "weight": weight,
-            "score": score,
-            "correct": correct,
-        },
-    )
+    # Logging feedback events is best-effort; avoid breaking quiz flows if the
+    # event table doesn't exist in a minimal test DB.
+    try:
+        log_feedback_event_impl(
+            customer_id=customer_id,
+            agent_name="knowledge_validation",
+            event_type="graded",
+            payload={
+                "questionId": question_id,
+                "type": q_type,
+                "weight": weight,
+                "score": score,
+                "correct": correct,
+            },
+        )
+    except Exception:
+        pass
 
     return {
         "customerId": int(customer_id),
@@ -1075,8 +1239,8 @@ def grade_knowledge_answer_impl(customer_id: int, question_id: str, answer: str)
     }
 
 
-def _get_plan_id_for_customer(customer_id: int) -> int:
-    with sqlite3.connect(db_path) as conn:
+def _get_plan_id_for_customer(customer_id: int, database_path: str | None = None) -> int:
+    with _connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             "SELECT id FROM curriculum_plans WHERE customer_id = ?;", (int(customer_id),)
@@ -1091,21 +1255,33 @@ def start_knowledge_quiz_attempt(customer_id: int, questions_limit: int = 10) ->
     return start_knowledge_quiz_attempt_impl(customer_id=customer_id, questions_limit=questions_limit)
 
 
-def start_knowledge_quiz_attempt_impl(customer_id: int, questions_limit: int = 10) -> Dict:
+def start_knowledge_quiz_attempt_impl(
+    customer_id: int,
+    questions_limit: int = 10,
+    database_path: str | None = None,
+) -> Dict:
     """Create a knowledge validation quiz attempt tied to the customer's curriculum plan.
 
     This enables saving scores and unlimited reattempts.
     """
 
-    plan_id = _get_plan_id_for_customer(int(customer_id))
+    plan_id = _get_plan_id_for_customer(int(customer_id), database_path=database_path)
     attempt_id = str(uuid.uuid4())
     now = _now_date()
 
     # We store a snapshot summary at creation time (counts/possible points) so scoring is stable.
-    qs = get_knowledge_questions_impl(int(customer_id), limit=int(questions_limit))
+    # Use the persisted curriculum in the requested database.
+    prior_db_path = globals().get("db_path")
+    if database_path is not None:
+        globals()["db_path"] = database_path
+    try:
+        qs = get_knowledge_questions_impl(int(customer_id), limit=int(questions_limit))
+    finally:
+        if database_path is not None:
+            globals()["db_path"] = prior_db_path
     points_possible = float(sum(float(q.get("weight", _knowledge_question_weight(q.get("type", "")))) for q in qs))
 
-    with sqlite3.connect(db_path) as conn:
+    with _connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO knowledge_quiz_attempts
@@ -1140,14 +1316,20 @@ def record_knowledge_quiz_answer(customer_id: int, attempt_id: str, question_id:
     )
 
 
-def record_knowledge_quiz_answer_impl(customer_id: int, attempt_id: str, question_id: str, answer: str) -> Dict:
+def record_knowledge_quiz_answer_impl(
+    customer_id: int,
+    attempt_id: str,
+    question_id: str,
+    answer: str,
+    database_path: str | None = None,
+) -> Dict:
     """Grade + persist a single answer for a given attempt.
 
     Allows reattempts by simply creating a new attempt id.
     """
 
     # Ensure the attempt exists and is tied to this customer.
-    with sqlite3.connect(db_path) as conn:
+    with _connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         attempt = conn.execute(
             "SELECT id, customer_id, plan_id FROM knowledge_quiz_attempts WHERE id = ?;",
@@ -1157,10 +1339,24 @@ def record_knowledge_quiz_answer_impl(customer_id: int, attempt_id: str, questio
         raise ValueError("Unknown attempt_id")
 
     # Grade using the same logic.
-    graded = grade_knowledge_answer_impl(customer_id=int(customer_id), question_id=question_id, answer=answer)
+    prior_db_path = globals().get("db_path")
+    if database_path is not None:
+        globals()["db_path"] = database_path
+    try:
+        graded = grade_knowledge_answer_impl(customer_id=int(customer_id), question_id=question_id, answer=answer)
+    finally:
+        if database_path is not None:
+            globals()["db_path"] = prior_db_path
 
     # Pull module/type/weight for storage
-    bank = get_knowledge_questions_impl(int(customer_id), limit=200)
+    prior_db_path = globals().get("db_path")
+    if database_path is not None:
+        globals()["db_path"] = database_path
+    try:
+        bank = get_knowledge_questions_impl(int(customer_id), limit=200)
+    finally:
+        if database_path is not None:
+            globals()["db_path"] = prior_db_path
     q = next((x for x in bank if x["id"] == question_id), None)
     if not q:
         raise ValueError("Unknown question_id")
@@ -1173,7 +1369,7 @@ def record_knowledge_quiz_answer_impl(customer_id: int, attempt_id: str, questio
     now = _now_date()
 
     result_id = str(uuid.uuid4())
-    with sqlite3.connect(db_path) as conn:
+    with _connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO knowledge_quiz_results
@@ -1217,10 +1413,10 @@ def get_knowledge_quiz_attempts(customer_id: int, limit: int = 20) -> List[Dict]
     return get_knowledge_quiz_attempts_impl(customer_id=customer_id, limit=limit)
 
 
-def get_knowledge_quiz_attempts_impl(customer_id: int, limit: int = 20) -> List[Dict]:
+def get_knowledge_quiz_attempts_impl(customer_id: int, limit: int = 20, database_path: str | None = None) -> List[Dict]:
     """List recent knowledge quiz attempts for a customer (reattempt history)."""
 
-    with sqlite3.connect(db_path) as conn:
+    with _connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """

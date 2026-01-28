@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import './oai-styles.css';
 
-const API_BASE = 'http://127.0.0.1:8001';
+const API_BASE = '';
 
 export default function App() {
 	const [message, setMessage] = useState('');
@@ -11,15 +11,48 @@ export default function App() {
 
 	const canSubmit = useMemo(() => message.trim().length > 0 && !busy, [message, busy]);
 
+	function parseOnboardingSentence(text) {
+		const s = (text || '').trim();
+		if (!s) throw new Error('Please enter your credentials first.');
+
+		const idMatch = s.match(/\b(?:id\s*(?:is)?\s*)(\d+)\b/i) || s.match(/\b(\d+)\b/);
+		if (!idMatch) throw new Error("Couldn't find an id (number) in your message.");
+		const id = Number(idMatch[1]);
+
+		const ageMatch = s.match(/\b(?:i\s*['’]?m|i\s*am|age\s*(?:is)?)\s*(\d{1,3})\b/i);
+		if (!ageMatch) throw new Error("Couldn't find an age in your message (e.g. I'm 16).");
+		const age = Number(ageMatch[1]);
+
+		const stateMatch = s.match(/\b(?:live\s*in|i\s*live\s*in|state\s*(?:is)?)\s*([A-Za-z]{2})\b/i);
+		if (!stateMatch) throw new Error("Couldn't find a 2-letter state code (e.g. VA, NY).");
+		const state = String(stateMatch[1]).toUpperCase();
+
+		const nameMatch = s.match(/\bmy\s*name\s*is\s*([^,\.]+)\b/i);
+		if (!nameMatch) throw new Error("Couldn't find 'my name is ...' in your message.");
+		const name = String(nameMatch[1]).trim();
+
+		const vehicleMatch = s.match(/\b(?:vehicle\s*(?:is)?|car\s*(?:is)?)\s*(?:a\s+|an\s+)?([^,\.]+)\b/i);
+		if (!vehicleMatch) throw new Error("Couldn't find 'my vehicle is ...' in your message.");
+		const vehicleName = String(vehicleMatch[1]).trim();
+
+		const coverageMatch = s.match(/\bcoverage\s*(?:type\s*)?is\s*([^,\.]+)\b/i);
+		if (!coverageMatch) throw new Error("Couldn't find 'coverage type is ...' in your message.");
+		const coverageType = String(coverageMatch[1]).trim();
+
+		return { id, name, age, state, vehicleName, coverageType };
+	}
+
 	async function submit() {
 		setBusy(true);
 		setError('');
 		setResult(null);
 		try {
-			const res = await fetch(`${API_BASE}/api/onboard`, {
+			const profile = parseOnboardingSentence(message);
+
+			const res = await fetch(`${API_BASE}/api/profile`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ message }),
+				body: JSON.stringify(profile),
 			});
 			const data = await res.json();
 			if (!res.ok) {
@@ -35,33 +68,27 @@ export default function App() {
 
 	return (
 		<div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
-			<h1>Auto Insurance User Onboarding</h1>
+			<div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+				<h1 style={{ marginBottom: 8 }}>Auto Insurance User Onboarding</h1>
 
-			<div style={{ marginTop: 8, lineHeight: 1.5 }}>
-				<div>Hello and welcome to Auto Insurance User Onboarding</div>
-				<div>Please type in your credentials and press Enter</div>
-				<div>Once you&apos;re done, type &apos;exit&apos; to quit</div>
-				<div>Here is a sample message:</div>
-				<div style={{ marginTop: 8, opacity: 0.9 }}>
-					Hey. My id is 2, my name is Samuel, I&apos;m 16, I live in NY, my vehicle
-					is a Toyota Camry, and my coverage type is full coverage.
+				<div style={{ lineHeight: 1.6, marginBottom: 12 }}>
+					<div>Hello and welcome to Auto Insurance User Onboarding</div>
+					<div>Please type in your credentials and press Enter</div>
 				</div>
-			</div>
 
-			<label style={{ display: 'block', marginTop: 16, fontWeight: 600 }}>Onboarding sentence</label>
-			<textarea
-				value={message}
-				onChange={(e) => setMessage(e.target.value)}
-				rows={4}
-				style={{ width: '100%', padding: 12, marginTop: 8 }}
-				placeholder="My id is 46, my name is Alex, I'm 16, I live in VA, my vehicle is a Honda Accord, and my coverage type is liability"
-			/>
+				<textarea
+					value={message}
+					onChange={(e) => setMessage(e.target.value)}
+					rows={4}
+					style={{ width: 'min(720px, 100%)', padding: 12, marginTop: 8 }}
+					placeholder="My id is 46, my name is Alex, I'm 16, I live in VA, my vehicle is a Honda Accord, and my coverage type is liability"
+				/>
 
-			<div style={{ display: 'flex', gap: 12, marginTop: 12, alignItems: 'center' }}>
-				<button onClick={submit} disabled={!canSubmit} style={{ padding: '10px 14px' }}>
-					{busy ? 'Saving…' : 'Enter'}
-				</button>
-				<span style={{ opacity: 0.75 }}>{API_BASE}</span>
+				<div style={{ display: 'flex', justifyContent: 'center', width: '100%', marginTop: 12 }}>
+					<button onClick={submit} disabled={!canSubmit} style={{ fontSize: '16px', padding: '10px 44px' }}>
+						{busy ? 'Saving\u2026' : 'Enter'}
+					</button>
+				</div>
 			</div>
 
 			{error ? (
@@ -71,11 +98,8 @@ export default function App() {
 			) : null}
 
 			{result ? (
-				<div style={{ marginTop: 16 }}>
-					<h3>Saved</h3>
-					<pre style={{ whiteSpace: 'pre-wrap', background: '#111', padding: 12 }}>
-						{JSON.stringify(result, null, 2)}
-					</pre>
+				<div style={{ marginTop: 16, textAlign: 'center' }}>
+					<h3 style={{ margin: 0 }}>Saved!</h3>
 				</div>
 			) : null}
 		</div>
