@@ -82,3 +82,11 @@ Continuous Improvement:
 
 - To run the continuous improvement & feedback agent:
 "python .\langchain\continuous_improvement_and_feedback_agent.py"
+
+To run frontend:
+
+so database can work:
+python -m uvicorn api_server:app --host 127.0.0.1 --port 8801
+
+so frontend can work:
+npm run dev

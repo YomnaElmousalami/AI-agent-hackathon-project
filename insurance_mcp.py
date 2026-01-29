@@ -55,7 +55,6 @@ def create_customer_impl(
 
     now = _now_date()
     with _connect(database_path) as conn:
-        # Keep INSERT column list defensive in case schema evolves.
         conn.execute(
             """
             INSERT INTO customers (id, name, age, state, vehicle_name, coverage_type, created_at, updated_at)
@@ -108,7 +107,6 @@ def create_curriculum_plan_impl(
 
     now = _now_date()
 
-    # If we already have a customer row with age, keep it. Otherwise default to 16.
     with _connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute("SELECT age FROM customers WHERE id = ?;", (int(customer_id),)).fetchone()
@@ -131,8 +129,6 @@ def create_curriculum_plan_impl(
         ).fetchone()
         plan_id = int(plan_row["id"]) if plan_row else None
 
-        # Seed at least one module so curriculum-dependent flows work in a fresh DB.
-        # Keep it deterministic and simple; real flows can call `plan_curriculum()`.
         conn.execute("DELETE FROM curriculum_modules WHERE plan_id = ?;", (int(plan_id),))
         conn.execute(
             """
@@ -168,7 +164,6 @@ def _row_to_dict(row: sqlite3.Row | None) -> Dict | None:
     return {k: row[k] for k in row.keys()}
 
 #Code here is for Learning & Education Mode:
-
 #for user onboarding agent
 @mcp.tool()
 def get_customer_info(id: int, name: str, age: int, state: str, vehicleName: str, coverageType: str) -> Dict:
@@ -780,7 +775,6 @@ def _knowledge_bank_for_module(module_title: str, module_description: str, modul
     def qid(suffix: str) -> str:
         return f"kv_m{int(module_order)}_{suffix}"
 
-    # Pick a "topic" label for tagging/logging.
     if "deduct" in title_l or "deduct" in desc_l:
         topic = "deductible"
     elif "premium" in title_l or "premium" in desc_l:
@@ -792,7 +786,6 @@ def _knowledge_bank_for_module(module_title: str, module_description: str, modul
     else:
         topic = "general"
 
-    # Helper for MC questions
     def mc(suffix: str, prompt: str, choices: List[str], correct_index: int, explanation: str) -> Dict:
         return {
             "id": qid(suffix),
@@ -807,7 +800,6 @@ def _knowledge_bank_for_module(module_title: str, module_description: str, modul
             "weight": 1.0,
         }
 
-    # Helper for True/False questions
     def tf(suffix: str, statement: str, correct: bool, explanation: str) -> Dict:
         return {
             "id": qid(suffix),
@@ -1050,7 +1042,6 @@ def _knowledge_bank_for_module(module_title: str, module_description: str, modul
             tf("tf5", "If you lapse, you may have no coverage.", True, "That’s the consequence of cancellation/lapse."),
         ]
 
-    # General fallback: still produce 10 questions.
     return [
         mc(
             "mc1",
@@ -1136,7 +1127,6 @@ def get_knowledge_questions_impl(customer_id: int, limit: int = 3, database_path
             )
         )
 
-    # Stable deterministic ordering: by module then question id
     bank.sort(key=lambda q: (int(q.get("moduleOrder", 0)), str(q.get("id", ""))))
 
     return bank[: int(limit)]
@@ -1155,9 +1145,6 @@ def grade_knowledge_answer_impl(
 ) -> Dict:
     """Grade a knowledge validation answer and log a feedback event."""
 
-    # Find the question within the same deterministic bank slice returned by get_knowledge_questions.
-    # This keeps MCP/CLI behavior consistent even if the caller only fetched a limited subset.
-    # We use a generous limit so typical quiz sessions (10–20) are always covered.
     bank = get_knowledge_questions_impl(int(customer_id), limit=200, database_path=database_path)
     q = next((x for x in bank if x["id"] == question_id), None)
     if not q:
@@ -1167,10 +1154,7 @@ def grade_knowledge_answer_impl(
     q_type = str(q.get("type", "multiple_choice"))
     weight = float(q.get("weight", _knowledge_question_weight(q_type)))
 
-    # Grading rules:
-    # - multiple_choice: accept A/B/C/D or 1/2/3/4 or exact choice text
-    # - true_false: accept true/false strings
-    # Score returned is *points earned* (0 or weight).
+
     ans = (answer or "").strip()
     ans_l = ans.lower().strip()
 
@@ -1184,22 +1168,18 @@ def grade_knowledge_answer_impl(
         elif ans_l in {"f", "false"}:
             selected_index = 1
         else:
-            # try to match by text
             if ans_l == "true":
                 selected_index = 0
             elif ans_l == "false":
                 selected_index = 1
     else:
-        # multiple choice mapping
         if ans_l in {"a", "b", "c", "d"}:
             selected_index = {"a": 0, "b": 1, "c": 2, "d": 3}[ans_l]
         elif ans_l.isdigit():
             n = int(ans_l)
-            # treat 1-based input
             if 1 <= n <= len(choices):
                 selected_index = n - 1
         else:
-            # match by text
             for idx, c in enumerate(choices):
                 if ans_l == str(c).lower().strip():
                     selected_index = idx
@@ -1208,8 +1188,6 @@ def grade_knowledge_answer_impl(
     correct = selected_index is not None and int(selected_index) == int(correct_index)
     score = float(weight if correct else 0.0)
 
-    # Logging feedback events is best-effort; avoid breaking quiz flows if the
-    # event table doesn't exist in a minimal test DB.
     try:
         log_feedback_event_impl(
             customer_id=customer_id,
@@ -1269,8 +1247,6 @@ def start_knowledge_quiz_attempt_impl(
     attempt_id = str(uuid.uuid4())
     now = _now_date()
 
-    # We store a snapshot summary at creation time (counts/possible points) so scoring is stable.
-    # Use the persisted curriculum in the requested database.
     prior_db_path = globals().get("db_path")
     if database_path is not None:
         globals()["db_path"] = database_path
@@ -1328,7 +1304,6 @@ def record_knowledge_quiz_answer_impl(
     Allows reattempts by simply creating a new attempt id.
     """
 
-    # Ensure the attempt exists and is tied to this customer.
     with _connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         attempt = conn.execute(
@@ -1338,7 +1313,6 @@ def record_knowledge_quiz_answer_impl(
     if attempt is None or int(attempt["customer_id"]) != int(customer_id):
         raise ValueError("Unknown attempt_id")
 
-    # Grade using the same logic.
     prior_db_path = globals().get("db_path")
     if database_path is not None:
         globals()["db_path"] = database_path
@@ -1348,7 +1322,6 @@ def record_knowledge_quiz_answer_impl(
         if database_path is not None:
             globals()["db_path"] = prior_db_path
 
-    # Pull module/type/weight for storage
     prior_db_path = globals().get("db_path")
     if database_path is not None:
         globals()["db_path"] = database_path
@@ -1391,7 +1364,6 @@ def record_knowledge_quiz_answer_impl(
             ),
         )
 
-        # Update attempt summary (sum of earned points across all recorded answers for this attempt)
         total = conn.execute(
             "SELECT COALESCE(SUM(points_earned), 0.0) AS total FROM knowledge_quiz_results WHERE attempt_id = ?;",
             (str(attempt_id),),
@@ -1442,8 +1414,6 @@ def get_knowledge_quiz_attempts_impl(customer_id: int, limit: int = 20, database
     ]
 
 #for, Resource Recommendation Agent, to be determined
-
-
 @mcp.tool()
 def recommend_resources(customer_id: int, topic: str, state: str | None = None, limit: int = 5) -> List[Dict]:
     return recommend_resources_impl(customer_id=customer_id, topic=topic, state=state, limit=limit)
@@ -1467,7 +1437,6 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
     t = (topic or "").strip().lower()
     st = (state or "").strip().upper() if state else ""
 
-    # Always return meaningful placeholders (never None) so the CLI doesn't print "None: None (None)".
     base = [
         {
             "type": "video",
@@ -1512,8 +1481,6 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
             }
         )
 
-    # Add state-aware keywording (still deterministic, no external browsing).
-    # In a real build you'd search APIs; here we shape the result so the UI can present state-scoped options.
     state_note: List[Dict] = []
     if st:
         kw = f"{st} {t}".strip()
@@ -1536,7 +1503,6 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
 
     resources = (by_topic + base + state_note)[: int(limit)]
 
-    # Normalize any missing fields defensively.
     for r in resources:
         r.setdefault("type", "article")
         r.setdefault("title", "Resource")
@@ -1579,7 +1545,6 @@ def summarize_resources_impl(resources: List[Dict], style: str = "general") -> D
         r = items[0]
         title = (r.get("title") or "this resource").strip()
         summary = (r.get("summary") or "").strip()
-        # "Video summary" here is a formatted short narration (no real video generation).
         video = (
             f"In this quick video, we cover {title}. "
             f"Main takeaway: {summary or 'focus on the key steps and definitions.'} "
@@ -1587,8 +1552,6 @@ def summarize_resources_impl(resources: List[Dict], style: str = "general") -> D
         )
         return {"style": style, "summary": video}
 
-    # general
-    # Combine the top few titles into a single paragraph.
     titles = [str(r.get("title") or "").strip() for r in items if str(r.get("title") or "").strip()]
     titles = titles[:5]
     joined = "; ".join(titles)

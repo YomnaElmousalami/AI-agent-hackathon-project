@@ -8,6 +8,7 @@ export default function App() {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [result, setResult] = useState(null);
+	const [status, setStatus] = useState('');
 
 	const canSubmit = useMemo(() => message.trim().length > 0 && !busy, [message, busy]);
 
@@ -46,8 +47,29 @@ export default function App() {
 		setBusy(true);
 		setError('');
 		setResult(null);
+		setStatus('');
 		try {
 			const profile = parseOnboardingSentence(message);
+
+			// Check if the customer already exists.
+			const existingRes = await fetch(`${API_BASE}/api/customers/${profile.id}`);
+			if (existingRes.ok) {
+				const existingData = await existingRes.json();
+				setResult(existingData);
+				setStatus('exists');
+				return;
+			}
+			// If 404, proceed to create/update. Any other error should surface.
+			if (existingRes.status !== 404) {
+				let msg = `Lookup failed (${existingRes.status})`;
+				try {
+					const err = await existingRes.json();
+					msg = err?.detail || msg;
+				} catch {
+					// ignore
+				}
+				throw new Error(msg);
+			}
 
 			const res = await fetch(`${API_BASE}/api/profile`, {
 				method: 'POST',
@@ -59,6 +81,7 @@ export default function App() {
 				throw new Error(data?.detail || 'Onboarding failed');
 			}
 			setResult(data);
+			setStatus('saved');
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -99,7 +122,11 @@ export default function App() {
 
 			{result ? (
 				<div style={{ marginTop: 16, textAlign: 'center' }}>
-					<h3 style={{ margin: 0 }}>Saved!</h3>
+					{status === 'exists' ? (
+						<h3 style={{ fontSize: '24px', margin: 0 }}>This user already exists</h3>
+					) : (
+						<h3 style={{ fontSize: '24px', margin: 0 }}>Saved!</h3>
+					)}
 				</div>
 			) : null}
 		</div>
