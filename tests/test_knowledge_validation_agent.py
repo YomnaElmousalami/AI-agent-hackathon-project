@@ -59,7 +59,6 @@ def test_get_questions_and_grade_answer_logs_event(temp_db):
 	_seed_curriculum(temp_db, 1)
 
 	qs = insurance_mcp.get_knowledge_questions_impl(customer_id=1, limit=20)
-	# One module generates 10 questions (mix of MC + TF)
 	assert len(qs) == 10
 	q0 = qs[0]
 	assert q0["type"] in ("multiple_choice", "true_false")
@@ -67,11 +66,9 @@ def test_get_questions_and_grade_answer_logs_event(temp_db):
 	assert isinstance(q0.get("choices"), list)
 	assert q0.get("weight") in (1.0, 0.5)
 
-	# Find one MC and one TF to validate weighting.
 	mc_q = next(q for q in qs if q["type"] == "multiple_choice")
 	tf_q = next(q for q in qs if q["type"] == "true_false")
 
-	# Correct multiple-choice earns 1 point.
 	mc_correct_ans = mc_q["choices"][mc_q["correctIndex"]]
 	mc_res = insurance_mcp.grade_knowledge_answer_impl(
 		customer_id=1, question_id=mc_q["id"], answer=mc_correct_ans
@@ -79,7 +76,6 @@ def test_get_questions_and_grade_answer_logs_event(temp_db):
 	assert mc_res["correct"] is True
 	assert mc_res["score"] == 1.0
 
-	# Correct true/false earns 0.5 points.
 	tf_correct_ans = tf_q["choices"][tf_q["correctIndex"]]
 	tf_res = insurance_mcp.grade_knowledge_answer_impl(
 		customer_id=1, question_id=tf_q["id"], answer=tf_correct_ans

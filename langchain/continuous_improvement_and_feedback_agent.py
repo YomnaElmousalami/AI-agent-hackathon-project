@@ -40,7 +40,6 @@ async def run_cli():
 	for k, v in _sorted_counts(summary.get("counts", {})):
 		print(f"- {k}: {v}")
 
-	# Heuristics: look for repeated 'missing' fields in claim preparation, frequent escalations, etc.
 	missing_counts: dict[str, int] = {}
 	escalations = 0
 

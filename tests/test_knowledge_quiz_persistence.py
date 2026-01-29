@@ -15,11 +15,9 @@ def _fetch_all(db_path: str, sql: str, params=()):
 
 
 def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
-	# Fresh DB
 	db_path = str(tmp_path / "test.db")
 	init_db(db_path)
 
-	# Seed curriculum plan for a customer.
 	customer_id = 46
 	insurance_mcp.create_customer_impl(
 		customer_id=customer_id,
@@ -37,7 +35,6 @@ def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
 		database_path=db_path,
 	)
 
-	# Attempt 1
 	a1 = insurance_mcp.start_knowledge_quiz_attempt_impl(
 		customer_id=customer_id, questions_limit=10, database_path=db_path
 	)
@@ -45,7 +42,6 @@ def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
 	qs = insurance_mcp.get_knowledge_questions_impl(
 		customer_id=customer_id, limit=3, database_path=db_path
 	)
-	# Answer 2 correctly, 1 incorrectly (weights should be applied)
 	insurance_mcp.record_knowledge_quiz_answer_impl(
 		customer_id=customer_id,
 		attempt_id=a1["attemptId"],
@@ -68,7 +64,6 @@ def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
 		database_path=db_path,
 	)
 
-	# Attempt 2 (reattempt must always be allowed)
 	a2 = insurance_mcp.start_knowledge_quiz_attempt_impl(
 		customer_id=customer_id, questions_limit=10, database_path=db_path
 	)
@@ -81,7 +76,6 @@ def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
 		(customer_id,),
 	)
 	assert len(attempt_rows) == 2
-	# Ensure both are tied to a curriculum plan.
 	assert attempt_rows[0][2] is not None
 	assert attempt_rows[1][2] is not None
 
@@ -91,10 +85,9 @@ def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
 		(a1["attemptId"],),
 	)
 	assert len(results_rows_a1) == 3
-	assert sum(r[2] for r in results_rows_a1) == 2  # 2 correct
+	assert sum(r[2] for r in results_rows_a1) == 2  
 	assert sum(float(r[3]) for r in results_rows_a1) > 0.0
 
-	# Attempt table should have been updated as answers were recorded.
 	updated_attempt = _fetch_all(
 		db_path,
 		"SELECT questions_answered, earned_points, total_points FROM knowledge_quiz_attempts WHERE id=?",

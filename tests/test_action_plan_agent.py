@@ -36,7 +36,6 @@ def test_generate_action_plan_has_steps(temp_db):
 		evidence_urls=["https://example.com/p.jpg"],
 	)
 
-	# Optional enrichers
 	insurance_mcp.assess_accident_severity_impl(report_id=report_id)
 	insurance_mcp.interpret_policy_impl(report_id=report_id)
 

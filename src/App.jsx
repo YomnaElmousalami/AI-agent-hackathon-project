@@ -51,7 +51,6 @@ export default function App() {
 		try {
 			const profile = parseOnboardingSentence(message);
 
-			// Check if the customer already exists.
 			const existingRes = await fetch(`${API_BASE}/api/customers/${profile.id}`);
 			if (existingRes.ok) {
 				const existingData = await existingRes.json();
@@ -59,14 +58,13 @@ export default function App() {
 				setStatus('exists');
 				return;
 			}
-			// If 404, proceed to create/update. Any other error should surface.
 			if (existingRes.status !== 404) {
 				let msg = `Lookup failed (${existingRes.status})`;
 				try {
 					const err = await existingRes.json();
 					msg = err?.detail || msg;
 				} catch {
-					// ignore
+					
 				}
 				throw new Error(msg);
 			}
