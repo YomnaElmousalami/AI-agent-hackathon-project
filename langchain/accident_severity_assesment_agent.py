@@ -46,13 +46,15 @@ async def run_cli():
 	mode = os.getenv("ACCIDENT_MODE", "local").strip().lower()
 	tools = None
 	assess_tool = None
+	import langchain.cli_utils as cli_utils
 	if mode == "mcp":
 		tools = await setup_mcp_client()
 		assess_tool = _pick_tool(tools, "assess_accident_severity")
 
-	report_id = input("Accident report id (UUID from Accident Reporting): ").strip()
+	report_id = cli_utils.read_prompt_or_stdin("Accident report id (UUID from Accident Reporting): ")
 	if mode == "mcp":
 		res = await assess_tool.ainvoke({"report_id": report_id})
+		res = cli_utils.coerce_tool_result(res)
 	else:
 		import insurance_mcp
 		res = insurance_mcp.assess_accident_severity_impl(report_id=report_id)

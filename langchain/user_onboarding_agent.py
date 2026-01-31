@@ -12,6 +12,12 @@ from langgraph.prebuilt import create_react_agent
 
 from llm.llama import get_llm
 
+import re
+from typing import Any
+from datetime import datetime, timezone
+import sqlite3
+
+
 def mcp_server_path() -> str:
     repo_root = Path(__file__).resolve().parents[1]
     return str(repo_root / "insurance_mcp.py")
@@ -86,8 +92,10 @@ async def run_agent(agent, user_query: str):
                 content = getattr(last, "content", None)
                 if role in {"ai", "assistant"} and content:
                     final_text = content
-    except KeyboardInterrupt:
-        raise
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        # Don't crash the whole CLI if the user interrupts or the LLM stream gets cancelled.
+        print("\n(LLM response cancelled. Your profile is still saved.)")
+        return
     except Exception as e:
         print(
             "The onboarding agent couldn't reach the LLM backend.\n"
@@ -101,17 +109,85 @@ async def run_agent(agent, user_query: str):
 
 
 async def onboard(onboarding_agent, user_query: str):
-    """Run onboarding, then generate a curriculum plan.
-    """
-    await run_agent(onboarding_agent, user_query)
+    """Persist onboarding immediately, then optionally let the LLM respond and plan curriculum."""
 
-    import re
+    def _parse_profile(text: str) -> dict[str, Any] | None:
+        t = (text or "").strip()
+        if not t:
+            return None
 
-    match = re.search(r"\b(\d+)\b", user_query)
-    if not match:
-        return
+        m_id = re.search(r"\b(?:my\s*)?id\s*is\s*(\d+)\b", t, flags=re.IGNORECASE)
+        m_name = re.search(r"\bmy\s*name\s*is\s*([^,\.]+)", t, flags=re.IGNORECASE)
+        m_age = re.search(r"\b(?:i\s*'?m|i\s*am)\s*(\d{1,3})\b", t, flags=re.IGNORECASE)
+        m_state = re.search(r"\b(?:i\s*live\s*in|i\s*am\s*in|i\s*live\s*at)\s*([A-Za-z]{2})\b", t, flags=re.IGNORECASE)
+        m_vehicle = re.search(r"\bmy\s*vehicle\s*(?:is|=)\s*([^,\.]+)", t, flags=re.IGNORECASE)
+        m_cov = re.search(r"\bcoverage\s*type\s*(?:is|=)\s*([^,\.]+)", t, flags=re.IGNORECASE)
 
-    customer_id = int(match.group(1))
+        if not (m_id and m_name and m_age and m_state and m_vehicle and m_cov):
+            return None
+
+        def _clean_vehicle(v: str) -> str:
+            v0 = (v or "").strip()
+            v0 = re.sub(r"^\s*(?:a|an|the)\s+", "", v0, flags=re.IGNORECASE)
+            return v0.strip()
+
+        customer_id = int(m_id.group(1))
+        age = int(m_age.group(1))
+        state = m_state.group(1).upper()
+        return {
+            "id": customer_id,
+            "name": m_name.group(1).strip(),
+            "age": age,
+            "state": state,
+            "vehicleName": _clean_vehicle(m_vehicle.group(1)),
+            "coverageType": m_cov.group(1).strip(),
+        }
+
+    profile = _parse_profile(user_query)
+
+    if profile is None:
+        await run_agent(onboarding_agent, user_query)
+        match = re.search(r"\b(\d+)\b", user_query)
+        if not match:
+            return
+        customer_id = int(match.group(1))
+    else:
+
+        db_path = os.getenv("INSURANCE_DB_PATH", os.path.join("database", "insurance.db"))
+        now = datetime.now(timezone.utc).strftime("%m/%d/%Y")
+
+        with sqlite3.connect(db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO customers (id, name, age, state, vehicle_name, coverage_type, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name=excluded.name,
+                    age=excluded.age,
+                    state=excluded.state,
+                    vehicle_name=excluded.vehicle_name,
+                    coverage_type=excluded.coverage_type,
+                    updated_at=excluded.updated_at;
+                """,
+                (
+                    int(profile["id"]),
+                    str(profile["name"]),
+                    int(profile["age"]),
+                    str(profile["state"]),
+                    str(profile["vehicleName"]),
+                    str(profile["coverageType"]),
+                    now,
+                    now,
+                ),
+            )
+
+        customer_id = int(profile["id"])
+        print(
+            "Saved profile to database: "
+            f"id={customer_id} | name={profile['name']} | age={profile['age']} | state={profile['state']}"
+        )
+
+        await run_agent(onboarding_agent, user_query)
 
     try:
         from langchain.curriculum_planner_agent import initialize_agent as init_curriculum_agent
@@ -137,13 +213,24 @@ async def chat():
     print()
 
     while True:
-        user_query = input("> ").strip()
-        if not user_query:
-            continue
-        if user_query.lower() in {"exit", "quit"}:
+        try:
+            try:
+                user_query = input("> ").strip()
+            except EOFError:
+                break
+
+            if not user_query:
+                continue
+            if user_query.lower() in {"exit", "quit"}:
+                break
+
+            await onboard(agent, user_query)
+        except KeyboardInterrupt:
+            print("\nExiting.")
             break
-        
-        await onboard(agent, user_query)
+        except asyncio.CancelledError:
+            print("\nCancelled.")
+            break
 
 
 if __name__ == "__main__":

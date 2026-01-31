@@ -49,14 +49,42 @@ def init_db(db_path="insurance.db"):
           customer_id INTEGER NOT NULL,
           plan_id INTEGER NOT NULL,
           created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          module_order INTEGER,
+          -- Newer fields used by the current app code
           questions_count INTEGER NOT NULL,
           points_possible REAL NOT NULL,
           points_earned REAL NOT NULL,
+          -- Backward-compatible fields expected by tests/older callers
+          questions_total INTEGER NOT NULL DEFAULT 0,
+          questions_answered INTEGER NOT NULL DEFAULT 0,
+          total_points REAL NOT NULL DEFAULT 0,
+          earned_points REAL NOT NULL DEFAULT 0,
           mode TEXT NOT NULL DEFAULT 'question_bank',
           FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
           FOREIGN KEY (plan_id) REFERENCES curriculum_plans(id) ON DELETE CASCADE
         );
         """)
+
+        try:
+          conn.execute("ALTER TABLE knowledge_quiz_attempts ADD COLUMN questions_total INTEGER NOT NULL DEFAULT 0;")
+        except sqlite3.OperationalError:
+          pass
+        try:
+          conn.execute("ALTER TABLE knowledge_quiz_attempts ADD COLUMN module_order INTEGER;")
+        except sqlite3.OperationalError:
+          pass
+        try:
+          conn.execute("ALTER TABLE knowledge_quiz_attempts ADD COLUMN questions_answered INTEGER NOT NULL DEFAULT 0;")
+        except sqlite3.OperationalError:
+          pass
+        try:
+          conn.execute("ALTER TABLE knowledge_quiz_attempts ADD COLUMN total_points REAL NOT NULL DEFAULT 0;")
+        except sqlite3.OperationalError:
+          pass
+        try:
+          conn.execute("ALTER TABLE knowledge_quiz_attempts ADD COLUMN earned_points REAL NOT NULL DEFAULT 0;")
+        except sqlite3.OperationalError:
+          pass
 
         conn.execute("""
         CREATE TABLE IF NOT EXISTS knowledge_quiz_results (
@@ -69,14 +97,32 @@ def init_db(db_path="insurance.db"):
           answer_text TEXT,
           correct INTEGER NOT NULL,
           points_earned REAL NOT NULL,
+          -- Backward-compatible alias expected by tests
+          earned_points REAL NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
           FOREIGN KEY (attempt_id) REFERENCES knowledge_quiz_attempts(id) ON DELETE CASCADE
         );
         """)
+        try:
+          conn.execute("ALTER TABLE knowledge_quiz_results ADD COLUMN earned_points REAL NOT NULL DEFAULT 0;")
+        except sqlite3.OperationalError:
+          pass
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kqa_customer ON knowledge_quiz_attempts(customer_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kqa_plan ON knowledge_quiz_attempts(plan_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_kqr_attempt ON knowledge_quiz_results(attempt_id);")
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_validation_module_views (
+          id TEXT PRIMARY KEY,
+          customer_id INTEGER NOT NULL,
+          module_order INTEGER NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kvmv_customer ON knowledge_validation_module_views(customer_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_kvmv_module ON knowledge_validation_module_views(customer_id, module_order);")
 
         conn.execute("""
         CREATE TABLE IF NOT EXISTS quiz_sessions (
@@ -112,6 +158,19 @@ def init_db(db_path="insurance.db"):
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_sessions_customer ON quiz_sessions(customer_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_quiz_cards_session ON quiz_cards(session_id);")
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_module_views (
+          id TEXT PRIMARY KEY,
+          customer_id INTEGER NOT NULL,
+          module_order INTEGER NOT NULL,
+          module_title TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+          FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        );
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_teacher_views_customer ON teacher_module_views(customer_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_teacher_views_module ON teacher_module_views(customer_id, module_order);")
 
         conn.execute("""
         CREATE TABLE IF NOT EXISTS accident_reports (

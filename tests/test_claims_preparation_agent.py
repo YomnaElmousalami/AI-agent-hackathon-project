@@ -33,7 +33,7 @@ def test_prepare_claim_packet_lists_missing_when_incomplete(temp_db):
 	assert res["status"] == "draft"
 	assert "location" in res["missingItems"]
 	assert "vehicles_drivable" in res["missingItems"]
-	assert "evidence_urls" in res["missingItems"]
+	assert "evidence_urls" not in res["missingItems"]
 
 
 def test_prepare_claim_packet_ready_when_complete(temp_db):
@@ -41,13 +41,13 @@ def test_prepare_claim_packet_ready_when_complete(temp_db):
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 	insurance_mcp.update_accident_report_impl(
 		report_id=report_id,
-		location="San Jose",
+		location="San Jose, CA",
 		injured_count=0,
 		vehicles_drivable=True,
-		evidence_urls=["https://example.com/p.jpg"],
+		# evidence_urls is optional
 	)
 
 	res = insurance_mcp.prepare_claim_packet_impl(report_id=report_id)
 	assert res["status"] == "ready"
 	assert res["missingItems"] == []
-	assert res["packet"]["accident"]["location"] == "San Jose"
+	assert res["packet"]["accident"]["location"] == "San Jose, CA"

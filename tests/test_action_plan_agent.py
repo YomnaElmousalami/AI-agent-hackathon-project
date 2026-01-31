@@ -30,7 +30,7 @@ def test_generate_action_plan_has_steps(temp_db):
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 	insurance_mcp.update_accident_report_impl(
 		report_id=report_id,
-		location="San Jose",
+		location="San Jose, CA",
 		injured_count=0,
 		vehicles_drivable=False,
 		evidence_urls=["https://example.com/p.jpg"],

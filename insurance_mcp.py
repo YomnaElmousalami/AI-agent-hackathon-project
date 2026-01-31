@@ -6,9 +6,15 @@ import sqlite3
 import json
 import uuid
 import re
+from io import BytesIO
 
 from database.insurance_db import init_db
 import os
+
+try:
+    from pypdf import PdfWriter
+except Exception:  
+    PdfWriter = None  
 
 db_path = os.getenv("INSURANCE_DB_PATH", os.path.join("database", "insurance.db"))
 mcp = FastMCP("AutoInsuranceMCP")
@@ -26,6 +32,242 @@ def _connect(database_path: str | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
+
+
+def _ensure_teacher_views_schema(database_path: str | None = None) -> None:
+    """Best-effort schema init for teacher module view history."""
+
+    with _connect(database_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS teacher_module_views (
+              id TEXT PRIMARY KEY,
+              customer_id INTEGER NOT NULL,
+              module_order INTEGER NOT NULL,
+              module_title TEXT NOT NULL,
+              created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+              FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+            );
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_teacher_views_customer ON teacher_module_views(customer_id);"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_teacher_views_module ON teacher_module_views(customer_id, module_order);"
+        )
+
+
+def _ensure_knowledge_validation_views_schema(database_path: str | None = None) -> None:
+    """Best-effort schema init for knowledge-validation module selection history."""
+
+    with _connect(database_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS knowledge_validation_module_views (
+              id TEXT PRIMARY KEY,
+              customer_id INTEGER NOT NULL,
+              module_order INTEGER NOT NULL,
+              created_at TEXT NOT NULL DEFAULT (strftime('%m/%d/%Y', 'now')),
+              FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+            );
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_kvmv_customer ON knowledge_validation_module_views(customer_id);"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_kvmv_module ON knowledge_validation_module_views(customer_id, module_order);"
+        )
+
+
+def record_teacher_module_view_impl(
+    *,
+    customer_id: int,
+    module_order: int,
+    module_title: str,
+    database_path: str | None = None,
+) -> Dict:
+    """Persist that a customer viewed a given module in the Teacher Agent.
+
+    This is append-only (we keep history) and does NOT prevent repeats.
+    """
+
+    _ensure_teacher_views_schema(database_path)
+    view_id = str(uuid.uuid4())
+    now = _now_date()
+
+    with _connect(database_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO teacher_module_views (id, customer_id, module_order, module_title, created_at)
+            VALUES (?, ?, ?, ?, ?);
+            """,
+            (view_id, int(customer_id), int(module_order), str(module_title), now),
+        )
+
+    return {
+        "viewId": view_id,
+        "customerId": int(customer_id),
+        "moduleOrder": int(module_order),
+        "moduleTitle": str(module_title),
+        "createdAt": now,
+    }
+
+
+def record_knowledge_validation_module_view_impl(
+    *,
+    customer_id: int,
+    module_order: int,
+    database_path: str | None = None,
+) -> Dict:
+    """Persist that a customer selected a module in the Knowledge Validation Agent.
+
+    This is append-only (we keep history) and does NOT prevent repeats.
+    """
+
+    _ensure_knowledge_validation_views_schema(database_path)
+    view_id = str(uuid.uuid4())
+    now = _now_date()
+
+    with _connect(database_path) as conn:
+        conn.execute(
+            """
+            INSERT INTO knowledge_validation_module_views (id, customer_id, module_order, created_at)
+            VALUES (?, ?, ?, ?);
+            """,
+            (view_id, int(customer_id), int(module_order), now),
+        )
+
+    return {
+        "viewId": view_id,
+        "customerId": int(customer_id),
+        "moduleOrder": int(module_order),
+        "createdAt": now,
+    }
+
+
+@mcp.tool()
+def record_knowledge_validation_module_view(customer_id: int, module_order: int) -> Dict:
+    return record_knowledge_validation_module_view_impl(
+        customer_id=int(customer_id), module_order=int(module_order)
+    )
+
+
+def get_knowledge_validation_module_views_impl(
+    *,
+    customer_id: int,
+    limit: int = 50,
+    database_path: str | None = None,
+) -> List[Dict]:
+    """Return recent knowledge validation module selections for a customer."""
+
+    _ensure_knowledge_validation_views_schema(database_path)
+
+    with _connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT id, customer_id, module_order, created_at
+            FROM knowledge_validation_module_views
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?;
+            """,
+            (int(customer_id), int(limit)),
+        ).fetchall()
+
+    return [
+        {
+            "viewId": r["id"],
+            "customerId": int(r["customer_id"]),
+            "moduleOrder": int(r["module_order"]),
+            "createdAt": r["created_at"],
+        }
+        for r in rows
+    ]
+
+
+@mcp.tool()
+def get_knowledge_validation_module_views(customer_id: int, limit: int = 50) -> List[Dict]:
+    return get_knowledge_validation_module_views_impl(customer_id=int(customer_id), limit=int(limit))
+
+
+def get_last_knowledge_validation_module_impl(
+    customer_id: int, database_path: str | None = None
+) -> Dict | None:
+    views = get_knowledge_validation_module_views_impl(
+        customer_id=int(customer_id), limit=1, database_path=database_path
+    )
+    if not views:
+        return None
+    return views[0]
+
+
+@mcp.tool()
+def get_last_knowledge_validation_module(customer_id: int) -> Dict | None:
+    return get_last_knowledge_validation_module_impl(customer_id=int(customer_id))
+
+
+@mcp.tool()
+def record_teacher_module_view(customer_id: int, module_order: int, module_title: str) -> Dict:
+    return record_teacher_module_view_impl(
+        customer_id=int(customer_id), module_order=int(module_order), module_title=str(module_title)
+    )
+
+
+def get_teacher_module_views_impl(
+    *,
+    customer_id: int,
+    limit: int = 50,
+    database_path: str | None = None,
+) -> List[Dict]:
+    """Return recent teacher module views for a customer."""
+
+    _ensure_teacher_views_schema(database_path)
+
+    with _connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT id, customer_id, module_order, module_title, created_at
+            FROM teacher_module_views
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?;
+            """,
+            (int(customer_id), int(limit)),
+        ).fetchall()
+
+    return [
+        {
+            "viewId": r["id"],
+            "customerId": int(r["customer_id"]),
+            "moduleOrder": int(r["module_order"]),
+            "moduleTitle": r["module_title"],
+            "createdAt": r["created_at"],
+        }
+        for r in rows
+    ]
+
+
+@mcp.tool()
+def get_teacher_module_views(customer_id: int, limit: int = 50) -> List[Dict]:
+    return get_teacher_module_views_impl(customer_id=int(customer_id), limit=int(limit))
+
+
+def get_last_teacher_module_impl(customer_id: int, database_path: str | None = None) -> Dict | None:
+    """Return the most recently viewed module for this customer, if any."""
+
+    views = get_teacher_module_views_impl(customer_id=int(customer_id), limit=1, database_path=database_path)
+    if not views:
+        return None
+    return views[0]
+
+
+@mcp.tool()
+def get_last_teacher_module(customer_id: int) -> Dict | None:
+    return get_last_teacher_module_impl(customer_id=int(customer_id))
 
 
 def _now_date() -> str:
@@ -779,10 +1021,16 @@ def _knowledge_bank_for_module(module_title: str, module_description: str, modul
         topic = "deductible"
     elif "premium" in title_l or "premium" in desc_l:
         topic = "premium"
+    elif "policy" in title_l or "endorsement" in title_l or "read your insurance policy" in title_l:
+        topic = "policy_interpretation"
+    elif "liability" in title_l:
+        topic = "liability"
+    elif "comprehensive" in title_l or "collision" in title_l:
+        topic = "comp_collision"
+    elif "coverage" in title_l or "cover" in title_l or "coverage" in desc_l:
+        topic = "coverage"
     elif "claim" in title_l or "claim" in desc_l:
         topic = "claim"
-    elif "cover" in title_l or "coverage" in desc_l:
-        topic = "coverage"
     else:
         topic = "general"
 
@@ -1042,6 +1290,168 @@ def _knowledge_bank_for_module(module_title: str, module_description: str, modul
             tf("tf5", "If you lapse, you may have no coverage.", True, "That’s the consequence of cancellation/lapse."),
         ]
 
+    if topic == "policy_interpretation":
+        return [
+            mc(
+                "mc1",
+                "When reading your auto policy, which section tells you what the insurer will pay for?",
+                ["Insuring agreement / coverage section", "Declaration page only", "Marketing brochure", "Vehicle title"],
+                0,
+                "The coverage/insuring agreement describes what is covered (and under what conditions).",
+            ),
+            mc(
+                "mc2",
+                "What do policy limits represent?",
+                ["The maximum the insurer will pay (per person/per accident/per claim)", "Your deductible amount", "A required police report", "Your vehicle’s resale value"],
+                0,
+                "Limits cap how much the insurer will pay for a covered loss.",
+            ),
+            mc(
+                "mc3",
+                "An exclusion in a policy is best described as:",
+                ["Something the policy does NOT cover", "A discount", "A type of premium", "A guarantee of payment"],
+                0,
+                "Exclusions list situations/damage the policy won’t cover.",
+            ),
+            mc(
+                "mc4",
+                "Where would you usually find your chosen deductibles and coverages summarized?",
+                ["Declarations page (Declarations)", "Police report", "Repair invoice", "Driver’s license"],
+                0,
+                "The declarations page summarizes coverages, limits, deductibles, and named insured/vehicles.",
+            ),
+            mc(
+                "mc5",
+                "If two parts of the policy seem to conflict, what’s a good first step?",
+                [
+                    "Re-read definitions + the relevant coverage and exclusions, then ask the insurer/agent for clarification",
+                    "Assume the cheaper outcome",
+                    "Ignore exclusions",
+                    "Only rely on social media advice",
+                ],
+                0,
+                "Definitions and exclusions matter; when in doubt, ask the insurer/agent and get it in writing.",
+            ),
+            tf(
+                "tf1",
+                "The declarations page usually lists your coverages, limits, and deductibles.",
+                True,
+                "That’s one of the main purposes of the declarations page.",
+            ),
+            tf(
+                "tf2",
+                "An exclusion means the insurer is promising to pay for that situation.",
+                False,
+                "Exclusions mean the opposite: it’s not covered.",
+            ),
+            tf(
+                "tf3",
+                "Policy definitions can change how a word like 'insured' or 'vehicle' is interpreted.",
+                True,
+                "Policies define terms precisely; those definitions control interpretation.",
+            ),
+            tf(
+                "tf4",
+                "If something is not covered, paying your deductible will make it covered.",
+                False,
+                "Deductibles apply to covered claims; they don't create coverage.",
+            ),
+            tf(
+                "tf5",
+                "It can help to compare the coverage section with exclusions and conditions when reading a policy.",
+                True,
+                "Coverage is defined by what’s included AND what’s excluded/limited.",
+            ),
+        ]
+
+    if topic == "liability":
+        return [
+            mc(
+                "mc1",
+                "Liability coverage primarily helps pay for:",
+                ["Injuries/damage you cause to others", "Your own car’s collision repairs", "Oil changes", "Your deductible"],
+                0,
+                "Liability is for harm you cause to others (subject to limits).",
+            ),
+            mc(
+                "mc2",
+                "If your state requires liability insurance, that usually means:",
+                ["You must carry at least the legal minimum limits", "You must buy comprehensive", "You can't buy collision", "You can skip insurance"],
+                0,
+                "Most states require minimum liability limits.",
+            ),
+            mc(
+                "mc3",
+                "Which is an example of a liability claim?",
+                ["You rear-end someone and damage their bumper", "Your windshield cracks from a rock", "A hail storm dents your hood", "Your car is stolen"],
+                0,
+                "Damaging someone else’s property/injuring someone triggers liability.",
+            ),
+            mc(
+                "mc4",
+                "A limit like 25/50/25 most commonly refers to:",
+                ["Bodily injury per person / bodily injury per accident / property damage", "Deductible / premium / claim count", "Tire pressure / engine size / mpg", "Road speed limits"],
+                0,
+                "It’s a shorthand for liability limits.",
+            ),
+            mc(
+                "mc5",
+                "If you cause a crash and damages exceed your liability limits, what can happen?",
+                ["You may owe the difference out of pocket", "Insurance must pay unlimited amounts", "Your deductible becomes zero", "The claim is automatically denied"],
+                0,
+                "Limits cap insurer payment; excess can become your responsibility.",
+            ),
+            tf("tf1", "Liability coverage protects other people, not typically your own car repairs.", True, "That’s the basic purpose."),
+            tf("tf2", "Higher liability limits can offer more financial protection.", True, "Higher limits can reduce out-of-pocket exposure."),
+            tf("tf3", "Liability coverage usually has a deductible like collision does.", False, "Liability typically doesn’t have a deductible."),
+            tf("tf4", "State minimum liability limits are always enough for serious accidents.", False, "Minimums may be too low for large losses."),
+            tf("tf5", "Liability can apply to property damage you cause.", True, "Yes—property damage is part of liability."),
+        ]
+
+    if topic == "comp_collision":
+        return [
+            mc(
+                "mc1",
+                "Collision coverage generally helps pay for:",
+                ["Damage to your car from a crash (subject to deductible)", "Medical bills for others", "Your monthly premium", "Traffic tickets"],
+                0,
+                "Collision is for damage to your own vehicle from a collision.",
+            ),
+            mc(
+                "mc2",
+                "Comprehensive coverage generally helps pay for damage from:",
+                ["Non-collision events like theft, vandalism, hail", "Only crashes", "Only oil leaks", "Only speeding tickets"],
+                0,
+                "Comprehensive is for non-collision losses (often called 'other than collision').",
+            ),
+            mc(
+                "mc3",
+                "Which scenario is typically a comprehensive claim?",
+                ["Your car is stolen", "You hit another car", "You rear-end someone", "You run a red light"],
+                0,
+                "Theft is usually covered under comprehensive.",
+            ),
+            mc(
+                "mc4",
+                "Which scenario is typically a collision claim?",
+                ["You hit a guardrail", "A tree branch falls on your car", "A deer scratches your paint while parked", "Your car is stolen"],
+                0,
+                "Hitting an object/vehicle is typically collision.",
+            ),
+            mc(
+                "mc5",
+                "Comprehensive and collision often have:",
+                ["Deductibles", "No limits", "No policy terms", "Guaranteed payouts"],
+                0,
+                "They commonly have deductibles and policy conditions.",
+            ),
+            tf("tf1", "Collision is for crash-related damage to your car.", True, "That’s the basic definition."),
+            tf("tf2", "Comprehensive is only for crashes.", False, "Comprehensive is for non-collision events."),
+            tf("tf3", "Hail damage is often handled under comprehensive.", True, "Hail is a common comprehensive loss."),
+            tf("tf4", "Comprehensive and collision can be optional depending on the policy/vehicle.", True, "They can be optional, but lenders may require them."),
+            tf("tf5", "If you choose a higher deductible, your premium can sometimes be lower.", True, "That tradeoff is common."),
+        ]
+
     return [
         mc(
             "mc1",
@@ -1092,11 +1502,16 @@ def _knowledge_bank_for_module(module_title: str, module_description: str, modul
 
 
 @mcp.tool()
-def get_knowledge_questions(customer_id: int, limit: int = 3) -> List[Dict]:
-    return get_knowledge_questions_impl(customer_id=customer_id, limit=limit)
+def get_knowledge_questions(customer_id: int, limit: int = 3, module_order: int | None = None) -> List[Dict]:
+    return get_knowledge_questions_impl(customer_id=customer_id, limit=limit, module_order=module_order)
 
 
-def get_knowledge_questions_impl(customer_id: int, limit: int = 3, database_path: str | None = None) -> List[Dict]:
+def get_knowledge_questions_impl(
+    customer_id: int,
+    limit: int = 3,
+    module_order: int | None = None,
+    database_path: str | None = None,
+) -> List[Dict]:
     """Return a mixed question bank (MC + True/False) based on the user's curriculum.
 
     Design notes:
@@ -1118,12 +1533,18 @@ def get_knowledge_questions_impl(customer_id: int, limit: int = 3, database_path
             globals()["db_path"] = prior_db_path
 
     bank: List[Dict] = []
+
+    selected_order = int(module_order) if module_order is not None else None
+
     for m in curriculum:
+        m_order = int(m.get("order"))
+        if selected_order is not None and m_order != selected_order:
+            continue
         bank.extend(
             _knowledge_bank_for_module(
                 module_title=str(m.get("module")),
                 module_description=str(m.get("description")),
-                module_order=int(m.get("order")),
+                module_order=m_order,
             )
         )
 
@@ -1195,6 +1616,8 @@ def grade_knowledge_answer_impl(
             event_type="graded",
             payload={
                 "questionId": question_id,
+                "moduleOrder": q.get("moduleOrder"),
+                "topic": q.get("topic"),
                 "type": q_type,
                 "weight": weight,
                 "score": score,
@@ -1229,13 +1652,18 @@ def _get_plan_id_for_customer(customer_id: int, database_path: str | None = None
 
 
 @mcp.tool()
-def start_knowledge_quiz_attempt(customer_id: int, questions_limit: int = 10) -> Dict:
-    return start_knowledge_quiz_attempt_impl(customer_id=customer_id, questions_limit=questions_limit)
+def start_knowledge_quiz_attempt(
+    customer_id: int, questions_limit: int = 10, module_order: int | None = None
+) -> Dict:
+    return start_knowledge_quiz_attempt_impl(
+        customer_id=customer_id, questions_limit=questions_limit, module_order=module_order
+    )
 
 
 def start_knowledge_quiz_attempt_impl(
     customer_id: int,
     questions_limit: int = 10,
+    module_order: int | None = None,
     database_path: str | None = None,
 ) -> Dict:
     """Create a knowledge validation quiz attempt tied to the customer's curriculum plan.
@@ -1251,27 +1679,44 @@ def start_knowledge_quiz_attempt_impl(
     if database_path is not None:
         globals()["db_path"] = database_path
     try:
-        qs = get_knowledge_questions_impl(int(customer_id), limit=int(questions_limit))
+        qs = get_knowledge_questions_impl(
+            int(customer_id),
+            limit=int(questions_limit),
+            module_order=module_order,
+        )
     finally:
         if database_path is not None:
             globals()["db_path"] = prior_db_path
-    points_possible = float(sum(float(q.get("weight", _knowledge_question_weight(q.get("type", "")))) for q in qs))
+    points_possible = float(
+        sum(
+            float(q.get("weight", _knowledge_question_weight(str(q.get("type", "")))))
+            for q in qs
+        )
+    )
 
     with _connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO knowledge_quiz_attempts
-              (id, customer_id, plan_id, created_at, questions_count, points_possible, points_earned, mode)
+                            (
+                                id, customer_id, plan_id, created_at, module_order,
+                                questions_count, points_possible, points_earned,
+                                questions_total, questions_answered, total_points, earned_points,
+                                mode
+                            )
             VALUES
-              (?, ?, ?, ?, ?, ?, 0.0, 'question_bank');
+                            (?, ?, ?, ?, ?, ?, ?, 0.0, ?, 0, ?, 0.0, 'question_bank');
             """,
             (
                 attempt_id,
                 int(customer_id),
                 int(plan_id),
                 now,
+                int(module_order) if module_order is not None else None,
                 int(len(qs)),
                 float(points_possible),
+                                int(len(qs)),
+                                float(points_possible),
             ),
         )
 
@@ -1279,6 +1724,7 @@ def start_knowledge_quiz_attempt_impl(
         "attemptId": attempt_id,
         "customerId": int(customer_id),
         "planId": int(plan_id),
+        "moduleOrder": int(module_order) if module_order is not None else None,
         "questionsCount": int(len(qs)),
         "pointsPossible": float(points_possible),
         "createdAt": now,
@@ -1307,11 +1753,14 @@ def record_knowledge_quiz_answer_impl(
     with _connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         attempt = conn.execute(
-            "SELECT id, customer_id, plan_id FROM knowledge_quiz_attempts WHERE id = ?;",
+            "SELECT id, customer_id, plan_id, module_order FROM knowledge_quiz_attempts WHERE id = ?;",
             (str(attempt_id),),
         ).fetchone()
     if attempt is None or int(attempt["customer_id"]) != int(customer_id):
         raise ValueError("Unknown attempt_id")
+
+    attempt_module_order = attempt["module_order"]
+    attempt_module_order_int = int(attempt_module_order) if attempt_module_order is not None else None
 
     prior_db_path = globals().get("db_path")
     if database_path is not None:
@@ -1326,7 +1775,11 @@ def record_knowledge_quiz_answer_impl(
     if database_path is not None:
         globals()["db_path"] = database_path
     try:
-        bank = get_knowledge_questions_impl(int(customer_id), limit=200)
+        bank = get_knowledge_questions_impl(
+            int(customer_id),
+            limit=200,
+            module_order=attempt_module_order_int,
+        )
     finally:
         if database_path is not None:
             globals()["db_path"] = prior_db_path
@@ -1346,9 +1799,9 @@ def record_knowledge_quiz_answer_impl(
         conn.execute(
             """
             INSERT INTO knowledge_quiz_results
-              (id, attempt_id, question_id, module_order, question_type, weight, answer_text, correct, points_earned, created_at)
+                            (id, attempt_id, question_id, module_order, question_type, weight, answer_text, correct, points_earned, earned_points, created_at)
             VALUES
-              (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """,
             (
                 result_id,
@@ -1360,6 +1813,7 @@ def record_knowledge_quiz_answer_impl(
                 str(answer),
                 int(correct),
                 float(points_earned),
+                                float(points_earned),
                 now,
             ),
         )
@@ -1369,8 +1823,14 @@ def record_knowledge_quiz_answer_impl(
             (str(attempt_id),),
         ).fetchone()[0]
         conn.execute(
-            "UPDATE knowledge_quiz_attempts SET points_earned = ? WHERE id = ?;",
-            (float(total), str(attempt_id)),
+                        """
+                        UPDATE knowledge_quiz_attempts
+                        SET points_earned = ?, earned_points = ?, questions_answered = (
+                            SELECT COUNT(*) FROM knowledge_quiz_results WHERE attempt_id = ?
+                        )
+                        WHERE id = ?;
+                        """,
+                        (float(total), float(total), str(attempt_id), str(attempt_id)),
         )
 
     return {
@@ -1413,7 +1873,7 @@ def get_knowledge_quiz_attempts_impl(customer_id: int, limit: int = 20, database
         for r in rows
     ]
 
-#for, Resource Recommendation Agent, to be determined
+#for, Resource Recommendation Agent
 @mcp.tool()
 def recommend_resources(customer_id: int, topic: str, state: str | None = None, limit: int = 5) -> List[Dict]:
     return recommend_resources_impl(customer_id=customer_id, topic=topic, state=state, limit=limit)
@@ -1633,12 +2093,115 @@ def update_accident_report_impl(
 ) -> Dict:
     """Update accident report details."""
 
+    def _norm_state_for_location(s: str | None) -> str | None:
+        """Normalize state input to a 2-letter USPS code.
+
+        Accepts:
+        - 2-letter abbreviation ("CA")
+        - full name ("California")
+        """
+        STATE_NAME_TO_CODE: dict[str, str] = {
+            "ALABAMA": "AL",
+            "ALASKA": "AK",
+            "ARIZONA": "AZ",
+            "ARKANSAS": "AR",
+            "CALIFORNIA": "CA",
+            "COLORADO": "CO",
+            "CONNECTICUT": "CT",
+            "DELAWARE": "DE",
+            "FLORIDA": "FL",
+            "GEORGIA": "GA",
+            "HAWAII": "HI",
+            "IDAHO": "ID",
+            "ILLINOIS": "IL",
+            "INDIANA": "IN",
+            "IOWA": "IA",
+            "KANSAS": "KS",
+            "KENTUCKY": "KY",
+            "LOUISIANA": "LA",
+            "MAINE": "ME",
+            "MARYLAND": "MD",
+            "MASSACHUSETTS": "MA",
+            "MICHIGAN": "MI",
+            "MINNESOTA": "MN",
+            "MISSISSIPPI": "MS",
+            "MISSOURI": "MO",
+            "MONTANA": "MT",
+            "NEBRASKA": "NE",
+            "NEVADA": "NV",
+            "NEW HAMPSHIRE": "NH",
+            "NEW JERSEY": "NJ",
+            "NEW MEXICO": "NM",
+            "NEW YORK": "NY",
+            "NORTH CAROLINA": "NC",
+            "NORTH DAKOTA": "ND",
+            "OHIO": "OH",
+            "OKLAHOMA": "OK",
+            "OREGON": "OR",
+            "PENNSYLVANIA": "PA",
+            "RHODE ISLAND": "RI",
+            "SOUTH CAROLINA": "SC",
+            "SOUTH DAKOTA": "SD",
+            "TENNESSEE": "TN",
+            "TEXAS": "TX",
+            "UTAH": "UT",
+            "VERMONT": "VT",
+            "VIRGINIA": "VA",
+            "WASHINGTON": "WA",
+            "WEST VIRGINIA": "WV",
+            "WISCONSIN": "WI",
+            "WYOMING": "WY",
+        }
+        STATE_CODES = set(STATE_NAME_TO_CODE.values())
+
+        raw = (s or "").strip()
+        if not raw:
+            return None
+        cleaned = re.sub(r"[\.,]", " ", raw)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip().upper()
+
+        if len(cleaned) == 2 and cleaned.isalpha() and cleaned in STATE_CODES:
+            return cleaned
+        if cleaned in STATE_NAME_TO_CODE:
+            return STATE_NAME_TO_CODE[cleaned]
+        return None
+
+    def _validate_and_normalize_location(loc: str) -> str:
+        """Only accept 'City, State' and normalize state to 2-letter code."""
+
+        raw = (loc or "").strip()
+        if not raw:
+            raise ValueError("location is required and must be in the form 'City, State'")
+
+        parts = [p.strip() for p in raw.split(",")]
+        if len(parts) != 2:
+            raise ValueError(
+                "location must be in the form 'City, State' (example: 'Norfolk, VA' or 'Norfolk, Virginia')"
+            )
+
+        city, state = parts[0], parts[1]
+        if not city:
+            raise ValueError("location city is required (example: 'Norfolk, VA')")
+        if not state:
+            raise ValueError("location state is required (example: 'Norfolk, VA')")
+
+        st = _norm_state_for_location(state)
+        if st is None:
+            raise ValueError(
+                "location state must be a valid US state (2-letter code like 'CA' or full name like 'California')"
+            )
+
+        return f"{city}, {st}"
+
     now = _now_date()
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         existing = conn.execute("SELECT * FROM accident_reports WHERE id = ?;", (report_id,)).fetchone()
         if existing is None:
             raise ValueError("report_id not found")
+
+        if location is not None:
+            location = _validate_and_normalize_location(location)
 
         merged_evidence = json.loads(existing["evidence_urls"] or "[]")
         if evidence_urls:
@@ -1845,24 +2408,31 @@ def interpret_policy_impl(report_id: str) -> Dict:
         if cust is None:
             raise ValueError("customer for report not found")
 
-        coverage_type = (cust["coverage_type"] or "").strip().lower()
+        coverage_type_raw = cust["coverage_type"]
+        coverage_type = (coverage_type_raw or "").strip().lower()
 
-        assumptions = []
-        exclusions = []
-        estimated_deductible = 500.0 if "full" in coverage_type else 0.0
-        if "liability" in coverage_type and "full" not in coverage_type:
+        assumptions: list[str] = []
+        exclusions: list[str] = []
+
+        is_full_coverage = "full" in coverage_type or "collision" in coverage_type or "comprehensive" in coverage_type
+        is_liability_only = ("liability" in coverage_type) and (not is_full_coverage)
+
+        if is_liability_only:
             coverage_summary = (
-                "Liability coverage generally helps pay for damage/injuries you cause to others. "
-                "It usually does not pay for your own vehicle repairs."
+                "Liability-only coverage usually pays for the OTHER person's car damage and injuries "
+                "if you caused the accident. It usually does NOT pay to fix your own car."
             )
-            exclusions.append("Your own vehicle damage may not be covered under liability-only policies")
+            exclusions.append("Damage to your own vehicle is usually not covered with liability-only")
+            estimated_deductible = None
             estimated_out = None
         else:
+            estimated_deductible = 500.0
             coverage_summary = (
-                "Full coverage typically includes liability plus collision/comprehensive options. "
-                "Your own vehicle damage may be covered (subject to deductible and exclusions)."
+                "Full coverage typically means you have liability PLUS coverage to help repair your own car "
+                "(often collision and/or comprehensive). You'll usually pay a deductible before insurance helps."
             )
             assumptions.append("Assuming collision coverage applies to this accident")
+            assumptions.append("Deductible amount is an estimate; your policy declarations page is the source of truth")
             estimated_out = estimated_deductible
 
         interpretation_id = str(uuid.uuid4())
@@ -1893,12 +2463,12 @@ def interpret_policy_impl(report_id: str) -> Dict:
         customer_id=int(report["customer_id"]),
         agent_name="policy_interpretation",
         event_type="interpreted",
-        payload={"reportId": report_id, "coverageType": cust["coverage_type"]},
+        payload={"reportId": report_id, "coverageType": coverage_type_raw},
     )
 
     return {
         "reportId": report_id,
-        "coverageType": cust["coverage_type"],
+        "coverageType": coverage_type_raw,
         "summary": coverage_summary,
         "estimatedDeductible": estimated_deductible,
         "estimatedOutOfPocket": estimated_out,
@@ -1929,8 +2499,7 @@ def prepare_claim_packet_impl(report_id: str) -> Dict:
         if report["vehicles_drivable"] is None:
             missing.append("vehicles_drivable")
         evidence = json.loads(report["evidence_urls"] or "[]")
-        if not evidence:
-            missing.append("evidence_urls")
+        has_evidence = bool(evidence)
 
         packet = {
             "customer": {
@@ -1949,6 +2518,9 @@ def prepare_claim_packet_impl(report_id: str) -> Dict:
                 else bool(report["vehicles_drivable"]),
                 "notes": report["notes"],
                 "evidenceUrls": evidence,
+                "evidenceOptionalNote": None
+                if has_evidence
+                else "Evidence is optional, but adding photos/videos later can speed up the claim.",
             },
             "createdAt": now,
         }
@@ -1976,6 +2548,121 @@ def prepare_claim_packet_impl(report_id: str) -> Dict:
     )
 
     return {"reportId": report_id, "status": status, "missingItems": missing, "packet": packet}
+
+
+def _packet_to_pdf_bytes(packet: Dict) -> bytes:
+    """Create a simple 1-page PDF with the claim packet contents.
+
+    We avoid HTML/render engines and generate a compact, readable PDF with a
+    monospaced-font text page so it works in restricted environments.
+    """
+
+    customer = (packet or {}).get("customer", {})
+    accident = (packet or {}).get("accident", {})
+
+    lines: list[str] = []
+    lines.append("Insurance Claim Packet")
+    lines.append("")
+    lines.append(f"Report ID: {accident.get('reportId')}")
+    lines.append("")
+    lines.append("Customer")
+    lines.append(f"  Name: {customer.get('name')}")
+    lines.append(f"  ID: {customer.get('id')}")
+    lines.append(f"  State: {customer.get('state')}")
+    lines.append(f"  Vehicle: {customer.get('vehicle')}")
+    lines.append(f"  Coverage Type: {customer.get('coverageType')}")
+    lines.append("")
+    lines.append("Accident")
+    lines.append(f"  Location: {accident.get('location')}")
+    lines.append(f"  Injured Count: {accident.get('injuredCount')}")
+    lines.append(f"  Vehicles Drivable: {accident.get('vehiclesDrivable')}")
+    lines.append(f"  Notes: {accident.get('notes')}")
+    lines.append("")
+    evidence_urls = accident.get("evidenceUrls") or []
+    lines.append(f"Evidence URLs ({len(evidence_urls)}):")
+    for u in evidence_urls:
+        lines.append(f"  - {u}")
+    if accident.get("evidenceOptionalNote"):
+        lines.append("")
+        lines.append(f"Note: {accident.get('evidenceOptionalNote')}")
+    lines.append("")
+    lines.append(f"Created At: {packet.get('createdAt')}")
+
+    text = "\n".join(lines)
+
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=612, height=792)  
+
+    left = 54
+    top = 738
+    leading = 14
+
+    def _pdf_escape(s: str) -> str:
+        return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+    text_lines = text.splitlines()
+    max_lines = int(top / leading) - 2
+    text_lines = text_lines[:max_lines]
+
+    stream_lines = ["BT", "/F1 11 Tf", f"{left} {top} Td"]
+    for i, line in enumerate(text_lines):
+        if i > 0:
+            stream_lines.append(f"0 -{leading} Td")
+        stream_lines.append(f"({_pdf_escape(line)}) Tj")
+    stream_lines.append("ET")
+    stream = "\n".join(stream_lines)
+
+    page["/Resources"] = page.get("/Resources", {})
+    page["/Resources"]["/Font"] = page["/Resources"].get("/Font", {})
+    page["/Resources"]["/Font"]["/F1"] = writer._add_object(
+        {
+            "/Type": "/Font",
+            "/Subtype": "/Type1",
+            "/BaseFont": "/Courier",
+        }
+    )
+
+    content_obj = writer._add_object({"/Length": len(stream.encode("utf-8"))})
+    content_obj._data = stream.encode("utf-8")  
+    page["/Contents"] = content_obj
+
+    buf = BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+@mcp.tool()
+def export_claim_packet_pdf(report_id: str, out_dir: str | None = None) -> Dict:
+    """Generate a PDF for the current claim packet and save it locally.
+
+    Returns:
+      {reportId, filePath, fileName, contentType}
+    """
+
+    return export_claim_packet_pdf_impl(report_id=report_id, out_dir=out_dir)
+
+
+def export_claim_packet_pdf_impl(report_id: str, out_dir: str | None = None) -> Dict:
+    packet_res = prepare_claim_packet_impl(report_id=report_id)
+    packet = packet_res.get("packet") or {}
+
+    pdf_bytes = _packet_to_pdf_bytes(packet)
+
+    base_dir = out_dir or os.path.join("database", "exports")
+    os.makedirs(base_dir, exist_ok=True)
+    file_name = f"claim_packet_{report_id}.pdf"
+    file_path = os.path.join(base_dir, file_name)
+
+    with open(file_path, "wb") as f:
+        f.write(pdf_bytes)
+
+    return {
+        "reportId": report_id,
+        "fileName": file_name,
+        "filePath": file_path,
+        "contentType": "application/pdf",
+        "status": packet_res.get("status"),
+    }
 
 #for, Action Plan Agent 
 @mcp.tool()
@@ -2058,6 +2745,138 @@ def escalate_and_route(report_id: str) -> Dict:
 def escalate_and_route_impl(report_id: str) -> Dict:
     """Route to humans/emergency when criteria indicate it."""
 
+    STATE_NAME_TO_CODE: dict[str, str] = {
+        "ALABAMA": "AL",
+        "ALASKA": "AK",
+        "ARIZONA": "AZ",
+        "ARKANSAS": "AR",
+        "CALIFORNIA": "CA",
+        "COLORADO": "CO",
+        "CONNECTICUT": "CT",
+        "DELAWARE": "DE",
+        "FLORIDA": "FL",
+        "GEORGIA": "GA",
+        "HAWAII": "HI",
+        "IDAHO": "ID",
+        "ILLINOIS": "IL",
+        "INDIANA": "IN",
+        "IOWA": "IA",
+        "KANSAS": "KS",
+        "KENTUCKY": "KY",
+        "LOUISIANA": "LA",
+        "MAINE": "ME",
+        "MARYLAND": "MD",
+        "MASSACHUSETTS": "MA",
+        "MICHIGAN": "MI",
+        "MINNESOTA": "MN",
+        "MISSISSIPPI": "MS",
+        "MISSOURI": "MO",
+        "MONTANA": "MT",
+        "NEBRASKA": "NE",
+        "NEVADA": "NV",
+        "NEW HAMPSHIRE": "NH",
+        "NEW JERSEY": "NJ",
+        "NEW MEXICO": "NM",
+        "NEW YORK": "NY",
+        "NORTH CAROLINA": "NC",
+        "NORTH DAKOTA": "ND",
+        "OHIO": "OH",
+        "OKLAHOMA": "OK",
+        "OREGON": "OR",
+        "PENNSYLVANIA": "PA",
+        "RHODE ISLAND": "RI",
+        "SOUTH CAROLINA": "SC",
+        "SOUTH DAKOTA": "SD",
+        "TENNESSEE": "TN",
+        "TEXAS": "TX",
+        "UTAH": "UT",
+        "VERMONT": "VT",
+        "VIRGINIA": "VA",
+        "WASHINGTON": "WA",
+        "WEST VIRGINIA": "WV",
+        "WISCONSIN": "WI",
+        "WYOMING": "WY",
+    }
+
+    STATE_CODES = set(STATE_NAME_TO_CODE.values())
+
+    def _norm_state(s: str | None) -> str | None:
+        raw = (s or "").strip()
+        if not raw:
+            return None
+        
+        cleaned = re.sub(r"[\.,]", " ", raw)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip().upper()
+
+        if len(cleaned) == 2 and cleaned.isalpha() and cleaned in STATE_CODES:
+            return cleaned
+
+        if cleaned in STATE_NAME_TO_CODE:
+            return STATE_NAME_TO_CODE[cleaned]
+
+        return None
+
+    def _get_contact_numbers(state: str | None, routed_to: str) -> list[dict]:
+        st = _norm_state(state)
+        contacts: list[dict] = []
+        if routed_to == "emergency_services":
+            contacts.append(
+                {
+                    "type": "emergency",
+                    "label": "Emergency services",
+                    "phone": "911",
+                    "note": "If anyone is injured, in danger, or you need immediate help.",
+                }
+            )
+
+            if st:
+                contacts.append(
+                    {
+                        "type": "non_emergency_guidance",
+                        "label": f"{st}: find non-emergency police/highway patrol contacts",
+                        "phone": None,
+                        "url": "https://www.usa.gov/state-consumer",
+                        "note": "Use this directory to find your state's official public safety contacts.",
+                    }
+                )
+                
+        if st:
+            contacts.append(
+                {
+                    "type": "insurance_regulator",
+                    "label": f"{st} insurance department (directory)",
+                    "phone": None,
+                    "url": "https://content.naic.org/state-insurance-departments",
+                    "note": "Official directory to find your state's insurance department contact info.",
+                }
+            )
+
+        contacts.append(
+            {
+                "type": "local_services",
+                "label": "Local services (United Way 211)",
+                "phone": "211",
+                "url": "https://www.211.org/",
+                "note": "For local help finding services (not an emergency line).",
+            }
+        )
+        return contacts
+
+    def _infer_state_from_location(location: str | None) -> str | None:
+        """Try to infer a US state from a free-form location like 'Norfolk, VA' or
+        'Norfolk, Virginia'. Returns a normalized 2-letter code when possible."""
+
+        loc = (location or "").strip()
+        if not loc:
+            return None
+
+        parts = [p.strip() for p in loc.split(",") if p.strip()]
+        if not parts:
+            return None
+
+        candidate = parts[-1]
+        return _norm_state(candidate)
+
     now = _now_date()
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -2101,7 +2920,28 @@ def escalate_and_route_impl(report_id: str) -> Dict:
         payload={"reportId": report_id, "routedTo": routed_to, "reason": reason},
     )
 
-    return {"reportId": report_id, "routedTo": routed_to, "reason": reason, "summary": summary}
+    inferred_state = _infer_state_from_location(report["location"])
+
+    customer_state = None
+    if inferred_state is None:
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cust = conn.execute("SELECT state FROM customers WHERE id=?;", (int(report["customer_id"]),)).fetchone()
+            if cust is not None:
+                customer_state = cust["state"]
+    else:
+        customer_state = inferred_state
+
+    contact_numbers = _get_contact_numbers(customer_state, routed_to)
+
+    return {
+        "reportId": report_id,
+        "routedTo": routed_to,
+        "reason": reason,
+        "summary": summary,
+        "customerState": customer_state,
+        "contactNumbers": contact_numbers,
+    }
 
 #for, Continuous Improvement & Feedback Agent
 @mcp.tool()

@@ -12,6 +12,8 @@ if str(REPO_ROOT) not in sys.path:
 
 import insurance_mcp
 
+from langchain.cli_utils import prompt_int, prompt_int_optional, prompt_text
+
 
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
@@ -63,8 +65,8 @@ async def run_cli():
 		tools = await setup_mcp_client()
 		rec_tool = _pick_tool(tools, "recommend_resources")
 
-	customer_id = int(input("Customer id: ").strip())
-	topic = input("Topic you want resources for (deductible/claim/coverage/...): ").strip()
+	customer_id = prompt_int("Customer id: ", min_value=1)
+	topic = prompt_text("Topic you want resources for (deductible/claim/coverage/...): ", allow_empty=False)
 
 	if mode == "mcp":
 		resources = await rec_tool.ainvoke(
@@ -94,22 +96,14 @@ async def run_cli():
 			f"   - {r.get('url')}"
 		)
 
-	choice = input(
+	idx = prompt_int_optional(
 		"\nDo you want a video summary of any specific resource? "
-		"Enter a number (e.g., 2), or press Enter for a general summary: "
-	).strip()
+		"Enter a number (e.g., 2), or press Enter for a general summary: ",
+		min_value=1,
+		max_value=len(resources) if resources else 1,
+	)
 
-	if choice:
-		try:
-			idx = int(choice)
-		except ValueError:
-			idx = -1
-		if idx < 1 or idx > len(resources):
-			print("\nInvalid selection. Showing general summary instead.\n")
-			summary = insurance_mcp.summarize_resources_impl(resources, style="general")
-			print(summary["summary"])
-			return
-
+	if idx is not None:
 		picked = resources[idx - 1]
 		summary = insurance_mcp.summarize_resources_impl([picked], style="video")
 		print("\nVideo-style summary:")

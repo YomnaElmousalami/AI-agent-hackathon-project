@@ -4,11 +4,11 @@ import sys
 from pathlib import Path
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
-
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
 	sys.path.insert(0, str(REPO_ROOT))
+
+from langchain.cli_utils import coerce_tool_result, read_prompt_or_stdin
 
 
 def mcp_server_path() -> str:
@@ -42,12 +42,18 @@ def _pick_tool(tools, name: str):
 	raise RuntimeError(f"Tool '{name}' not found")
 
 
+def _coerce_tool_result(res):
+	return coerce_tool_result(res)
+
+
 async def run_cli():
 	tools = await setup_mcp_client()
 	tool = _pick_tool(tools, "prepare_claim_packet")
 
-	report_id = input("Accident report id: ").strip()
+	report_id = read_prompt_or_stdin("Accident report id: ")
+
 	res = await tool.ainvoke({"report_id": report_id})
+	res = coerce_tool_result(res)
 	print("\nClaim packet:")
 	print(f"Status: {res.get('status')}")
 	if res.get("missingItems"):

@@ -11,6 +11,9 @@ if str(REPO_ROOT) not in sys.path:
 	sys.path.insert(0, str(REPO_ROOT))
 
 
+from langchain.cli_utils import coerce_tool_result, read_prompt_or_stdin
+
+
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
 
@@ -46,12 +49,31 @@ async def run_cli():
 	tools = await setup_mcp_client()
 	tool = _pick_tool(tools, "escalate_and_route")
 
-	report_id = input("Accident report id: ").strip()
+	report_id = read_prompt_or_stdin("Accident report id: ")
 	res = await tool.ainvoke({"report_id": report_id})
+	res = coerce_tool_result(res)
 	print("\nRouting decision:")
 	print(f"Routed to: {res.get('routedTo')}")
 	print(f"Reason: {res.get('reason')}")
 	print(f"Summary: {res.get('summary')}")
+
+	contacts = res.get("contactNumbers") or []
+	if contacts:
+		print("\nHelpful phone numbers:")
+		for c in contacts:
+			label = c.get("label") or c.get("type") or "Contact"
+			phone = c.get("phone")
+			url = c.get("url")
+			note = c.get("note")
+			bits = []
+			if phone:
+				bits.append(str(phone))
+			if url:
+				bits.append(str(url))
+			line = " - ".join(bits) if bits else "(see link)"
+			print(f"- {label}: {line}")
+			if note:
+				print(f"  Note: {note}")
 
 
 if __name__ == "__main__":

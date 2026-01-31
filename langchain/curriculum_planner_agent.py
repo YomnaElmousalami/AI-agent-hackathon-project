@@ -149,11 +149,16 @@ def has_curriculum(payload: Any) -> bool:
     raw = unwrap_payload(payload)
     if raw is None:
         return False
+    if isinstance(raw, dict):
+        if any(k in raw for k in ("status", "message", "error")) and "curriculum" not in raw:
+            return False
+        if "curriculum" in raw:
+            v = raw.get("curriculum")
+            return isinstance(v, list) and len(v) > 0
+        return False
     if isinstance(raw, str):
         return bool(raw.strip()) and "no curriculum" not in raw.lower()
     if isinstance(raw, list):
-        return len(raw) > 0
-    if isinstance(raw, dict):
         return len(raw) > 0
     return True
 

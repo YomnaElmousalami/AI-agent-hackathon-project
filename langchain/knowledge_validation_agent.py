@@ -13,6 +13,8 @@ if str(REPO_ROOT) not in sys.path:
 
 import insurance_mcp
 
+from langchain.cli_utils import prompt_int, prompt_text, prompt_yes_no_optional
+
 
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
@@ -59,7 +61,32 @@ async def run_cli():
 		start_attempt_tool = _pick_tool(tools, "start_knowledge_quiz_attempt")
 		record_tool = _pick_tool(tools, "record_knowledge_quiz_answer")
 
-	customer_id = int(input("Customer id: ").strip())
+	customer_id = prompt_int("Customer id: ", min_value=1)
+
+	default_module_order = None
+	try:
+		last = insurance_mcp.get_last_teacher_module_impl(customer_id=customer_id)
+		if isinstance(last, dict) and last.get("moduleOrder") is not None:
+			default_module_order = int(last.get("moduleOrder"))
+	except Exception:
+		default_module_order = None
+
+	if default_module_order is not None:
+		print(f"Detected last taught module: {default_module_order}")
+
+	module_order = prompt_int(
+		"Which module do you want to be quizzed on? (enter module order number): ",
+		min_value=1,
+		default=default_module_order if default_module_order is not None else 1,
+	)
+
+	try:
+		insurance_mcp.record_knowledge_validation_module_view_impl(
+			customer_id=int(customer_id),
+			module_order=int(module_order),
+		)
+	except Exception:
+		pass
 
 	print("\nTip: You can reattempt the quiz as many times as you want.")
 
@@ -74,14 +101,20 @@ async def run_cli():
 	while True:
 		if mode == "mcp":
 			attempt = await start_attempt_tool.ainvoke(
-				{"customer_id": customer_id, "questions_limit": 10}
+				{"customer_id": customer_id, "questions_limit": 10, "module_order": module_order}
 			)
 			attempt_id = attempt["attemptId"]
-			qs = await questions_tool.ainvoke({"customer_id": customer_id, "limit": 10})
+			qs = await questions_tool.ainvoke(
+				{"customer_id": customer_id, "limit": 10, "module_order": module_order}
+			)
 		else:
-			attempt = insurance_mcp.start_knowledge_quiz_attempt_impl(customer_id=customer_id, questions_limit=10)
+			attempt = insurance_mcp.start_knowledge_quiz_attempt_impl(
+				customer_id=customer_id, questions_limit=10, module_order=module_order
+			)
 			attempt_id = attempt["attemptId"]
-			qs = insurance_mcp.get_knowledge_questions_impl(customer_id=customer_id, limit=10)
+			qs = insurance_mcp.get_knowledge_questions_impl(
+				customer_id=customer_id, limit=10, module_order=module_order
+			)
 
 		print("\nKnowledge Validation Quiz (question bank):")
 		print("Scoring: multiple-choice = 1 point, true/false = 0.5 point")
@@ -119,7 +152,7 @@ async def run_cli():
 				print("")
 				print("Answer choices: A/B (or True/False)")
 
-			ans = input("Answer: ")
+			ans = prompt_text("Answer: ", allow_empty=False)
 			if mode == "mcp":
 				result = await record_tool.ainvoke(
 					{
@@ -173,9 +206,29 @@ async def run_cli():
 			f"Total: {points_possible:g} points ({questions_done} questions done)"
 		)
 
-		again = input("\nReattempt quiz? (y/n): ").strip().lower()
-		if again not in {"y", "yes"}:
+		again = prompt_yes_no_optional("\nReattempt same module quiz? (y/n): ")
+		if again is True:
+			continue
+
+		change = prompt_yes_no_optional(
+			"Do you want to take a quiz for a different module? (y/n): "
+		)
+		if change is not True:
 			break
+
+		module_order = prompt_int(
+			"Which module do you want to be quizzed on next? (enter module order number): ",
+			min_value=1,
+			default=module_order,
+		)
+		try:
+			insurance_mcp.record_knowledge_validation_module_view_impl(
+				customer_id=int(customer_id),
+				module_order=int(module_order),
+			)
+		except Exception:
+			pass
+		continue
 
 
 if __name__ == "__main__":

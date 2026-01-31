@@ -28,18 +28,22 @@ def _seed_customer(db_path: str, customer_id: int = 1):
 def test_escalate_routes_emergency_when_injuries(temp_db):
 	_seed_customer(temp_db, 1)
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
-	insurance_mcp.update_accident_report_impl(report_id=report_id, location="X", injured_count=2, vehicles_drivable=True)
+	insurance_mcp.update_accident_report_impl(report_id=report_id, location="Norfolk, VA", injured_count=2, vehicles_drivable=True)
 	insurance_mcp.assess_accident_severity_impl(report_id=report_id)
 
 	res = insurance_mcp.escalate_and_route_impl(report_id=report_id)
 	assert res["routedTo"] == "emergency_services"
+	assert res.get("customerState") == "VA"
+	assert isinstance(res.get("contactNumbers"), list)
+	assert any((c or {}).get("phone") == "911" for c in res.get("contactNumbers") or [])
 
 
 def test_escalate_routes_adjuster_when_medium(temp_db):
 	_seed_customer(temp_db, 1)
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
-	insurance_mcp.update_accident_report_impl(report_id=report_id, location="X", injured_count=0, vehicles_drivable=False)
+	insurance_mcp.update_accident_report_impl(report_id=report_id, location="Richmond, VA", injured_count=0, vehicles_drivable=False)
 	insurance_mcp.assess_accident_severity_impl(report_id=report_id)
 
 	res = insurance_mcp.escalate_and_route_impl(report_id=report_id)
 	assert res["routedTo"] in {"human_adjuster", "self_serve"}
+	assert isinstance(res.get("contactNumbers"), list)

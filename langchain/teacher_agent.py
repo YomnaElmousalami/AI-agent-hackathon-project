@@ -15,6 +15,8 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 
 import insurance_mcp
 
+from langchain.cli_utils import prompt_int, prompt_text
+
 
 def _pick_tool(tools, name: str):
     for t in tools:
@@ -228,10 +230,7 @@ def _ensure_seed_data(db_path: str, customer_id: int):
 async def run_cli_local():
     """Local mode: choose a module and watch a "Khan-style" lesson, then practice."""
 
-    customer_id_in = input("Customer id: ").strip()
-    customer_id = _extract_int(customer_id_in)
-    if customer_id is None:
-        raise ValueError("Please enter a numeric customer id.")
+    customer_id = prompt_int("Customer id: ", min_value=1)
 
     if os.getenv("TEACHER_SEED_DEMO", "true").strip().lower() in {"1", "true", "yes", "on"}:
         _ensure_seed_data(insurance_mcp.db_path, customer_id)
@@ -241,14 +240,20 @@ async def run_cli_local():
     for m in curriculum:
         print(f"  {m.get('order')}. {m.get('module')}")
 
-    module_in = input("\nPick a module order: ").strip()
-    module_order = _extract_int(module_in)
-    if module_order is None:
-        raise ValueError("Please choose a module order (number).")
+    module_order = prompt_int("\nPick a module order: ", min_value=1)
 
     module = next((m for m in curriculum if int(m.get("order")) == int(module_order)), None)
     if not module:
         raise ValueError("That module order doesn't exist for this curriculum.")
+
+    try:
+        insurance_mcp.record_teacher_module_view_impl(
+            customer_id=int(customer_id),
+            module_order=int(module_order),
+            module_title=str(module.get("module")),
+        )
+    except Exception:
+        pass
 
     lesson = build_khan_style_lesson(
         module_title=str(module.get("module")),
@@ -267,10 +272,7 @@ async def run_cli():
     tools = await setup_mcp_client()
     get_curriculum_tool = _pick_tool(tools, "get_curriculum")
 
-    customer_id_in = input("Customer id: ").strip()
-    customer_id = _extract_int(customer_id_in)
-    if customer_id is None:
-        raise ValueError("Please enter a numeric customer id.")
+    customer_id = prompt_int("Customer id: ", min_value=1)
 
     curriculum = await get_curriculum_tool.ainvoke({"customer_id": customer_id})
     if isinstance(curriculum, dict) and "curriculum" in curriculum:
@@ -280,14 +282,20 @@ async def run_cli():
     for m in curriculum:
         print(f"  {m.get('order')}. {m.get('module')}")
 
-    module_in = input("\nPick a module order: ").strip()
-    module_order = _extract_int(module_in)
-    if module_order is None:
-        raise ValueError("Please choose a module order (number).")
+    module_order = prompt_int("\nPick a module order: ", min_value=1)
 
     module = next((m for m in curriculum if int(m.get("order")) == int(module_order)), None)
     if not module:
         raise ValueError("That module order doesn't exist for this curriculum.")
+
+    try:
+        insurance_mcp.record_teacher_module_view_impl(
+            customer_id=int(customer_id),
+            module_order=int(module_order),
+            module_title=str(module.get("module")),
+        )
+    except Exception:
+        pass
 
     lesson = build_khan_style_lesson(
         module_title=str(module.get("module")),

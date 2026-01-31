@@ -48,3 +48,32 @@ def test_accident_report_create_update_finalize(temp_db):
 
 	fin = insurance_mcp.finalize_accident_report_impl(report_id=report_id)
 	assert fin["status"] == "ready"
+
+
+def test_accident_report_location_normalizes_full_state_name(temp_db):
+	_seed_customer(temp_db, 1)
+	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
+
+	updated = insurance_mcp.update_accident_report_impl(
+		report_id=report_id,
+		location="Norfolk, Virginia",
+		injured_count=0,
+		vehicles_drivable=True,
+	)
+	assert updated["location"] == "Norfolk, VA"
+
+
+def test_accident_report_location_rejects_missing_comma(temp_db):
+	_seed_customer(temp_db, 1)
+	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
+
+	with pytest.raises(ValueError):
+		insurance_mcp.update_accident_report_impl(report_id=report_id, location="Norfolk VA")
+
+
+def test_accident_report_location_rejects_unknown_state(temp_db):
+	_seed_customer(temp_db, 1)
+	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
+
+	with pytest.raises(ValueError):
+		insurance_mcp.update_accident_report_impl(report_id=report_id, location="Norfolk, NotAState")

@@ -18,7 +18,7 @@ Accident Mode (Real-Time Assistance):
 - Accident Severity Assesment Agent categorizes the accident (rear-end, etc.) and determines urgency or escalation needs (like if there is an emergency).
 - Policy Interpretation Agent translates the user’s policy into clear coverage (what can and can't be covered) and cost expectations (such as for deductibles that need to be paid)
 - Claims Preparation Agent verifies required information and prepares claim-ready documents.
-- Action Plan Agent explains next steps, timelines, and possible
+- Action Plan Agent Displays and explains next steps, timelines, and possible
 outcomes
 - Escalation & Routing Agent summarizes the case and routes to human support only when necessary (Hospital phone numbers, etc.).
 
@@ -82,7 +82,6 @@ Continuous Improvement:
 
 - To run the continuous improvement & feedback agent:
 "python .\langchain\continuous_improvement_and_feedback_agent.py"
-
 
 
 To run frontend:
