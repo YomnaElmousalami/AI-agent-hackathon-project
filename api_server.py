@@ -20,6 +20,8 @@ app.add_middleware(
 	allow_origins=[
 		"http://localhost:3000",
 		"http://127.0.0.1:3000",
+		"http://localhost:3001",
+		"http://127.0.0.1:3001",
 	],
 	allow_credentials=True,
 	allow_methods=["*"],
@@ -29,6 +31,10 @@ app.add_middleware(
 
 class OnboardRequest(BaseModel):
 	message: str
+
+
+class CurriculumRequest(BaseModel):
+	customer_id: int
 
 
 def _parse_onboarding_sentence(message: str) -> dict[str, Any]:
@@ -92,14 +98,27 @@ def onboard(req: OnboardRequest):
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 
-	result = insurance_mcp.get_customer_info(
-		id=int(parsed["id"]),
-		name=str(parsed["name"]),
-		age=int(parsed["age"]),
-		state=str(parsed["state"]),
-		vehicleName=str(parsed["vehicleName"]),
-		coverageType=str(parsed["coverageType"]),
-	)
+	# NOTE: `insurance_mcp.get_customer_info` is an MCP tool wrapper. For non-MCP callers
+	# we call the underlying implementation.
+	try:
+		result = insurance_mcp.get_customer_info_impl(
+			id=int(parsed["id"]),
+			name=str(parsed["name"]),
+			age=int(parsed["age"]),
+			state=str(parsed["state"]),
+			vehicleName=str(parsed["vehicleName"]),
+			coverageType=str(parsed["coverageType"]),
+		)
+	except AttributeError:
+		# Backward-compatible fallback, if impl isn't present for some reason.
+		result = insurance_mcp.get_customer_info(
+			id=int(parsed["id"]),
+			name=str(parsed["name"]),
+			age=int(parsed["age"]),
+			state=str(parsed["state"]),
+			vehicleName=str(parsed["vehicleName"]),
+			coverageType=str(parsed["coverageType"]),
+		)
 
 	return {"ok": True, "parsed": parsed, "saved": result}
 
@@ -136,3 +155,33 @@ def get_customer(customer_id: int):
 			"coverageType": row["coverage_type"],
 		},
 	}
+
+
+@app.post("/api/curriculum/plan")
+def plan_curriculum(req: CurriculumRequest):
+	"""Create/persist a curriculum plan (tool equivalent: plan_curriculum)."""
+	try:
+		# NOTE: `insurance_mcp.plan_curriculum` is an MCP tool wrapper. For non-MCP callers
+		# we call the underlying implementation.
+		try:
+			plan = insurance_mcp.plan_curriculum_impl(int(req.customer_id))
+		except AttributeError:
+			plan = insurance_mcp.plan_curriculum(int(req.customer_id))
+		return {"ok": True, "customerId": int(req.customer_id), "curriculum": plan}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/curriculum/{customer_id}")
+def show_curriculum(customer_id: int):
+	"""Get a persisted curriculum plan (impl equivalent: get_curriculum_impl)."""
+	try:
+		curriculum = insurance_mcp.get_curriculum_impl(int(customer_id))
+		return {"ok": True, "customerId": int(customer_id), "curriculum": curriculum}
+	except ValueError as e:
+		# Mirror CLI behavior: show returns 'no curriculum' if missing
+		raise HTTPException(status_code=404, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))

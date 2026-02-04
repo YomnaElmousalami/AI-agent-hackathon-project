@@ -13,6 +13,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from langchain.cli_utils import coerce_tool_result, read_prompt_or_stdin
 
+from langchain.agent_runner import create_insurance_react_agent, run_react_agent
+
 
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
@@ -46,10 +48,23 @@ def _pick_tool(tools, name: str):
 
 
 async def run_cli():
+	mode = os.getenv("ACTION_PLAN_AGENT_MODE", "tool").strip().lower()
+	report_id = read_prompt_or_stdin("Accident report id: ")
+
+	if mode in {"agent", "react", "llm"}:
+		prompt = (
+			"You are the Action Plan Agent for an auto insurance accident assistant.\n"
+			"Use generate_action_plan(report_id) to get structured next steps and timelines.\n"
+			"Then reformat as a clear checklist with priorities and a short timeline.\n"
+			"If severity is high, put safety/medical steps first.\n"
+		)
+		agent = await create_insurance_react_agent(prompt=prompt, transport="stdio")
+		await run_react_agent(agent, f"Generate an action plan for accident report id {report_id}.")
+		return
+
+	# Default: deterministic tool call
 	tools = await setup_mcp_client()
 	tool = _pick_tool(tools, "generate_action_plan")
-
-	report_id = read_prompt_or_stdin("Accident report id: ")
 	res = await tool.ainvoke({"report_id": report_id})
 	res = coerce_tool_result(res)
 

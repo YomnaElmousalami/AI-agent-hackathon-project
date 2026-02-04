@@ -13,6 +13,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from langchain.cli_utils import coerce_tool_result, read_prompt_or_stdin
 
+from langchain.agent_runner import create_insurance_react_agent, run_react_agent
+
 
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
@@ -46,10 +48,23 @@ def _pick_tool(tools, name: str):
 
 
 async def run_cli():
+	mode = os.getenv("ESCALATION_AGENT_MODE", "tool").strip().lower()
+	report_id = read_prompt_or_stdin("Accident report id: ")
+
+	if mode in {"agent", "react", "llm"}:
+		prompt = (
+			"You are the Escalation & Routing Agent.\n"
+			"Use the tool escalate_and_route(report_id) to decide whether to route to a human or emergency contact.\n"
+			"Return a tight summary and list any phone numbers/links provided.\n"
+			"Never hallucinate phone numbers. Only output what the tool returns.\n"
+		)
+		agent = await create_insurance_react_agent(prompt=prompt, transport="stdio")
+		await run_react_agent(agent, f"Escalate and route for accident report id {report_id}.")
+		return
+
+	# Default: deterministic tool call
 	tools = await setup_mcp_client()
 	tool = _pick_tool(tools, "escalate_and_route")
-
-	report_id = read_prompt_or_stdin("Accident report id: ")
 	res = await tool.ainvoke({"report_id": report_id})
 	res = coerce_tool_result(res)
 	print("\nRouting decision:")

@@ -73,8 +73,30 @@ Accident Mode (Real-Time Assistance):
 "python .\langchain\claims_preparation_agent.py"
 
 - To run the action plan agent:
+"python .\\langchain\\action_plan_agent.py"
+
+- To run the action plan agent:
 "python .\langchain\action_plan_agent.py"
 
+### Optional: run agents in full "agentic" mode (LLM + MCP tools)
+
+Some agents default to a deterministic **tool-first CLI** for reliability and stable tests, but can be switched into a LangGraph **ReAct** loop (LLM decides when/how to call MCP tools) via env vars.
+
+- Policy Interpretation Agent:
+	- tool mode (default): `python .\langchain\policy_interpretation_agent.py`
+	- agent mode: set `POLICY_AGENT_MODE=agent`
+
+- Claims Preparation Agent:
+	- tool mode (default): `python .\langchain\claims_preparation_agent.py`
+	- agent mode: set `CLAIMS_AGENT_MODE=agent`
+
+- Action Plan Agent:
+	- tool mode (default): `python .\langchain\action_plan_agent.py`
+	- agent mode: set `ACTION_PLAN_AGENT_MODE=agent`
+
+- Escalation & Routing Agent:
+	- tool mode (default): `python .\langchain\escalation_and_routing_agent.py`
+	- agent mode: set `ESCALATION_AGENT_MODE=agent`
 - To run the escalation & routing agent:
 "python .\langchain\escalation_and_routing_agent.py"
 

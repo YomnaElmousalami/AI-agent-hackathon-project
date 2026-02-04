@@ -407,6 +407,55 @@ def _row_to_dict(row: sqlite3.Row | None) -> Dict | None:
 
 #Code here is for Learning & Education Mode:
 #for user onboarding agent
+
+def get_customer_info_impl(
+    *,
+    id: int,
+    name: str,
+    age: int,
+    state: str,
+    vehicleName: str,
+    coverageType: str,
+    database_path: str | None = None,
+) -> Dict:
+    """Implementation for creating/updating a customer profile.
+
+    This is separated from the MCP tool wrapper so that non-MCP callers (FastAPI, tests)
+    can call it as a normal Python function.
+    """
+
+    now = datetime.now(timezone.utc).strftime("%m/%d/%Y")
+
+    path = database_path or db_path
+    init_db(path)
+
+    with sqlite3.connect(path) as conn:
+        conn.execute(
+            """
+            INSERT INTO customers (id, name, age, state, vehicle_name, coverage_type, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+            name=excluded.name,
+            age=excluded.age,
+            state=excluded.state,
+            vehicle_name=excluded.vehicle_name,
+            coverage_type=excluded.coverage_type,
+            updated_at=excluded.updated_at;
+            """,
+            (int(id), str(name), int(age), str(state), str(vehicleName), str(coverageType), now, now),
+        )
+
+    return {
+        "id": int(id),
+        "name": str(name),
+        "age": int(age),
+        "state": str(state),
+        "vehicleName": str(vehicleName),
+        "coverageType": str(coverageType),
+        "updatedAt": now,
+    }
+
+
 @mcp.tool()
 def get_customer_info(id: int, name: str, age: int, state: str, vehicleName: str, coverageType: str) -> Dict:
     """
@@ -424,30 +473,14 @@ def get_customer_info(id: int, name: str, age: int, state: str, vehicleName: str
         Dictionary containing customer details
     """
     
-    now = datetime.now(timezone.utc).strftime("%m/%d/%Y")
-
-    with sqlite3.connect(db_path) as conn:
-        conn.execute("""
-        INSERT INTO customers (id, name, age, state, vehicle_name, coverage_type, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-        name=excluded.name,
-        age=excluded.age,
-        state=excluded.state,
-        vehicle_name=excluded.vehicle_name,
-        coverage_type=excluded.coverage_type,
-        updated_at=excluded.updated_at;
-        """, (id, name, age, state, vehicleName, coverageType, now, now))
-        
-    return {
-        "id": id,
-        "name": name,
-        "age": age,
-        "state": state,
-        "vehicleName": vehicleName,
-        "coverageType": coverageType,
-        "updatedAt": now
-    }
+    return get_customer_info_impl(
+        id=int(id),
+        name=str(name),
+        age=int(age),
+        state=str(state),
+        vehicleName=str(vehicleName),
+        coverageType=str(coverageType),
+    )
 
 
 # For Curriculum Planner Agent
@@ -461,6 +494,17 @@ def plan_curriculum(customer_id: int) -> List[Dict]:
 
     Returns:
         List of curriculum items tailored to the users age 
+    """
+
+    return plan_curriculum_impl(customer_id=customer_id)
+
+
+def plan_curriculum_impl(customer_id: int) -> List[Dict]:
+    """Create/persist a curriculum plan for a customer.
+
+    This is the non-MCP implementation so it can be called from FastAPI/tests
+    without going through the @mcp.tool wrapper (which turns functions into
+    FunctionTool objects).
     """
 
     with sqlite3.connect(db_path) as conn:

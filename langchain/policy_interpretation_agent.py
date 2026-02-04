@@ -10,6 +10,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from langchain.cli_utils import coerce_tool_result, read_prompt_or_stdin
 
+from langchain.agent_runner import create_insurance_react_agent, run_react_agent
+
 
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
@@ -47,10 +49,22 @@ def _coerce_tool_result(res):
 
 
 async def run_cli():
+	mode = os.getenv("POLICY_AGENT_MODE", "tool").strip().lower()
+	report_id = read_prompt_or_stdin("Accident report id: ")
+
+	if mode in {"agent", "react", "llm"}:
+		prompt = (
+			"You are the Policy Interpretation Agent for an auto insurance assistant.\n"
+			"Use the MCP tool interpret_policy(report_id) to retrieve coverage and deductible expectations.\n"
+			"Then explain the result clearly in 5-10 bullet points, including assumptions/exclusions if present.\n"
+		)
+		agent = await create_insurance_react_agent(prompt=prompt, transport="stdio")
+		await run_react_agent(agent, f"Interpret the policy for accident report id {report_id}.")
+		return
+
+	# Default: classic deterministic tool call (keeps tests/demos stable)
 	tools = await setup_mcp_client()
 	tool = _pick_tool(tools, "interpret_policy")
-
-	report_id = read_prompt_or_stdin("Accident report id: ")
 	res = await tool.ainvoke({"report_id": report_id})
 	res = coerce_tool_result(res)
 	print("\nPolicy interpretation:")
