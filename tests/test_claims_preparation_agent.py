@@ -44,7 +44,6 @@ def test_prepare_claim_packet_ready_when_complete(temp_db):
 		location="San Jose, CA",
 		injured_count=0,
 		vehicles_drivable=True,
-		# evidence_urls is optional
 	)
 
 	res = insurance_mcp.prepare_claim_packet_impl(report_id=report_id)
