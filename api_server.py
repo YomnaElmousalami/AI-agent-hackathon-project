@@ -98,8 +98,6 @@ def onboard(req: OnboardRequest):
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 
-	# NOTE: `insurance_mcp.get_customer_info` is an MCP tool wrapper. For non-MCP callers
-	# we call the underlying implementation.
 	try:
 		result = insurance_mcp.get_customer_info_impl(
 			id=int(parsed["id"]),
@@ -110,7 +108,6 @@ def onboard(req: OnboardRequest):
 			coverageType=str(parsed["coverageType"]),
 		)
 	except AttributeError:
-		# Backward-compatible fallback, if impl isn't present for some reason.
 		result = insurance_mcp.get_customer_info(
 			id=int(parsed["id"]),
 			name=str(parsed["name"]),
@@ -161,8 +158,6 @@ def get_customer(customer_id: int):
 def plan_curriculum(req: CurriculumRequest):
 	"""Create/persist a curriculum plan (tool equivalent: plan_curriculum)."""
 	try:
-		# NOTE: `insurance_mcp.plan_curriculum` is an MCP tool wrapper. For non-MCP callers
-		# we call the underlying implementation.
 		try:
 			plan = insurance_mcp.plan_curriculum_impl(int(req.customer_id))
 		except AttributeError:
@@ -181,7 +176,6 @@ def show_curriculum(customer_id: int):
 		curriculum = insurance_mcp.get_curriculum_impl(int(customer_id))
 		return {"ok": True, "customerId": int(customer_id), "curriculum": curriculum}
 	except ValueError as e:
-		# Mirror CLI behavior: show returns 'no curriculum' if missing
 		raise HTTPException(status_code=404, detail=str(e))
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
