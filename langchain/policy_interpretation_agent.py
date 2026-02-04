@@ -62,7 +62,6 @@ async def run_cli():
 		await run_react_agent(agent, f"Interpret the policy for accident report id {report_id}.")
 		return
 
-	# Default: classic deterministic tool call (keeps tests/demos stable)
 	tools = await setup_mcp_client()
 	tool = _pick_tool(tools, "interpret_policy")
 	res = await tool.ainvoke({"report_id": report_id})
