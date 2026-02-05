@@ -152,7 +152,12 @@ function CurriculumPlannerPage() {
 	const [result, setResult] = useState(null);
 	const [notice, setNotice] = useState('');
 	const [action, setAction] = useState('');
+	const [showNext, setShowNext] = useState(false);
 	const canSubmit = useMemo(() => query.trim().length > 0 && !busy, [query, busy]);
+	const nextUrl = useMemo(() => {
+		const id = Number(customerId);
+		return Number.isFinite(id) && id > 0 ? `/teacher?customerId=${id}` : '/teacher';
+	}, [customerId]);
 
 	function _extractCustomerId() {
 		const id = Number(customerId);
@@ -175,6 +180,7 @@ function CurriculumPlannerPage() {
 		setError('');
 		setNotice('');
 		setAction('');
+		setShowNext(false);
 		setResult(null);
 		try {
 			const id = _extractCustomerId();
@@ -207,6 +213,7 @@ function CurriculumPlannerPage() {
 			if (!res.ok) {
 				if (res.status === 404) {
 					setNotice(data?.detail || 'No curriculum found yet. Try planning one first.');
+					setShowNext(true);
 					return;
 				}
 				throw new Error(data?.detail || `Request failed (${res.status})`);
@@ -214,10 +221,12 @@ function CurriculumPlannerPage() {
 
 			if (isPlan) {
 				setNotice('Done.');
+				setShowNext(true);
 				return;
 			}
 
 			setResult(data);
+			setShowNext(true);
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -286,8 +295,51 @@ function CurriculumPlannerPage() {
 					</ol>
 				</div>
 			) : null}
+
+			{showNext ? (
+				<div style={{ marginTop: 16 }}>
+					<Link to={nextUrl} style={{ display: 'inline-block' }}>
+						<button style={{ fontSize: '16px', padding: '10px 44px' }}>Next</button>
+					</Link>
+				</div>
+			) : null}
 		</div>
 	);
+}
+
+
+function TeacherAgentPage() {
+	const [searchParams] = useSearchParams();
+	const customerIdParam = searchParams.get('customerId') || '';
+
+	return (
+		<div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
+			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+				<h1 style={{ margin: 0 }}>Welcome to your Agentic AI Tutor</h1>
+				<Link to='/' style={{ color: '#ffffff', textDecoration: 'underline' }}>
+					Back to Onboarding
+				</Link>
+			</div>
+
+			<p style={{ marginTop: 16 }}>
+				Teacher Agent UI isn’t wired yet. We’ll use this page as the next step from curriculum planning.
+			</p>
+			<p>
+				<CustomerIdLine customerId={customerIdParam} />
+			</p>
+			<div style={{ marginTop: 16 }}>
+				<Link to={customerIdParam ? `/curriculum?customerId=${customerIdParam}` : '/curriculum'} style={{ color: '#ffffff' }}>
+					Back to Curriculum Planner
+				</Link>
+			</div>
+		</div>
+	);
+}
+
+
+function CustomerIdLine({ customerId }) {
+	if (!customerId) return <span>Select a customer to begin.</span>;
+	return <span>Customer id: {customerId}</span>;
 }
 
 
@@ -296,6 +348,7 @@ export default function App() {
 		<Routes>
 			<Route path='/' element={<OnboardingPage />} />
 			<Route path='/curriculum' element={<CurriculumPlannerPage />} />
+			<Route path='/teacher' element={<TeacherAgentPage />} />
 		</Routes>
 	);
 }
