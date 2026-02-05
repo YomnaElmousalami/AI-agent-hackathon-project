@@ -151,6 +151,7 @@ function CurriculumPlannerPage() {
 	const [error, setError] = useState('');
 	const [result, setResult] = useState(null);
 	const [notice, setNotice] = useState('');
+	const [action, setAction] = useState('');
 	const canSubmit = useMemo(() => query.trim().length > 0 && !busy, [query, busy]);
 
 	function _extractCustomerId() {
@@ -173,15 +174,20 @@ function CurriculumPlannerPage() {
 		setBusy(true);
 		setError('');
 		setNotice('');
+		setAction('');
 		setResult(null);
 		try {
 			const id = _extractCustomerId();
 			const text = query.trim();
 
 			let res;
-			if (_isShowRequest(text)) {
+			const isShow = _isShowRequest(text);
+			const isPlan = _isPlanRequest(text);
+			setAction(isShow ? 'show' : isPlan ? 'plan' : '');
+
+			if (isShow) {
 				res = await fetch(`${API_BASE}/api/curriculum/${id}`);
-			} else if (_isPlanRequest(text)) {
+			} else if (isPlan) {
 				res = await fetch(`${API_BASE}/api/curriculum/plan`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -195,17 +201,20 @@ function CurriculumPlannerPage() {
 			try {
 				data = await res.json();
 			} catch {
-				// If backend returns a non-JSON error, create something readable.
 				data = null;
 			}
 
 			if (!res.ok) {
-				// Treat "no curriculum yet" (404) as a friendly empty-state instead of an error.
 				if (res.status === 404) {
 					setNotice(data?.detail || 'No curriculum found yet. Try planning one first.');
 					return;
 				}
 				throw new Error(data?.detail || `Request failed (${res.status})`);
+			}
+
+			if (isPlan) {
+				setNotice('Done.');
+				return;
 			}
 
 			setResult(data);
@@ -220,7 +229,9 @@ function CurriculumPlannerPage() {
 		<div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
 				<h1 style={{ margin: 0 }}>Curriculum Planner</h1>
-				<Link to='/'>Back to Onboarding</Link>
+				<Link to='/' style={{ color: '#ffffff', textDecoration: 'underline' }}>
+					Back to Onboarding
+				</Link>
 			</div>
 
 			<div style={{ marginTop: 12 }}>
@@ -258,7 +269,7 @@ function CurriculumPlannerPage() {
 
 			{notice ? (
 				<div style={{ marginTop: 16, background: '#001b2b', border: '1px solid #004466', padding: 12 }}>
-					<strong>Note:</strong> {notice}
+					<strong>{action === 'plan' && notice === 'Done.' ? 'Status' : 'Note'}:</strong> {notice}
 				</div>
 			) : null}
 
