@@ -311,6 +311,77 @@ function CurriculumPlannerPage() {
 function TeacherAgentPage() {
 	const [searchParams] = useSearchParams();
 	const customerIdParam = searchParams.get('customerId') || '';
+	const [customerId, setCustomerId] = useState(customerIdParam);
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState('');
+	const [notice, setNotice] = useState('');
+	const [curriculum, setCurriculum] = useState(null);
+	const [moduleOrder, setModuleOrder] = useState('1');
+	const [lesson, setLesson] = useState(null);
+
+	const canLoadCurriculum = useMemo(() => !busy && String(customerId).trim().length > 0, [busy, customerId]);
+	const canTeach = useMemo(() => {
+		const id = Number(customerId);
+		const mo = Number(moduleOrder);
+		return !busy && Number.isFinite(id) && id > 0 && Number.isFinite(mo) && mo > 0;
+	}, [busy, customerId, moduleOrder]);
+
+	async function loadCurriculum() {
+		setBusy(true);
+		setError('');
+		setNotice('');
+		setLesson(null);
+		try {
+			const id = Number(customerId);
+			if (!Number.isFinite(id) || id <= 0) throw new Error('Missing/invalid customer id.');
+			const res = await fetch(`${API_BASE}/api/curriculum/${id}`);
+			const data = await res.json().catch(() => null);
+			if (!res.ok) {
+				if (res.status === 404) {
+					setNotice(data?.detail || 'No curriculum found yet. Go back and plan one first.');
+					setCurriculum(null);
+					return;
+				}
+				throw new Error(data?.detail || `Failed to load curriculum (${res.status})`);
+			}
+			setCurriculum(data?.curriculum || []);
+			// Default the module selector to the first module order, if present
+			const firstOrder = (data?.curriculum || [])?.[0]?.order;
+			if (firstOrder != null) setModuleOrder(String(firstOrder));
+		} catch (e) {
+			setError(e?.message || String(e));
+		} finally {
+			setBusy(false);
+		}
+	}
+
+	async function teach() {
+		setBusy(true);
+		setError('');
+		setNotice('');
+		setLesson(null);
+		try {
+			const id = Number(customerId);
+			const mo = Number(moduleOrder);
+			if (!Number.isFinite(id) || id <= 0) throw new Error('Missing/invalid customer id.');
+			if (!Number.isFinite(mo) || mo <= 0) throw new Error('Missing/invalid module order.');
+
+			const res = await fetch(`${API_BASE}/api/teacher/lesson`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ customer_id: id, module_order: mo }),
+			});
+			const data = await res.json().catch(() => null);
+			if (!res.ok) {
+				throw new Error(data?.detail || `Teaching request failed (${res.status})`);
+			}
+			setLesson(data?.lesson || null);
+		} catch (e) {
+			setError(e?.message || String(e));
+		} finally {
+			setBusy(false);
+		}
+	}
 
 	return (
 		<div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
@@ -321,12 +392,82 @@ function TeacherAgentPage() {
 				</Link>
 			</div>
 
-			<p style={{ marginTop: 16 }}>
-				Teacher Agent UI isn’t wired yet. We’ll use this page as the next step from curriculum planning.
-			</p>
-			<p>
-				<CustomerIdLine customerId={customerIdParam} />
-			</p>
+			<div style={{ marginTop: 16 }}>
+				<div style={{ opacity: 0.95, lineHeight: 1.6 }}>
+					<div>Step 1: load your curriculum. Step 2: pick a module. Step 3: press Teach.</div>
+				</div>
+			</div>
+
+			<div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12 }}>
+				<div>
+					<label style={{ display: 'block', marginBottom: 6 }}>Customer id</label>
+					<input
+						value={customerId}
+						onChange={(e) => setCustomerId(e.target.value)}
+						style={{ width: 240, padding: 10 }}
+						placeholder='e.g. 46'
+					/>
+				</div>
+				<button onClick={loadCurriculum} disabled={!canLoadCurriculum} style={{ fontSize: '16px', padding: '10px 44px' }}>
+					{busy ? 'Loading…' : 'Load Curriculum'}
+				</button>
+			</div>
+
+			{error ? (
+				<div style={{ marginTop: 16, background: '#2b0000', border: '1px solid #660000', padding: 12 }}>
+					<strong>Problem:</strong> {error}
+				</div>
+			) : null}
+
+			{notice ? (
+				<div style={{ marginTop: 16, background: '#001b2b', border: '1px solid #004466', padding: 12 }}>
+					<strong>Note:</strong> {notice}
+				</div>
+			) : null}
+
+			{Array.isArray(curriculum) ? (
+				<div style={{ marginTop: 16 }}>
+					<h2 style={{ margin: 0 }}>Your Curriculum</h2>
+					<p style={{ marginTop: 8, opacity: 0.95 }}>Pick a module, then click Teach to get a short “Khan-style” lesson script.</p>
+					<ol style={{ textAlign: 'left' }}>
+						{curriculum.map((m, idx) => (
+							<li key={idx} style={{ marginBottom: 8 }}>
+								<div style={{ fontWeight: 600 }}>
+									{m.order}. {m.module}
+								</div>
+								<div style={{ opacity: 0.9 }}>{m.description}</div>
+							</li>
+						))}
+					</ol>
+
+					<div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12 }}>
+						<div>
+							<label style={{ display: 'block', marginBottom: 6 }}>Module order</label>
+							<input
+								value={moduleOrder}
+								onChange={(e) => setModuleOrder(e.target.value)}
+								style={{ width: 160, padding: 10 }}
+								placeholder='e.g. 1'
+							/>
+						</div>
+						<button onClick={teach} disabled={!canTeach} style={{ fontSize: '16px', padding: '10px 44px' }}>
+							{busy ? 'Teaching…' : 'Teach'}
+						</button>
+					</div>
+				</div>
+			) : null}
+
+			{lesson ? (
+				<div style={{ marginTop: 16 }}>
+					<h2 style={{ marginTop: 0 }}>{lesson.title}</h2>
+					<div style={{ marginTop: 8, background: '#0b0b0f', border: '1px solid #222', padding: 12, borderRadius: 8 }}>
+						<pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+							{lesson.script}
+						</pre>
+					</div>
+				</div>
+			) : null}
+
 			<div style={{ marginTop: 16 }}>
 				<Link to={customerIdParam ? `/curriculum?customerId=${customerIdParam}` : '/curriculum'} style={{ color: '#ffffff' }}>
 					Back to Curriculum Planner

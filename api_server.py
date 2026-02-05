@@ -9,6 +9,8 @@ from pydantic import BaseModel
 
 import insurance_mcp
 
+from langchain.teacher_agent import build_khan_style_lesson, render_lesson_script
+
 
 DB_PATH = os.getenv("INSURANCE_DB_PATH", os.path.join("database", "insurance.db"))
 
@@ -35,6 +37,11 @@ class OnboardRequest(BaseModel):
 
 class CurriculumRequest(BaseModel):
 	customer_id: int
+
+
+class TeacherLessonRequest(BaseModel):
+	customer_id: int
+	module_order: int
 
 
 def _parse_onboarding_sentence(message: str) -> dict[str, Any]:
@@ -177,5 +184,77 @@ def show_curriculum(customer_id: int):
 		return {"ok": True, "customerId": int(customer_id), "curriculum": curriculum}
 	except ValueError as e:
 		raise HTTPException(status_code=404, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/teacher/lesson")
+def teacher_lesson(req: TeacherLessonRequest):
+	"""Generate a Khan-style lesson script for a specific curriculum module.
+
+	This endpoint is intentionally deterministic (LLM-free) so the UI is stable.
+	"""
+	try:
+		customer_id = int(req.customer_id)
+		module_order = int(req.module_order)
+		if customer_id <= 0:
+			raise ValueError("customer_id must be positive")
+		if module_order <= 0:
+			raise ValueError("module_order must be positive")
+
+		curriculum = insurance_mcp.get_curriculum_impl(customer_id)
+		module = next(
+			(m for m in curriculum if int(m.get("order")) == module_order),
+			None,
+		)
+		if not module:
+			raise HTTPException(status_code=404, detail="Module not found for this curriculum")
+
+		try:
+			insurance_mcp.record_teacher_module_view_impl(
+				customer_id=customer_id,
+				module_order=module_order,
+				module_title=str(module.get("module")),
+			)
+		except Exception:
+			# Analytics shouldn’t block the primary teaching flow.
+			pass
+
+		# Prefer the user's actual age from the customer profile.
+		age = 18
+		with sqlite3.connect(DB_PATH) as conn:
+			conn.row_factory = sqlite3.Row
+			row = conn.execute("SELECT age FROM customers WHERE id = ?;", (customer_id,)).fetchone()
+			if row is not None:
+				age = int(row["age"])
+
+		lesson = build_khan_style_lesson(
+			module_title=str(module.get("module")),
+			module_description=str(module.get("description")),
+			age=age,
+		)
+		script = render_lesson_script(lesson)
+
+		return {
+			"ok": True,
+			"customerId": customer_id,
+			"moduleOrder": module_order,
+			"moduleTitle": str(module.get("module")),
+			"lesson": {
+				"title": lesson.title,
+				"objective": lesson.objective,
+				"hook": lesson.hook,
+				"keyPoints": list(lesson.key_points),
+				"analogy": lesson.analogy,
+				"workedExampleQ": lesson.worked_example_q,
+				"workedExampleA": lesson.worked_example_a,
+				"recap": lesson.recap,
+				"script": script,
+			},
+		}
+	except HTTPException:
+		raise
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:
 		raise HTTPException(status_code=500, detail=str(e))
