@@ -14,7 +14,7 @@ def temp_db(tmp_path, monkeypatch):
 	return str(db_file)
 
 
-def _seed_customer(db_path: str, customer_id: int = 1):
+def seed_customer(db_path: str, customer_id: int = 1):
 	with sqlite3.connect(db_path) as conn:
 		conn.execute(
 			"""
@@ -26,7 +26,7 @@ def _seed_customer(db_path: str, customer_id: int = 1):
 
 
 def test_accident_report_create_update_finalize(temp_db):
-	_seed_customer(temp_db, 1)
+	seed_customer(temp_db, 1)
 
 	created = insurance_mcp.start_accident_report_impl(customer_id=1)
 	report_id = created["reportId"]
@@ -51,7 +51,7 @@ def test_accident_report_create_update_finalize(temp_db):
 
 
 def test_accident_report_location_normalizes_full_state_name(temp_db):
-	_seed_customer(temp_db, 1)
+	seed_customer(temp_db, 1)
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 
 	updated = insurance_mcp.update_accident_report_impl(
@@ -64,7 +64,7 @@ def test_accident_report_location_normalizes_full_state_name(temp_db):
 
 
 def test_accident_report_location_rejects_missing_comma(temp_db):
-	_seed_customer(temp_db, 1)
+	seed_customer(temp_db, 1)
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 
 	with pytest.raises(ValueError):
@@ -72,7 +72,7 @@ def test_accident_report_location_rejects_missing_comma(temp_db):
 
 
 def test_accident_report_location_rejects_unknown_state(temp_db):
-	_seed_customer(temp_db, 1)
+	seed_customer(temp_db, 1)
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 
 	with pytest.raises(ValueError):

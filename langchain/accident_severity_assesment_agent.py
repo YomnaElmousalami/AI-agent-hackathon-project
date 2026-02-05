@@ -35,7 +35,7 @@ async def setup_mcp_client():
 	return await client.get_tools()
 
 
-def _pick_tool(tools, name: str):
+def pick_tool(tools, name: str):
 	for t in tools:
 		if getattr(t, "name", None) == name:
 			return t
@@ -49,7 +49,7 @@ async def run_cli():
 	import langchain.cli_utils as cli_utils
 	if mode == "mcp":
 		tools = await setup_mcp_client()
-		assess_tool = _pick_tool(tools, "assess_accident_severity")
+		assess_tool = pick_tool(tools, "assess_accident_severity")
 
 	report_id = cli_utils.read_prompt_or_stdin("Accident report id (UUID from Accident Reporting): ")
 	if mode == "mcp":

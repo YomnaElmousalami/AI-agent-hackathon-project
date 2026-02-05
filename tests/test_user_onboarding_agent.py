@@ -54,17 +54,17 @@ async def test_run_agent_handles_message_object_shape(capsys):
 async def test_onboard_calls_run_agent_twice_and_plans_curriculum(monkeypatch):
     calls = []
 
-    async def _fake_run_agent(agent, query):
+    async def fake_run_agent(agent, query):
         calls.append((agent, query))
 
-    monkeypatch.setattr(uoa, "run_agent", _fake_run_agent)
+    monkeypatch.setattr(uoa, "run_agent", fake_run_agent)
 
     fake_curr = types.SimpleNamespace()
 
-    async def _fake_init_curriculum_agent():
+    async def fake_init_curriculum_agent():
         return "CURR_AGENT"
 
-    fake_curr.initialize_agent = _fake_init_curriculum_agent
+    fake_curr.initialize_agent = fake_init_curriculum_agent
     sys.modules["langchain.curriculum_planner_agent"] = fake_curr
 
     await uoa.onboard("ONBOARD_AGENT", "Hey. My id is 2, my name is Sam")
@@ -77,10 +77,10 @@ async def test_onboard_calls_run_agent_twice_and_plans_curriculum(monkeypatch):
 async def test_onboard_no_id_only_runs_onboarding(monkeypatch):
     calls = []
 
-    async def _fake_run_agent(agent, query):
+    async def fake_run_agent(agent, query):
         calls.append((agent, query))
 
-    monkeypatch.setattr(uoa, "run_agent", _fake_run_agent)
+    monkeypatch.setattr(uoa, "run_agent", fake_run_agent)
 
     await uoa.onboard("ONBOARD_AGENT", "Hello there")
 

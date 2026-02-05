@@ -14,7 +14,7 @@ def temp_db(tmp_path, monkeypatch):
 	return str(db_file)
 
 
-def _seed_customer(db_path: str, customer_id: int = 1, coverage_type: str = "Liability"):
+def seed_customer(db_path: str, customer_id: int = 1, coverage_type: str = "Liability"):
 	with sqlite3.connect(db_path) as conn:
 		conn.execute(
 			"""
@@ -26,7 +26,7 @@ def _seed_customer(db_path: str, customer_id: int = 1, coverage_type: str = "Lia
 
 
 def test_interpret_policy_liability_only(temp_db):
-	_seed_customer(temp_db, 1, "Liability")
+	seed_customer(temp_db, 1, "Liability")
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 	res = insurance_mcp.interpret_policy_impl(report_id=report_id)
 	assert "liability" in (res["summary"] or "").lower()
@@ -34,7 +34,7 @@ def test_interpret_policy_liability_only(temp_db):
 
 
 def test_interpret_policy_full_coverage(temp_db):
-	_seed_customer(temp_db, 1, "Full Coverage")
+	seed_customer(temp_db, 1, "Full Coverage")
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 	res = insurance_mcp.interpret_policy_impl(report_id=report_id)
 	assert "full" in (res["summary"] or "").lower()

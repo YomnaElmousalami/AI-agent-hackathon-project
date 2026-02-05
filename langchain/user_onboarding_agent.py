@@ -111,7 +111,7 @@ async def run_agent(agent, user_query: str):
 async def onboard(onboarding_agent, user_query: str):
     """Persist onboarding immediately, then optionally let the LLM respond and plan curriculum."""
 
-    def _parse_profile(text: str) -> dict[str, Any] | None:
+    def parse_profile(text: str) -> dict[str, Any] | None:
         t = (text or "").strip()
         if not t:
             return None
@@ -126,7 +126,7 @@ async def onboard(onboarding_agent, user_query: str):
         if not (m_id and m_name and m_age and m_state and m_vehicle and m_cov):
             return None
 
-        def _clean_vehicle(v: str) -> str:
+        def clean_vehicle(v: str) -> str:
             v0 = (v or "").strip()
             v0 = re.sub(r"^\s*(?:a|an|the)\s+", "", v0, flags=re.IGNORECASE)
             return v0.strip()
@@ -139,11 +139,11 @@ async def onboard(onboarding_agent, user_query: str):
             "name": m_name.group(1).strip(),
             "age": age,
             "state": state,
-            "vehicleName": _clean_vehicle(m_vehicle.group(1)),
+            "vehicleName": clean_vehicle(m_vehicle.group(1)),
             "coverageType": m_cov.group(1).strip(),
         }
 
-    profile = _parse_profile(user_query)
+    profile = parse_profile(user_query)
 
     if profile is None:
         await run_agent(onboarding_agent, user_query)

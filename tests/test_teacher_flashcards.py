@@ -15,7 +15,7 @@ def temp_db(tmp_path, monkeypatch):
     return str(db_file)
 
 
-def _seed_customer(db_path: str, customer_id: int = 1):
+def seed_customer(db_path: str, customer_id: int = 1):
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
@@ -26,7 +26,7 @@ def _seed_customer(db_path: str, customer_id: int = 1):
         )
 
 
-def _seed_curriculum(db_path: str, customer_id: int = 1):
+def seed_curriculum(db_path: str, customer_id: int = 1):
     with sqlite3.connect(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute(
@@ -52,8 +52,8 @@ def _seed_curriculum(db_path: str, customer_id: int = 1):
 
 
 def test_generate_flashcards_from_curriculum(temp_db):
-    _seed_customer(temp_db, 1)
-    _seed_curriculum(temp_db, 1)
+    seed_customer(temp_db, 1)
+    seed_curriculum(temp_db, 1)
 
     cards = insurance_mcp.generate_flashcards_impl(customer_id=1, module_order=1, limit=50)
     assert len(cards) >= 2
@@ -62,8 +62,8 @@ def test_generate_flashcards_from_curriculum(temp_db):
 
 
 def test_quiz_session_flow(temp_db):
-    _seed_customer(temp_db, 1)
-    _seed_curriculum(temp_db, 1)
+    seed_customer(temp_db, 1)
+    seed_curriculum(temp_db, 1)
 
     session = insurance_mcp.start_flashcard_quiz_impl(customer_id=1, module_order=1, limit=10)
     assert "sessionId" in session

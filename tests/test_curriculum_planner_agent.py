@@ -25,10 +25,10 @@ async def test_handle_query_show_calls_get_curriculum(monkeypatch, capsys):
     )
     plan_tool = _FakeTool("plan_curriculum", ret=[{"module": "NEW"}])
 
-    async def _fake_setup_mcp_client():
+    async def fake_setup_mcp_client():
         return [plan_tool, get_tool]
 
-    monkeypatch.setattr(cpa, "setup_mcp_client", _fake_setup_mcp_client)
+    monkeypatch.setattr(cpa, "setup_mcp_client", fake_setup_mcp_client)
 
     await cpa.handle_query("Show the curriculum for customer id 2")
 
@@ -47,10 +47,10 @@ async def test_handle_query_plan_skips_if_curriculum_exists(monkeypatch, capsys)
     get_tool = _FakeTool("get_curriculum", ret=existing)
     plan_tool = _FakeTool("plan_curriculum", ret=[{"module": "NEW"}])
 
-    async def _fake_setup_mcp_client():
+    async def fake_setup_mcp_client():
         return [plan_tool, get_tool]
 
-    monkeypatch.setattr(cpa, "setup_mcp_client", _fake_setup_mcp_client)
+    monkeypatch.setattr(cpa, "setup_mcp_client", fake_setup_mcp_client)
 
     await cpa.handle_query("Plan a curriculum for customer id 5")
 
@@ -66,10 +66,10 @@ async def test_handle_query_plan_creates_when_missing(monkeypatch, capsys):
     get_tool = _FakeTool("get_curriculum", exc=ValueError("No curriculum found for customer 7"))
     plan_tool = _FakeTool("plan_curriculum", ret=[{"module": "Intro"}, {"module": "Deductibles"}])
 
-    async def _fake_setup_mcp_client():
+    async def fake_setup_mcp_client():
         return [plan_tool, get_tool]
 
-    monkeypatch.setattr(cpa, "setup_mcp_client", _fake_setup_mcp_client)
+    monkeypatch.setattr(cpa, "setup_mcp_client", fake_setup_mcp_client)
 
     await cpa.handle_query("Please create a curriculum for customer 7")
 

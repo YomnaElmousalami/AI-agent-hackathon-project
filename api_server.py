@@ -44,7 +44,7 @@ class TeacherLessonRequest(BaseModel):
 	module_order: int
 
 
-def _parse_onboarding_sentence(message: str) -> dict[str, Any]:
+def parse_onboarding_sentence(message: str) -> dict[str, Any]:
 	"""Parse a sentence like:
 	"Hey. My id is 2, my name is Samuel, I'm 16, I live in NY, my vehicle is a Toyota Camry, and my coverage type is full coverage."
 
@@ -101,7 +101,7 @@ def _parse_onboarding_sentence(message: str) -> dict[str, Any]:
 @app.post("/api/onboard")
 def onboard(req: OnboardRequest):
 	try:
-		parsed = _parse_onboarding_sentence(req.message)
+		parsed = parse_onboarding_sentence(req.message)
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 
@@ -217,10 +217,8 @@ def teacher_lesson(req: TeacherLessonRequest):
 				module_title=str(module.get("module")),
 			)
 		except Exception:
-			# Analytics shouldn’t block the primary teaching flow.
 			pass
 
-		# Prefer the user's actual age from the customer profile.
 		age = 18
 		with sqlite3.connect(DB_PATH) as conn:
 			conn.row_factory = sqlite3.Row

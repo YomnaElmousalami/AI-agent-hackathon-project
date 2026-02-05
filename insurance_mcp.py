@@ -21,7 +21,7 @@ mcp = FastMCP("AutoInsuranceMCP")
 init_db(db_path)
 
 
-def _connect(database_path: str | None = None) -> sqlite3.Connection:
+def connect(database_path: str | None = None) -> sqlite3.Connection:
     """Open a SQLite connection to the configured DB (or an override).
 
     Tests use `database_path` to isolate state in a tmp db.
@@ -34,10 +34,10 @@ def _connect(database_path: str | None = None) -> sqlite3.Connection:
     return conn
 
 
-def _ensure_teacher_views_schema(database_path: str | None = None) -> None:
+def ensure_teacher_views_schema(database_path: str | None = None) -> None:
     """Best-effort schema init for teacher module view history."""
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS teacher_module_views (
@@ -58,10 +58,10 @@ def _ensure_teacher_views_schema(database_path: str | None = None) -> None:
         )
 
 
-def _ensure_knowledge_validation_views_schema(database_path: str | None = None) -> None:
+def ensure_knowledge_validation_views_schema(database_path: str | None = None) -> None:
     """Best-effort schema init for knowledge-validation module selection history."""
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS knowledge_validation_module_views (
@@ -93,11 +93,11 @@ def record_teacher_module_view_impl(
     This is append-only (we keep history) and does NOT prevent repeats.
     """
 
-    _ensure_teacher_views_schema(database_path)
+    ensure_teacher_views_schema(database_path)
     view_id = str(uuid.uuid4())
-    now = _now_date()
+    now = now_date()
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO teacher_module_views (id, customer_id, module_order, module_title, created_at)
@@ -126,11 +126,11 @@ def record_knowledge_validation_module_view_impl(
     This is append-only (we keep history) and does NOT prevent repeats.
     """
 
-    _ensure_knowledge_validation_views_schema(database_path)
+    ensure_knowledge_validation_views_schema(database_path)
     view_id = str(uuid.uuid4())
-    now = _now_date()
+    now = now_date()
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO knowledge_validation_module_views (id, customer_id, module_order, created_at)
@@ -162,9 +162,9 @@ def get_knowledge_validation_module_views_impl(
 ) -> List[Dict]:
     """Return recent knowledge validation module selections for a customer."""
 
-    _ensure_knowledge_validation_views_schema(database_path)
+    ensure_knowledge_validation_views_schema(database_path)
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
@@ -224,9 +224,9 @@ def get_teacher_module_views_impl(
 ) -> List[Dict]:
     """Return recent teacher module views for a customer."""
 
-    _ensure_teacher_views_schema(database_path)
+    ensure_teacher_views_schema(database_path)
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
@@ -270,7 +270,7 @@ def get_last_teacher_module(customer_id: int) -> Dict | None:
     return get_last_teacher_module_impl(customer_id=int(customer_id))
 
 
-def _now_date() -> str:
+def now_date() -> str:
     """UTC date string used across the persistence layer."""
 
     return datetime.now(timezone.utc).strftime("%m/%d/%Y")
@@ -295,8 +295,8 @@ def create_customer_impl(
     Some tests expect a lightweight customer seeding helper.
     """
 
-    now = _now_date()
-    with _connect(database_path) as conn:
+    now = now_date()
+    with connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO customers (id, name, age, state, vehicle_name, coverage_type, created_at, updated_at)
@@ -347,9 +347,9 @@ def create_curriculum_plan_impl(
     question banks / quiz attempts.
     """
 
-    now = _now_date()
+    now = now_date()
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute("SELECT age FROM customers WHERE id = ?;", (int(customer_id),)).fetchone()
         customer_age = int(row["age"]) if row and row["age"] is not None else 16
@@ -400,7 +400,7 @@ def create_curriculum_plan_impl(
     }
 
 
-def _row_to_dict(row: sqlite3.Row | None) -> Dict | None:
+def row_to_dict(row: sqlite3.Row | None) -> Dict | None:
     if row is None:
         return None
     return {k: row[k] for k in row.keys()}
@@ -678,25 +678,25 @@ def get_curriculum_impl(customer_id: int) -> List[Dict]:
     ]
 
 
-def _now_date() -> str:
+def now_date() -> str:
     return datetime.now(timezone.utc).strftime("%m/%d/%Y")
 
 
-def _normalize_text(s: str) -> str:
+def normalize_text(s: str) -> str:
     s = (s or "").lower().strip()
     s = re.sub(r"[^a-z0-9\s]", " ", s)
     s = re.sub(r"\s+", " ", s)
     return s
 
 
-def _keyword_score(answer: str, expected: str) -> float:
+def keyword_score(answer: str, expected: str) -> float:
     """Very small, deterministic grader.
 
     Returns a score in [0, 1].
     """
 
-    a = _normalize_text(answer)
-    e = _normalize_text(expected)
+    a = normalize_text(answer)
+    e = normalize_text(expected)
     if not a or not e:
         return 0.0
 
@@ -712,17 +712,17 @@ def _keyword_score(answer: str, expected: str) -> float:
     return overlap / max(1, len(e_set))
 
 
-def _age_tone(age: int) -> str:
+def age_tone(age: int) -> str:
     return "teen" if int(age) < 18 else "adult"
 
 
-def _build_cards_for_module(module_title: str, module_description: str, age: int, module_order: int) -> List[Dict]:
+def build_cards_for_module(module_title: str, module_description: str, age: int, module_order: int) -> List[Dict]:
     """Deterministic, template-based flashcards.
 
     This avoids requiring an LLM, but still returns useful Quizlet-style cards.
     """
 
-    tone = _age_tone(age)
+    tone = age_tone(age)
     title_l = (module_title or "").strip().lower()
 
     def teenify(text: str) -> str:
@@ -842,7 +842,7 @@ def generate_flashcards_impl(customer_id: int, module_order: int | None = None, 
         if module_order is not None and int(m["order"]) != int(module_order):
             continue
         cards.extend(
-            _build_cards_for_module(
+            build_cards_for_module(
                 module_title=m["module"],
                 module_description=m.get("description", ""),
                 age=int(m.get("customerAge", 18)),
@@ -855,8 +855,8 @@ def generate_flashcards_impl(customer_id: int, module_order: int | None = None, 
     return cards[: int(limit)]
 
 
-def _persist_quiz_session(session_id: str, customer_id: int, module_order: int | None):
-    now = _now_date()
+def persist_quiz_session(session_id: str, customer_id: int, module_order: int | None):
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute(
@@ -868,8 +868,8 @@ def _persist_quiz_session(session_id: str, customer_id: int, module_order: int |
         )
 
 
-def _persist_quiz_cards(session_id: str, cards: List[Dict]):
-    now = _now_date()
+def persist_quiz_cards(session_id: str, cards: List[Dict]):
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.executemany(
@@ -894,7 +894,7 @@ def _persist_quiz_cards(session_id: str, cards: List[Dict]):
         )
 
 
-def _get_next_card(session_id: str) -> Dict | None:
+def get_next_card(session_id: str) -> Dict | None:
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
@@ -945,10 +945,10 @@ def start_flashcard_quiz_impl(customer_id: int, module_order: int | None = None,
     cards = generate_flashcards_impl(customer_id=customer_id, module_order=module_order, limit=limit)
     session_id = str(uuid.uuid4())
 
-    _persist_quiz_session(session_id=session_id, customer_id=customer_id, module_order=module_order)
-    _persist_quiz_cards(session_id=session_id, cards=cards)
+    persist_quiz_session(session_id=session_id, customer_id=customer_id, module_order=module_order)
+    persist_quiz_cards(session_id=session_id, cards=cards)
 
-    next_card = _get_next_card(session_id)
+    next_card = get_next_card(session_id)
     return {"sessionId": session_id, "card": next_card, "totalCards": len(cards)}
 
 
@@ -960,7 +960,7 @@ def get_next_flashcard(session_id: str) -> Dict:
 def get_next_flashcard_impl(session_id: str) -> Dict:
     """Get the next due/new flashcard (without revealing the back)."""
 
-    card = _get_next_card(session_id)
+    card = get_next_card(session_id)
     if card is None:
         return {"sessionId": session_id, "done": True, "card": None}
     return {"sessionId": session_id, "done": False, "card": card}
@@ -994,9 +994,9 @@ def submit_flashcard_answer_impl(session_id: str, card_id: str, answer: str) -> 
             raise ValueError("Card not found for this session.")
 
         expected = row["back"]
-        score = _keyword_score(answer, expected)
+        score = keyword_score(answer, expected)
         correct = bool(score >= 0.6)
-        now = _now_date()
+        now = now_date()
 
         attempts = int(row["attempts"]) + 1
         correct_count = int(row["correct_count"]) + (1 if correct else 0)
@@ -1023,7 +1023,7 @@ def submit_flashcard_answer_impl(session_id: str, card_id: str, answer: str) -> 
             (now, session_id),
         )
 
-    next_card = _get_next_card(session_id)
+    next_card = get_next_card(session_id)
     return {
         "sessionId": session_id,
         "cardId": card_id,
@@ -1035,7 +1035,7 @@ def submit_flashcard_answer_impl(session_id: str, card_id: str, answer: str) -> 
         "done": next_card is None,
     }
 
-def _knowledge_question_weight(q_type: str) -> float:
+def knowledge_question_weight(q_type: str) -> float:
     """Scoring weights requested by user.
 
     - multiple_choice: 1.0
@@ -1048,7 +1048,7 @@ def _knowledge_question_weight(q_type: str) -> float:
     return 1.0
 
 
-def _knowledge_bank_for_module(module_title: str, module_description: str, module_order: int) -> List[Dict]:
+def knowledge_bank_for_module(module_title: str, module_description: str, module_order: int) -> List[Dict]:
     """Deterministic question bank for a single curriculum module.
 
     Returns 10 questions per module (mixed multiple-choice and true/false).
@@ -1585,7 +1585,7 @@ def get_knowledge_questions_impl(
         if selected_order is not None and m_order != selected_order:
             continue
         bank.extend(
-            _knowledge_bank_for_module(
+            knowledge_bank_for_module(
                 module_title=str(m.get("module")),
                 module_description=str(m.get("description")),
                 module_order=m_order,
@@ -1617,7 +1617,7 @@ def grade_knowledge_answer_impl(
 
     expected = str(q.get("expected", ""))
     q_type = str(q.get("type", "multiple_choice"))
-    weight = float(q.get("weight", _knowledge_question_weight(q_type)))
+    weight = float(q.get("weight", knowledge_question_weight(q_type)))
 
 
     ans = (answer or "").strip()
@@ -1684,8 +1684,8 @@ def grade_knowledge_answer_impl(
     }
 
 
-def _get_plan_id_for_customer(customer_id: int, database_path: str | None = None) -> int:
-    with _connect(database_path) as conn:
+def get_plan_id_for_customer(customer_id: int, database_path: str | None = None) -> int:
+    with connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             "SELECT id FROM curriculum_plans WHERE customer_id = ?;", (int(customer_id),)
@@ -1715,9 +1715,9 @@ def start_knowledge_quiz_attempt_impl(
     This enables saving scores and unlimited reattempts.
     """
 
-    plan_id = _get_plan_id_for_customer(int(customer_id), database_path=database_path)
+    plan_id = get_plan_id_for_customer(int(customer_id), database_path=database_path)
     attempt_id = str(uuid.uuid4())
-    now = _now_date()
+    now = now_date()
 
     prior_db_path = globals().get("db_path")
     if database_path is not None:
@@ -1733,12 +1733,12 @@ def start_knowledge_quiz_attempt_impl(
             globals()["db_path"] = prior_db_path
     points_possible = float(
         sum(
-            float(q.get("weight", _knowledge_question_weight(str(q.get("type", "")))))
+            float(q.get("weight", knowledge_question_weight(str(q.get("type", "")))))
             for q in qs
         )
     )
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO knowledge_quiz_attempts
@@ -1794,7 +1794,7 @@ def record_knowledge_quiz_answer_impl(
     Allows reattempts by simply creating a new attempt id.
     """
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         attempt = conn.execute(
             "SELECT id, customer_id, plan_id, module_order FROM knowledge_quiz_attempts WHERE id = ?;",
@@ -1833,13 +1833,13 @@ def record_knowledge_quiz_answer_impl(
 
     module_order = q.get("moduleOrder")
     q_type = str(q.get("type", "multiple_choice"))
-    weight = float(q.get("weight", _knowledge_question_weight(q_type)))
+    weight = float(q.get("weight", knowledge_question_weight(q_type)))
     points_earned = float(graded.get("score", 0.0))
     correct = 1 if bool(graded.get("correct")) else 0
-    now = _now_date()
+    now = now_date()
 
     result_id = str(uuid.uuid4())
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO knowledge_quiz_results
@@ -1892,7 +1892,7 @@ def get_knowledge_quiz_attempts(customer_id: int, limit: int = 20) -> List[Dict]
 def get_knowledge_quiz_attempts_impl(customer_id: int, limit: int = 20, database_path: str | None = None) -> List[Dict]:
     """List recent knowledge quiz attempts for a customer (reattempt history)."""
 
-    with _connect(database_path) as conn:
+    with connect(database_path) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
@@ -2013,7 +2013,7 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
         r.setdefault("summary", "")
         r.setdefault("url", "")
 
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
@@ -2078,7 +2078,7 @@ def start_accident_report_impl(customer_id: int) -> Dict:
     """Create a new accident report (case) and return its id."""
 
     report_id = str(uuid.uuid4())
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute(
@@ -2137,7 +2137,7 @@ def update_accident_report_impl(
 ) -> Dict:
     """Update accident report details."""
 
-    def _norm_state_for_location(s: str | None) -> str | None:
+    def norm_state_for_location(s: str | None) -> str | None:
         """Normalize state input to a 2-letter USPS code.
 
         Accepts:
@@ -2210,7 +2210,7 @@ def update_accident_report_impl(
             return STATE_NAME_TO_CODE[cleaned]
         return None
 
-    def _validate_and_normalize_location(loc: str) -> str:
+    def validate_and_normalize_location(loc: str) -> str:
         """Only accept 'City, State' and normalize state to 2-letter code."""
 
         raw = (loc or "").strip()
@@ -2229,7 +2229,7 @@ def update_accident_report_impl(
         if not state:
             raise ValueError("location state is required (example: 'Norfolk, VA')")
 
-        st = _norm_state_for_location(state)
+        st = norm_state_for_location(state)
         if st is None:
             raise ValueError(
                 "location state must be a valid US state (2-letter code like 'CA' or full name like 'California')"
@@ -2237,7 +2237,7 @@ def update_accident_report_impl(
 
         return f"{city}, {st}"
 
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         existing = conn.execute("SELECT * FROM accident_reports WHERE id = ?;", (report_id,)).fetchone()
@@ -2245,7 +2245,7 @@ def update_accident_report_impl(
             raise ValueError("report_id not found")
 
         if location is not None:
-            location = _validate_and_normalize_location(location)
+            location = validate_and_normalize_location(location)
 
         merged_evidence = json.loads(existing["evidence_urls"] or "[]")
         if evidence_urls:
@@ -2305,7 +2305,7 @@ def finalize_accident_report(report_id: str) -> Dict:
 def finalize_accident_report_impl(report_id: str) -> Dict:
     """Mark the report as ready for assessment."""
 
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         row = conn.execute("SELECT * FROM accident_reports WHERE id = ?;", (report_id,)).fetchone()
@@ -2319,7 +2319,7 @@ def finalize_accident_report_impl(report_id: str) -> Dict:
     return {"reportId": report_id, "status": "ready", "updatedAt": now}
 
 #for, Accident Severity Assesment Agent
-def _assess_severity(injured_count: int, vehicles_drivable: bool | None, notes: str | None) -> Dict:
+def assess_severity(injured_count: int, vehicles_drivable: bool | None, notes: str | None) -> Dict:
     notes_l = (notes or "").lower()
     accident_type = "unknown"
     if "rear" in notes_l and "end" in notes_l:
@@ -2376,7 +2376,7 @@ def assess_accident_severity(report_id: str) -> Dict:
 def assess_accident_severity_impl(report_id: str) -> Dict:
     """Compute and persist an accident severity assessment."""
 
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         report = conn.execute("SELECT * FROM accident_reports WHERE id = ?;", (report_id,)).fetchone()
@@ -2384,7 +2384,7 @@ def assess_accident_severity_impl(report_id: str) -> Dict:
             raise ValueError("report_id not found")
 
         vehicles_drivable = None if report["vehicles_drivable"] is None else bool(report["vehicles_drivable"])
-        result = _assess_severity(
+        result = assess_severity(
             injured_count=int(report["injured_count"] or 0),
             vehicles_drivable=vehicles_drivable,
             notes=report["notes"],
@@ -2439,7 +2439,7 @@ def interpret_policy(report_id: str) -> Dict:
 def interpret_policy_impl(report_id: str) -> Dict:
     """Create a simple coverage/deductible expectation from stored customer profile."""
 
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         report = conn.execute("SELECT * FROM accident_reports WHERE id = ?;", (report_id,)).fetchone()
@@ -2529,7 +2529,7 @@ def prepare_claim_packet(report_id: str) -> Dict:
 def prepare_claim_packet_impl(report_id: str) -> Dict:
     """Create a claim-ready packet and list missing fields."""
 
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         report = conn.execute("SELECT * FROM accident_reports WHERE id = ?;", (report_id,)).fetchone()
@@ -2594,7 +2594,7 @@ def prepare_claim_packet_impl(report_id: str) -> Dict:
     return {"reportId": report_id, "status": status, "missingItems": missing, "packet": packet}
 
 
-def _packet_to_pdf_bytes(packet: Dict) -> bytes:
+def packet_to_pdf_bytes(packet: Dict) -> bytes:
     """Create a simple 1-page PDF with the claim packet contents.
 
     We avoid HTML/render engines and generate a compact, readable PDF with a
@@ -2641,7 +2641,7 @@ def _packet_to_pdf_bytes(packet: Dict) -> bytes:
     top = 738
     leading = 14
 
-    def _pdf_escape(s: str) -> str:
+    def pdf_escape(s: str) -> str:
         return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
 
     text_lines = text.splitlines()
@@ -2652,7 +2652,7 @@ def _packet_to_pdf_bytes(packet: Dict) -> bytes:
     for i, line in enumerate(text_lines):
         if i > 0:
             stream_lines.append(f"0 -{leading} Td")
-        stream_lines.append(f"({_pdf_escape(line)}) Tj")
+        stream_lines.append(f"({pdf_escape(line)}) Tj")
     stream_lines.append("ET")
     stream = "\n".join(stream_lines)
 
@@ -2690,7 +2690,7 @@ def export_claim_packet_pdf_impl(report_id: str, out_dir: str | None = None) -> 
     packet_res = prepare_claim_packet_impl(report_id=report_id)
     packet = packet_res.get("packet") or {}
 
-    pdf_bytes = _packet_to_pdf_bytes(packet)
+    pdf_bytes = packet_to_pdf_bytes(packet)
 
     base_dir = out_dir or os.path.join("database", "exports")
     os.makedirs(base_dir, exist_ok=True)
@@ -2717,7 +2717,7 @@ def generate_action_plan(report_id: str) -> Dict:
 def generate_action_plan_impl(report_id: str) -> Dict:
     """Generate next steps + simple timelines for this report."""
 
-    now = _now_date()
+    now = now_date()
     severity = None
     policy = None
     with sqlite3.connect(db_path) as conn:
@@ -2844,7 +2844,7 @@ def escalate_and_route_impl(report_id: str) -> Dict:
 
     STATE_CODES = set(STATE_NAME_TO_CODE.values())
 
-    def _norm_state(s: str | None) -> str | None:
+    def norm_state(s: str | None) -> str | None:
         raw = (s or "").strip()
         if not raw:
             return None
@@ -2860,8 +2860,8 @@ def escalate_and_route_impl(report_id: str) -> Dict:
 
         return None
 
-    def _get_contact_numbers(state: str | None, routed_to: str) -> list[dict]:
-        st = _norm_state(state)
+    def get_contact_numbers(state: str | None, routed_to: str) -> list[dict]:
+        st = norm_state(state)
         contacts: list[dict] = []
         if routed_to == "emergency_services":
             contacts.append(
@@ -2906,7 +2906,7 @@ def escalate_and_route_impl(report_id: str) -> Dict:
         )
         return contacts
 
-    def _infer_state_from_location(location: str | None) -> str | None:
+    def infer_state_from_location(location: str | None) -> str | None:
         """Try to infer a US state from a free-form location like 'Norfolk, VA' or
         'Norfolk, Virginia'. Returns a normalized 2-letter code when possible."""
 
@@ -2919,9 +2919,9 @@ def escalate_and_route_impl(report_id: str) -> Dict:
             return None
 
         candidate = parts[-1]
-        return _norm_state(candidate)
+        return norm_state(candidate)
 
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
         report = conn.execute("SELECT * FROM accident_reports WHERE id=?;", (report_id,)).fetchone()
@@ -2964,7 +2964,7 @@ def escalate_and_route_impl(report_id: str) -> Dict:
         payload={"reportId": report_id, "routedTo": routed_to, "reason": reason},
     )
 
-    inferred_state = _infer_state_from_location(report["location"])
+    inferred_state = infer_state_from_location(report["location"])
 
     customer_state = None
     if inferred_state is None:
@@ -2976,7 +2976,7 @@ def escalate_and_route_impl(report_id: str) -> Dict:
     else:
         customer_state = inferred_state
 
-    contact_numbers = _get_contact_numbers(customer_state, routed_to)
+    contact_numbers = get_contact_numbers(customer_state, routed_to)
 
     return {
         "reportId": report_id,
@@ -2997,7 +2997,7 @@ def log_feedback_event_impl(customer_id: int | None, agent_name: str, event_type
     """Persist a feedback/telemetry event (no PII beyond customer_id)."""
 
     event_id = str(uuid.uuid4())
-    now = _now_date()
+    now = now_date()
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """

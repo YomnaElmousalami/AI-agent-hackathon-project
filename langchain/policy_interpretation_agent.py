@@ -37,14 +37,14 @@ async def setup_mcp_client():
 	return await client.get_tools()
 
 
-def _pick_tool(tools, name: str):
+def pick_tool(tools, name: str):
 	for t in tools:
 		if getattr(t, "name", None) == name:
 			return t
 	raise RuntimeError(f"Tool '{name}' not found")
 
 
-def _coerce_tool_result(res):
+def coerce_tool_result(res):
 	return coerce_tool_result(res)
 
 
@@ -63,7 +63,7 @@ async def run_cli():
 		return
 
 	tools = await setup_mcp_client()
-	tool = _pick_tool(tools, "interpret_policy")
+	tool = pick_tool(tools, "interpret_policy")
 	res = await tool.ainvoke({"report_id": report_id})
 	res = coerce_tool_result(res)
 	print("\nPolicy interpretation:")

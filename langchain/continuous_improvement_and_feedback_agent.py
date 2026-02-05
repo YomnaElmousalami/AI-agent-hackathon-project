@@ -13,13 +13,13 @@ import insurance_mcp
 from langchain.cli_utils import prompt_int
 
 
-def _sorted_counts(counts: dict) -> list[tuple[str, int]]:
+def sorted_counts(counts: dict) -> list[tuple[str, int]]:
 	items = list(counts.items())
 	items.sort(key=lambda x: (-x[1], x[0]))
 	return items
 
 
-def _key(payload: dict | None, *path: str) -> str | None:
+def key(payload: dict | None, *path: str) -> str | None:
 	"""Safe nested lookup helper for telemetry payloads."""
 	cur: object = payload or {}
 	for p in path:
@@ -29,7 +29,7 @@ def _key(payload: dict | None, *path: str) -> str | None:
 	return cur if isinstance(cur, str) else None
 
 
-def _bool(payload: dict | None, *path: str) -> bool | None:
+def bool_value(payload: dict | None, *path: str) -> bool | None:
 	cur: object = payload or {}
 	for p in path:
 		if not isinstance(cur, dict):
@@ -40,8 +40,8 @@ def _bool(payload: dict | None, *path: str) -> bool | None:
 	return None
 
 
-def _top_n(counts: dict[str, int], n: int = 5) -> list[tuple[str, int]]:
-	return _sorted_counts(counts)[:n]
+def top_n(counts: dict[str, int], n: int = 5) -> list[tuple[str, int]]:
+	return sorted_counts(counts)[:n]
 
 
 async def run_cli():
@@ -63,7 +63,7 @@ async def run_cli():
 	print(f"Total events: {summary['totalEvents']}")
 
 	print("\nEvent counts (agent:type):")
-	for k, v in _sorted_counts(summary.get("counts", {})):
+	for k, v in sorted_counts(summary.get("counts", {})):
 		print(f"- {k}: {v}")
 
 	missing_counts: dict[str, int] = {}
@@ -107,18 +107,18 @@ async def run_cli():
 
 	if missing_counts:
 		print("Most common missing items during claim prep:")
-		for k, v in _top_n(missing_counts, 5):
+		for k, v in top_n(missing_counts, 5):
 			print(f"- {k}: {v}")
 	else:
 		print("No repeated missing-fields patterns detected in this window.")
 
 	if quiz_incorrect_by_topic:
 		print("\nMost common knowledge gaps (by topic):")
-		for k, v in _top_n(quiz_incorrect_by_topic, 5):
+		for k, v in top_n(quiz_incorrect_by_topic, 5):
 			print(f"- {k}: {v}")
 	elif quiz_incorrect_by_qid:
 		print("\nMost repeated incorrect knowledge questions (by id):")
-		for k, v in _top_n(quiz_incorrect_by_qid, 5):
+		for k, v in top_n(quiz_incorrect_by_qid, 5):
 			print(f"- {k}: {v}")
 	else:
 		print("\nNo repeated knowledge-validation gaps detected in this window.")

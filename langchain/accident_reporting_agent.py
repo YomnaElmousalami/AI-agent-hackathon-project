@@ -36,7 +36,7 @@ async def setup_mcp_client():
 	return await client.get_tools()
 
 
-def _pick_tool(tools, name: str):
+def pick_tool(tools, name: str):
 	for t in tools:
 		if getattr(t, "name", None) == name:
 			return t
@@ -51,9 +51,9 @@ async def run_cli():
 	finalize_tool = None
 	if mode == "mcp":
 		tools = await setup_mcp_client()
-		start_tool = _pick_tool(tools, "start_accident_report")
-		update_tool = _pick_tool(tools, "update_accident_report")
-		finalize_tool = _pick_tool(tools, "finalize_accident_report")
+		start_tool = pick_tool(tools, "start_accident_report")
+		update_tool = pick_tool(tools, "update_accident_report")
+		finalize_tool = pick_tool(tools, "finalize_accident_report")
 
 	customer_id = prompt_int("Customer id: ", min_value=1)
 	if mode == "mcp":
@@ -64,7 +64,7 @@ async def run_cli():
 	report_id = created["reportId"]
 	print(f"\nCreated report: {report_id}")
 
-	def _valid_city_state(s: str) -> bool:
+	def valid_city_state(s: str) -> bool:
 		parts = [p.strip() for p in (s or "").split(",")]
 		return len(parts) == 2 and all(parts)
 
@@ -74,7 +74,7 @@ async def run_cli():
 			allow_empty=False,
 			invalid_message="Please enter it in the right format: City, State (ex: 'Norfolk, VA' or 'Norfolk, Virginia').",
 		)
-		if _valid_city_state(location):
+		if valid_city_state(location):
 			break
 		print("\nPlease enter it in the right format: City, State (ex: 'Norfolk, VA' or 'Norfolk, Virginia').")
 	injured = prompt_int("Injured count (0 if none): ", min_value=0, default=0)
@@ -118,7 +118,7 @@ async def run_cli():
 						allow_empty=False,
 						invalid_message="Please enter it in the right format: City, State (ex: 'Norfolk, VA' or 'Norfolk, Virginia').",
 					)
-					if _valid_city_state(location):
+					if valid_city_state(location):
 						break
 					print("\nPlease enter it in the right format: City, State (ex: 'Norfolk, VA' or 'Norfolk, Virginia').")
 		else:
@@ -143,7 +143,7 @@ async def run_cli():
 						allow_empty=False,
 						invalid_message="Please enter it in the right format: City, State (ex: 'Norfolk, VA' or 'Norfolk, Virginia').",
 					)
-					if _valid_city_state(location):
+					if valid_city_state(location):
 						break
 					print("\nPlease enter it in the right format: City, State (ex: 'Norfolk, VA' or 'Norfolk, Virginia').")
 	print(f"\nUpdated report status: {updated['status']}")

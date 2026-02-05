@@ -40,7 +40,7 @@ async def setup_mcp_client():
 	return await client.get_tools()
 
 
-def _pick_tool(tools, name: str):
+def pick_tool(tools, name: str):
 	for t in tools:
 		if getattr(t, "name", None) == name:
 			return t
@@ -64,7 +64,7 @@ async def run_cli():
 
 	# Default: deterministic tool call
 	tools = await setup_mcp_client()
-	tool = _pick_tool(tools, "escalate_and_route")
+	tool = pick_tool(tools, "escalate_and_route")
 	res = await tool.ainvoke({"report_id": report_id})
 	res = coerce_tool_result(res)
 	print("\nRouting decision:")

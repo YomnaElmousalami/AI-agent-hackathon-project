@@ -14,7 +14,7 @@ def temp_db(tmp_path, monkeypatch):
 	return str(db_file)
 
 
-def _seed_customer(db_path: str, customer_id: int = 1):
+def seed_customer(db_path: str, customer_id: int = 1):
 	with sqlite3.connect(db_path) as conn:
 		conn.execute(
 			"""
@@ -25,7 +25,7 @@ def _seed_customer(db_path: str, customer_id: int = 1):
 		)
 
 
-def _seed_curriculum(db_path: str, customer_id: int = 1):
+def seed_curriculum(db_path: str, customer_id: int = 1):
 	with sqlite3.connect(db_path) as conn:
 		conn.execute("PRAGMA foreign_keys = ON;")
 		conn.execute(
@@ -55,8 +55,8 @@ def _seed_curriculum(db_path: str, customer_id: int = 1):
 
 
 def test_get_questions_and_grade_answer_logs_event(temp_db):
-	_seed_customer(temp_db, 1)
-	_seed_curriculum(temp_db, 1)
+	seed_customer(temp_db, 1)
+	seed_curriculum(temp_db, 1)
 
 	qs = insurance_mcp.get_knowledge_questions_impl(customer_id=1, limit=20)
 	assert len(qs) == 10

@@ -14,7 +14,7 @@ def temp_db(tmp_path, monkeypatch):
 	return str(db_file)
 
 
-def _seed_customer(db_path: str, customer_id: int = 1, state: str = "CA"):
+def seed_customer(db_path: str, customer_id: int = 1, state: str = "CA"):
 	with sqlite3.connect(db_path) as conn:
 		conn.execute(
 			"""
@@ -26,7 +26,7 @@ def _seed_customer(db_path: str, customer_id: int = 1, state: str = "CA"):
 
 
 def test_recommend_resources_returns_items_and_saves(temp_db):
-	_seed_customer(temp_db, 1, "CA")
+	seed_customer(temp_db, 1, "CA")
 	resources = insurance_mcp.recommend_resources_impl(customer_id=1, topic="deductible", limit=5)
 	assert isinstance(resources, list)
 	assert len(resources) >= 1

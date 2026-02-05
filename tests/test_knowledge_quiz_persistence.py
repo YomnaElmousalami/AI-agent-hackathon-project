@@ -4,7 +4,7 @@ from database.insurance_db import init_db
 import insurance_mcp
 
 
-def _fetch_all(db_path: str, sql: str, params=()):
+def fetch_all(db_path: str, sql: str, params=()):
 	conn = sqlite3.connect(db_path)
 	try:
 		cur = conn.cursor()
@@ -69,7 +69,7 @@ def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
 	)
 	assert a2["attemptId"] != a1["attemptId"]
 
-	attempt_rows = _fetch_all(
+	attempt_rows = fetch_all(
 		db_path,
 		"SELECT id, customer_id, plan_id, total_points, earned_points, questions_total, questions_answered "
 		"FROM knowledge_quiz_attempts WHERE customer_id=? ORDER BY id",
@@ -79,7 +79,7 @@ def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
 	assert attempt_rows[0][2] is not None
 	assert attempt_rows[1][2] is not None
 
-	results_rows_a1 = _fetch_all(
+	results_rows_a1 = fetch_all(
 		db_path,
 		"SELECT attempt_id, question_id, correct, earned_points FROM knowledge_quiz_results WHERE attempt_id=?",
 		(a1["attemptId"],),
@@ -88,7 +88,7 @@ def test_quiz_attempt_is_persisted_and_allows_reattempts(tmp_path):
 	assert sum(r[2] for r in results_rows_a1) == 2  
 	assert sum(float(r[3]) for r in results_rows_a1) > 0.0
 
-	updated_attempt = _fetch_all(
+	updated_attempt = fetch_all(
 		db_path,
 		"SELECT questions_answered, earned_points, total_points FROM knowledge_quiz_attempts WHERE id=?",
 		(a1["attemptId"],),

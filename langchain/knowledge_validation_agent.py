@@ -42,7 +42,7 @@ async def setup_mcp_client():
 	return await client.get_tools()
 
 
-def _pick_tool(tools, name: str):
+def pick_tool(tools, name: str):
 	for t in tools:
 		if getattr(t, "name", None) == name:
 			return t
@@ -57,9 +57,9 @@ async def run_cli():
 	record_tool = None
 	if mode == "mcp":
 		tools = await setup_mcp_client()
-		questions_tool = _pick_tool(tools, "get_knowledge_questions")
-		start_attempt_tool = _pick_tool(tools, "start_knowledge_quiz_attempt")
-		record_tool = _pick_tool(tools, "record_knowledge_quiz_answer")
+		questions_tool = pick_tool(tools, "get_knowledge_questions")
+		start_attempt_tool = pick_tool(tools, "start_knowledge_quiz_attempt")
+		record_tool = pick_tool(tools, "record_knowledge_quiz_answer")
 
 	customer_id = prompt_int("Customer id: ", min_value=1)
 
@@ -90,10 +90,10 @@ async def run_cli():
 
 	print("\nTip: You can reattempt the quiz as many times as you want.")
 
-	def _letter(idx0: int) -> str:
+	def letter(idx0: int) -> str:
 		return chr(ord("A") + int(idx0))
 
-	def _format_header(idx: int, module_order: Any, weight: float) -> str:
+	def format_header(idx: int, module_order: Any, weight: float) -> str:
 		if module_order is None:
 			return f"Q{idx} ({weight:g} pt)"
 		return f"Q{idx} (Module {module_order} | {weight:g} pt)"
@@ -133,7 +133,7 @@ async def run_cli():
 			questions_done += 1
 
 			module_order = q.get("moduleOrder")
-			print(_format_header(idx, module_order, weight))
+			print(format_header(idx, module_order, weight))
 
 			prompt = q.get("prompt") or q.get("scenario")
 			if not prompt:
@@ -143,7 +143,7 @@ async def run_cli():
 			choices = q.get("choices")
 			if isinstance(choices, list) and q_type == "multiple_choice":
 				for c_idx, c in enumerate(choices):
-					print(f"{_letter(c_idx)}) {c}")
+					print(f"{letter(c_idx)}) {c}")
 				print("")
 				print("Answer choices: A-D (or 1-4)")
 			elif q_type == "true_false":
@@ -181,7 +181,7 @@ async def run_cli():
 			correct_letter = None
 			try:
 				correct_idx = int(q.get("correctIndex", 0))
-				correct_letter = _letter(correct_idx)
+				correct_letter = letter(correct_idx)
 			except Exception:
 				correct_letter = None
 			correct_expected = result.get("expected")

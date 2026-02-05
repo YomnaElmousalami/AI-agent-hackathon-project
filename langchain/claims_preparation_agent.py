@@ -37,14 +37,14 @@ async def setup_mcp_client():
 	return await client.get_tools()
 
 
-def _pick_tool(tools, name: str):
+def pick_tool(tools, name: str):
 	for t in tools:
 		if getattr(t, "name", None) == name:
 			return t
 	raise RuntimeError(f"Tool '{name}' not found")
 
 
-def _coerce_tool_result(res):
+def coerce_tool_result(res):
 	return coerce_tool_result(res)
 
 
@@ -63,9 +63,8 @@ async def run_cli():
 		await run_react_agent(agent, f"Prepare a claim packet for accident report id {report_id}.")
 		return
 
-	# Default: deterministic tool call
 	tools = await setup_mcp_client()
-	tool = _pick_tool(tools, "prepare_claim_packet")
+	tool = pick_tool(tools, "prepare_claim_packet")
 	res = await tool.ainvoke({"report_id": report_id})
 	res = coerce_tool_result(res)
 	print("\nClaim packet:")

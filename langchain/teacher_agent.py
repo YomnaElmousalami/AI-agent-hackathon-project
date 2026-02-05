@@ -18,7 +18,7 @@ import insurance_mcp
 from langchain.cli_utils import prompt_int, prompt_text
 
 
-def _pick_tool(tools, name: str):
+def pick_tool(tools, name: str):
     for t in tools:
         if getattr(t, "name", None) == name:
             return t
@@ -27,7 +27,7 @@ def _pick_tool(tools, name: str):
     )
 
 
-def _extract_int(s: str) -> int | None:
+def extract_int(s: str) -> int | None:
     m = re.search(r"\d+", s or "")
     return int(m.group(0)) if m else None
 
@@ -205,7 +205,7 @@ async def setup_mcp_client():
     return await client.get_tools()
 
 
-def _ensure_seed_data(db_path: str, customer_id: int):
+def ensure_seed_data(db_path: str, customer_id: int):
     """Optional convenience for local demos: if customer/profile/curriculum aren't present, create them."""
     with sqlite3.connect(db_path) as conn:
         conn.row_factory = sqlite3.Row
@@ -233,7 +233,7 @@ async def run_cli_local():
     customer_id = prompt_int("Customer id: ", min_value=1)
 
     if os.getenv("TEACHER_SEED_DEMO", "true").strip().lower() in {"1", "true", "yes", "on"}:
-        _ensure_seed_data(insurance_mcp.db_path, customer_id)
+        ensure_seed_data(insurance_mcp.db_path, customer_id)
 
     curriculum = insurance_mcp.get_curriculum_impl(customer_id)
     print("\nCurriculum modules:")
@@ -270,7 +270,7 @@ async def run_cli():
     """MCP/HTTP mode: uses tools for curriculum lookup + quiz session, but keeps lesson generation local."""
 
     tools = await setup_mcp_client()
-    get_curriculum_tool = _pick_tool(tools, "get_curriculum")
+    get_curriculum_tool = pick_tool(tools, "get_curriculum")
 
     customer_id = prompt_int("Customer id: ", min_value=1)
 

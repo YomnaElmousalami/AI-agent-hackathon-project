@@ -76,7 +76,7 @@ async def create_insurance_react_agent(*, prompt: str, transport: str = "stdio")
 	return create_react_agent(model=llm, tools=tools, prompt=prompt)
 
 
-def _extract_final_assistant_text(result: Any) -> Optional[str]:
+def extract_final_assistant_text(result: Any) -> Optional[str]:
 	"""Best-effort extraction of the final assistant message text."""
 
 	if isinstance(result, dict):
@@ -111,7 +111,7 @@ async def run_react_agent(agent, user_query: str, *, timeout_s: int = 60) -> Opt
 		print(f"Agent error: {e}")
 		return None
 
-	final_text = _extract_final_assistant_text(result)
+	final_text = extract_final_assistant_text(result)
 	if final_text:
 		print(final_text)
 	return final_text
@@ -127,7 +127,7 @@ def run_chat_loop(
 	`agent_factory` is an async callable returning an agent.
 	"""
 
-	async def _loop():
+	async def loop():
 		agent = await agent_factory()
 		for line in greeting_lines:
 			print(line)
@@ -144,4 +144,4 @@ def run_chat_loop(
 				break
 			await run_react_agent(agent, user_query)
 
-	asyncio.run(_loop())
+	asyncio.run(loop())

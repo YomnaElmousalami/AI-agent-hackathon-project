@@ -14,7 +14,7 @@ def temp_db(tmp_path, monkeypatch):
 	return str(db_file)
 
 
-def _seed_customer(db_path: str, customer_id: int = 1):
+def seed_customer(db_path: str, customer_id: int = 1):
 	with sqlite3.connect(db_path) as conn:
 		conn.execute(
 			"""
@@ -26,7 +26,7 @@ def _seed_customer(db_path: str, customer_id: int = 1):
 
 
 def test_escalate_routes_emergency_when_injuries(temp_db):
-	_seed_customer(temp_db, 1)
+	seed_customer(temp_db, 1)
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 	insurance_mcp.update_accident_report_impl(report_id=report_id, location="Norfolk, VA", injured_count=2, vehicles_drivable=True)
 	insurance_mcp.assess_accident_severity_impl(report_id=report_id)
@@ -39,7 +39,7 @@ def test_escalate_routes_emergency_when_injuries(temp_db):
 
 
 def test_escalate_routes_adjuster_when_medium(temp_db):
-	_seed_customer(temp_db, 1)
+	seed_customer(temp_db, 1)
 	report_id = insurance_mcp.start_accident_report_impl(customer_id=1)["reportId"]
 	insurance_mcp.update_accident_report_impl(report_id=report_id, location="Richmond, VA", injured_count=0, vehicles_drivable=False)
 	insurance_mcp.assess_accident_severity_impl(report_id=report_id)

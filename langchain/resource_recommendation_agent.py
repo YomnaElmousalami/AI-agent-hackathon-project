@@ -39,7 +39,7 @@ async def setup_mcp_client():
 	return await client.get_tools()
 
 
-def _pick_tool(tools, name: str):
+def pick_tool(tools, name: str):
 	for t in tools:
 		if getattr(t, "name", None) == name:
 			return t
@@ -63,7 +63,7 @@ async def run_cli():
 	rec_tool = None
 	if mode == "mcp":
 		tools = await setup_mcp_client()
-		rec_tool = _pick_tool(tools, "recommend_resources")
+		rec_tool = pick_tool(tools, "recommend_resources")
 
 	customer_id = prompt_int("Customer id: ", min_value=1)
 	topic = prompt_text("Topic you want resources for (deductible/claim/coverage/...): ", allow_empty=False)
