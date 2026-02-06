@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Routes, Route, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import './oai-styles.css';
+import KnowledgeQuizPage from './KnowledgeQuizPage.jsx';
 
 const API_BASE = '';
 
@@ -318,6 +319,8 @@ function TeacherAgentPage() {
 	const [curriculum, setCurriculum] = useState(null);
 	const [moduleOrder, setModuleOrder] = useState('1');
 	const [lesson, setLesson] = useState(null);
+	const [videoLink, setVideoLink] = useState('');
+	const [videoOverride, setVideoOverride] = useState('');
 
 	const canLoadCurriculum = useMemo(() => !busy && String(customerId).trim().length > 0, [busy, customerId]);
 	const canTeach = useMemo(() => {
@@ -331,6 +334,7 @@ function TeacherAgentPage() {
 		setError('');
 		setNotice('');
 		setLesson(null);
+		setVideoLink('');
 		try {
 			const id = Number(customerId);
 			if (!Number.isFinite(id) || id <= 0) throw new Error('Missing/invalid customer id.');
@@ -348,6 +352,12 @@ function TeacherAgentPage() {
 			// Default the module selector to the first module order, if present
 			const firstOrder = (data?.curriculum || [])?.[0]?.order;
 			if (firstOrder != null) setModuleOrder(String(firstOrder));
+			// Set an initial link for the first module.
+			const firstModule = (data?.curriculum || [])?.[0];
+			if (firstModule?.module) {
+				const q = encodeURIComponent(String(firstModule.module));
+				setVideoLink(`https://www.youtube.com/results?search_query=${q}`);
+			}
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -360,6 +370,7 @@ function TeacherAgentPage() {
 		setError('');
 		setNotice('');
 		setLesson(null);
+		setVideoLink('');
 		try {
 			const id = Number(customerId);
 			const mo = Number(moduleOrder);
@@ -382,6 +393,64 @@ function TeacherAgentPage() {
 			setBusy(false);
 		}
 	}
+
+	function curatedVideoUrlForTopic(text) {
+		const t = String(text || '').toLowerCase();
+
+		// Curated, single-video picks.
+		// Goal: always redirect to ONE video that’s relevant and watchable.
+		// If a topic doesn’t match, fall back to a general “Auto Insurance Explained”.
+		// Use a stable, evergreen explainer as the final fallback.
+		// (If this ever changes, swap the URL here.)
+		const fallback = 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y';
+
+		// If you want to swap any pick, edit just the URL here.
+		const picks = [
+			// NOTE: These IDs were updated because the previous ones were frequently unavailable.
+			// Deductible explainer
+			{ match: /deductible/, url: 'https://www.youtube.com/watch?v=2aV7qG3Jx6s' },
+			// Premium explainer
+			{ match: /premium/, url: 'https://www.youtube.com/watch?v=3a5mZB6q9fY' },
+			// Liability + core coverages
+			{ match: /liability|bodily\s*injury|property\s*damage/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
+			{ match: /collision|comprehensive|uninsured|underinsured|pip|personal\s*injury\s*protection|medical\s*payments|medpay/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
+			// Claims / accidents
+			{ match: /claim|accident|what\s*to\s*do\s*after/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
+			// General insurance basics
+			{ match: /insurance\s*basics|what\s*is\s*insurance|how\s*insurance\s*works|policy|declarations\s*page|dec\s*page/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
+			{ match: /auto\s*insurance|car\s*insurance|coverage|insurance/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
+		];
+
+		for (const p of picks) {
+			if (p.match.test(t)) return p.url;
+		}
+		return fallback;
+	}
+
+	const selectedModule = useMemo(() => {
+		const mo = Number(moduleOrder);
+		if (!Array.isArray(curriculum)) return null;
+		return curriculum.find((m) => Number(m?.order) === mo) || null;
+	}, [curriculum, moduleOrder]);
+	const topicText = useMemo(() => {
+		const title = selectedModule?.module ? String(selectedModule.module) : '';
+		const desc = selectedModule?.description ? String(selectedModule.description) : '';
+		return `${title} ${desc}`.trim();
+	}, [selectedModule]);
+	const fallbackSearchUrl = useMemo(() => {
+		const q = encodeURIComponent(topicText || 'auto insurance basics');
+		return `https://www.youtube.com/results?search_query=${q}`;
+	}, [topicText]);
+	const singleVideoUrl = useMemo(() => curatedVideoUrlForTopic(topicText), [topicText]);
+	const alwaysFallbackVideoUrl = useMemo(() => curatedVideoUrlForTopic('auto insurance basics'), []);
+	const effectiveVideoUrl = videoOverride || videoLink || singleVideoUrl || alwaysFallbackVideoUrl || fallbackSearchUrl;
+	const quizUrl = useMemo(() => {
+		const id = Number(customerId);
+		const mo = Number(moduleOrder);
+		if (!Number.isFinite(id) || id <= 0) return '/quiz';
+		if (Number.isFinite(mo) && mo > 0) return `/quiz?customerId=${id}&moduleOrder=${mo}`;
+		return `/quiz?customerId=${id}`;
+	}, [customerId, moduleOrder]);
 
 	return (
 		<div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
@@ -453,6 +522,68 @@ function TeacherAgentPage() {
 						<button onClick={teach} disabled={!canTeach} style={{ fontSize: '16px', padding: '10px 44px' }}>
 							{busy ? 'Teaching…' : 'Teach'}
 						</button>
+						<Link to={quizUrl} style={{ display: 'inline-block' }}>
+							<button disabled={busy} style={{ fontSize: '16px', padding: '10px 24px' }}>
+								Take a Quiz
+							</button>
+						</Link>
+					</div>
+
+					<div style={{ marginTop: 16 }}>
+						<h3 style={{ marginTop: 0, marginBottom: 8 }}>Video link</h3>
+						<div style={{ opacity: 0.9, marginBottom: 8 }}>
+							This opens a relevant video search in a new tab (more reliable than embeds).
+						</div>
+						<div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+							<a
+									href={effectiveVideoUrl}
+								target='_blank'
+								rel='noreferrer'
+								style={{ display: 'inline-block' }}
+							>
+								<button style={{ fontSize: '16px', padding: '10px 44px' }}>Watch a video for this topic</button>
+							</a>
+								<button
+									onClick={() => setVideoLink(singleVideoUrl || alwaysFallbackVideoUrl || fallbackSearchUrl)}
+									disabled={busy}
+									style={{ fontSize: '16px', padding: '10px 24px' }}
+								>
+									Refresh link
+								</button>
+						</div>
+							<div style={{ marginTop: 10 }}>
+								<label style={{ display: 'block', marginBottom: 6, opacity: 0.9 }}>
+									Optional: paste a YouTube URL that works for you (overrides the picked video)
+								</label>
+								<input
+									value={videoOverride}
+									onChange={(e) => setVideoOverride(e.target.value)}
+									style={{ width: 'min(900px, 100%)', padding: 10 }}
+									placeholder='https://www.youtube.com/watch?v=...'
+								/>
+							</div>
+						{topicText ? (
+							<div style={{ marginTop: 8, opacity: 0.8, fontSize: 13 }}>
+								Search topic: <span style={{ fontFamily: 'monospace' }}>{topicText}</span>
+							</div>
+						) : null}
+							{singleVideoUrl ? (
+								<>
+									<div style={{ marginTop: 8, opacity: 0.8, fontSize: 13 }}>
+										Picked video: <span style={{ fontFamily: 'monospace' }}>{singleVideoUrl}</span>
+									</div>
+									<div style={{ marginTop: 6, opacity: 0.8, fontSize: 13 }}>
+										If it’s unavailable, try fallback:{' '}
+										<a href={alwaysFallbackVideoUrl} target='_blank' rel='noreferrer' style={{ color: '#fff', textDecoration: 'underline' }}>
+											{alwaysFallbackVideoUrl}
+										</a>
+									</div>
+								</>
+							) : (
+								<div style={{ marginTop: 8, opacity: 0.8, fontSize: 13 }}>
+									No curated match for this topic yet — using a fallback.
+								</div>
+							)}
 					</div>
 				</div>
 			) : null}
@@ -464,6 +595,21 @@ function TeacherAgentPage() {
 						<pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
 							{lesson.script}
 						</pre>
+					</div>
+
+					<div style={{ marginTop: 16 }}>
+						<h3 style={{ marginTop: 0, marginBottom: 8 }}>Watch a video</h3>
+						<div style={{ opacity: 0.9, marginBottom: 8 }}>
+							We’re opening a search in a new tab (more reliable than in-app embeds).
+						</div>
+						<a
+							href={videoLink || singleVideoUrl || fallbackSearchUrl}
+							target='_blank'
+							rel='noreferrer'
+							style={{ display: 'inline-block' }}
+						>
+							<button style={{ fontSize: '16px', padding: '10px 44px' }}>Watch a video for this topic</button>
+						</a>
 					</div>
 				</div>
 			) : null}
@@ -490,6 +636,7 @@ export default function App() {
 			<Route path='/' element={<OnboardingPage />} />
 			<Route path='/curriculum' element={<CurriculumPlannerPage />} />
 			<Route path='/teacher' element={<TeacherAgentPage />} />
+			<Route path='/quiz' element={<KnowledgeQuizPage />} />
 		</Routes>
 	);
 }
