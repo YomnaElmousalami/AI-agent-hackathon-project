@@ -24,14 +24,12 @@ MEDIA_DIR = Path(os.getenv("MEDIA_DIR", os.path.join("generated_media"))).resolv
 
 app = FastAPI(title="Insurance AI-Agent API")
 
-# Ensure media dir exists (where generated videos are stored)
 MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
 try:
 	from fastapi.staticfiles import StaticFiles
 	app.mount("/media", StaticFiles(directory=str(MEDIA_DIR)), name="media")
 except Exception:
-	# StaticFiles import should exist in FastAPI; if it doesn't, video serving won't work.
 	pass
 
 app.add_middleware(
@@ -416,7 +414,6 @@ def ensure_ffmpeg_available() -> None:
 	if shutil.which("ffmpeg") is not None:
 		return
 	
-	# Best-effort fallback for Windows winget installs.
 	local_appdata = os.getenv("LOCALAPPDATA")
 	if local_appdata:
 		winget_root = Path(local_appdata) / "Microsoft" / "WinGet" / "Packages"
@@ -427,7 +424,6 @@ def ensure_ffmpeg_available() -> None:
 					os.environ["FFMPEG_BIN"] = str(candidates[0])
 					return
 		except Exception:
-			# Ignore and raise the standard error below.
 			pass
 
 	raise HTTPException(
@@ -441,7 +437,6 @@ def ensure_ffmpeg_available() -> None:
 
 
 def safe_filename(s: str) -> str:
-	# Keep it simple and filesystem-safe.
 	return re.sub(r"[^A-Za-z0-9._-]+", "_", (s or "").strip())[:120] or "lesson"
 
 
@@ -454,8 +449,7 @@ def render_lesson_to_mp4(*, title: str, script: str, out_path: Path) -> None:
 	out_path = Path(out_path)
 	out_path.parent.mkdir(parents=True, exist_ok=True)
 
-	# Note: drawtext needs a font. On Windows, using Arial typically works.
-	# Use textfile= to avoid messy escaping/quoting issues on Windows.
+
 	text = (title + "\n\n" + script).strip()
 	if len(text) > 8000:
 		text = text[:8000] + "\n..."
@@ -463,7 +457,6 @@ def render_lesson_to_mp4(*, title: str, script: str, out_path: Path) -> None:
 	text_file = out_path.with_suffix(".txt")
 	text_file.write_text(text, encoding="utf-8")
 
-	# Escape backslashes/colons in the *filename* portion per ffmpeg filter rules.
 	text_file_escaped = str(text_file).replace("\\", "\\\\").replace(":", "\\:")
 
 	filter_expr = (
@@ -543,7 +536,6 @@ def teacher_video(req: TeacherVideoRequest):
 		base = safe_filename(video_id + "_" + str(module.get("module")))
 		out_path = MEDIA_DIR / f"{base}.mp4"
 
-		# If already generated, don't regenerate.
 		if not out_path.exists():
 			render_lesson_to_mp4(title=str(lesson.title), script=str(script), out_path=out_path)
 
@@ -587,15 +579,12 @@ def teacher_embedded_video(req: TeacherEmbeddedVideoRequest):
 		if not module:
 			raise HTTPException(status_code=404, detail="Module not found for this curriculum")
 
-		# Reuse the existing naming used by /api/teacher/video so you don't
-		# generate duplicates.
+
 		video_id = f"c{customer_id}_m{module_order}"
 		base = safe_filename(video_id + "_" + str(module.get("module")))
 		out_path = MEDIA_DIR / f"{base}.mp4"
 
-		# If we already have a generated video, use it.
 		if not out_path.exists():
-			# Generate a simple MP4 lesson if ffmpeg exists.
 			age = 18
 			with sqlite3.connect(DB_PATH) as conn:
 				conn.row_factory = sqlite3.Row
@@ -630,7 +619,6 @@ def teacher_embedded_video(req: TeacherEmbeddedVideoRequest):
 
 def youtube_search_url(query: str) -> str:
 	q = (query or "").strip() or "insurance basics"
-	# Keep it simple: let YouTube handle relevance.
 	return "https://www.youtube.com/results?search_query=" + re.sub(r"\s+", "+", q)
 
 
@@ -641,8 +629,7 @@ def youtube_embed_search_url(query: str) -> str:
 	"""
 	q = (query or "").strip() or "insurance basics"
 	q = re.sub(r"\s+", "+", q)
-	# YouTube supports embedding search results via listType=search.
-	# Use the privacy-enhanced domain and add conservative parameters.
+
 	return f"https://www.youtube-nocookie.com/embed?listType=search&list={q}&rel=0&modestbranding=1"
 
 
@@ -654,7 +641,6 @@ def youtube_embed_for_video_id(video_id: str) -> str:
 	vid = (video_id or "").strip()
 	if not vid:
 		return ""
-	# Use the privacy-enhanced domain and add conservative parameters.
 	return f"https://www.youtube-nocookie.com/embed/{vid}?rel=0&modestbranding=1"
 
 
@@ -662,8 +648,7 @@ def vimeo_embed_for_video_id(video_id: str) -> str:
 	vid = (video_id or "").strip()
 	if not vid:
 		return ""
-	# Vimeo supports a straightforward embeddable player URL.
-	# We keep parameters minimal to avoid privacy/security surprises.
+
 	return f"https://player.vimeo.com/video/{vid}?dnt=1"
 
 
@@ -683,8 +668,7 @@ def curated_vimeo_videos_for_topic(topic: str) -> list[dict[str, str]]:
 	if not t:
 		return []
 
-	# Small curated set. If you want, we can replace these with your preferred
-	# videos later.
+
 	curated: dict[str, list[str]] = {
 		"insurance": ["76979871"],
 		"auto": ["76979871"],
@@ -779,18 +763,13 @@ def curated_youtube_videos_for_topic(topic: str) -> list[dict[str, str]]:
 	if not t:
 		return []
 
-	# A small, best-effort curated set of *commonly embeddable* videos.
-	# Motivation: without YOUTUBE_API_KEY, the best we can do is either:
-	# - embed a search playlist (can occasionally show "unavailable" depending on picks)
-	# - or embed a known working explainer video id.
-	# This list is intentionally small and topic-focused for demo reliability.
 	curated: dict[str, list[str]] = {
-		# General insurance basics
+
 		"insurance": [
-			"3n3c8G8oGg0",  # How Insurance Works (generic explainer)
-			"wGQG5g1Kp4o",  # Car Insurance Explained
+			"3n3c8G8oGg0",  
+			"wGQG5g1Kp4o",  
 		],
-		# Auto insurance / coverage
+
 		"auto": [
 			"wGQG5g1Kp4o",
 			"oE3oJ6g1p4o",
@@ -806,7 +785,6 @@ def curated_youtube_videos_for_topic(topic: str) -> list[dict[str, str]]:
 		],
 	}
 
-	# Pick the best matching keyword.
 	matched_ids: list[str] = []
 	for k, ids in curated.items():
 		if k in t:
@@ -848,8 +826,6 @@ def youtube_search_videos(*, query: str, max_results: int = 5) -> list[dict[str,
 	Returns a list of dicts: {videoId, title, channelTitle, url, embedUrl}
 	"""
 	key = youtube_api_key()
-	# If no key is configured, return an empty list (caller will fall back to a
-	# guaranteed embeddable search playlist URL).
 	if not key:
 		return []
 
@@ -916,16 +892,12 @@ def teacher_youtube(req: TeacherYoutubeRequest):
 
 		query = (module_title + " " + module_desc).strip()
 
-		# 1) Prefer official API results when available.
 		videos = youtube_search_videos(query=query, max_results=5)
 
-		# 2) Add curated stable videos as a fallback (no API needed).
 		curated = curated_youtube_videos_for_topic(module_title) or curated_youtube_videos_for_topic(query)
 		if curated:
-			# Prepend curated so the first embed is something we intended.
 			videos = curated + videos
 
-		# 3) Final fallback: embeddable search playlist (always watchable).
 		fallback_search_embed = youtube_embed_search_url(query)
 		embed_candidates = [v.get("embedUrl") for v in videos if v.get("embedUrl")] or [fallback_search_embed]
 		return {

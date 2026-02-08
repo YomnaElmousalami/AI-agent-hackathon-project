@@ -38,6 +38,7 @@ export default function KnowledgeQuizPage() {
 	const [selected, setSelected] = useState('');
 	const [graded, setGraded] = useState(null);
 	const [score, setScore] = useState({ earned: 0, possible: 0, correct: 0, total: 0 });
+	const [isFinished, setIsFinished] = useState(false);
 
 	const current = useMemo(() => (questions[idx] ? normalizeQuestion(questions[idx]) : null), [questions, idx]);
 
@@ -55,6 +56,7 @@ export default function KnowledgeQuizPage() {
 		setQuestions([]);
 		setIdx(0);
 		setScore({ earned: 0, possible: 0, correct: 0, total: 0 });
+		setIsFinished(false);
 		try {
 			const id = Number(customerId);
 			if (!Number.isFinite(id) || id <= 0) throw new Error('Missing/invalid customer id.');
@@ -111,6 +113,42 @@ export default function KnowledgeQuizPage() {
 		return ['A', 'B', 'C', 'D'][i] || String(i + 1);
 	}
 
+	function OptionRow({ value, label, text }) {
+		const disabled = busy || graded != null;
+		const isSelected = selected === String(value);
+		return (
+			<button
+				type='button'
+				disabled={disabled}
+				onClick={() => setSelected(String(value))}
+				style={{
+					width: '100%',
+					display: 'block',
+					textAlign: 'left',
+					padding: '10px 12px',
+					borderRadius: 8,
+					border: isSelected ? '2px solid #4da3ff' : '1px solid #333',
+					background: isSelected ? '#001b2b' : '#0b0b0f',
+					color: '#fff',
+					cursor: disabled ? 'not-allowed' : 'pointer',
+					fontSize: 15,
+					lineHeight: 1.4,
+				}}
+			>
+				<span
+					style={{
+						fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+						fontWeight: 700,
+						marginRight: 8,
+					}}
+				>
+					{label})
+				</span>
+				<span>{text}</span>
+			</button>
+		);
+	}
+
 	async function submitAnswer() {
 		setBusy(true);
 		setError('');
@@ -160,9 +198,14 @@ export default function KnowledgeQuizPage() {
 		setNotice('');
 		if (idx + 1 >= questions.length) {
 			setNotice('You finished the quiz!');
+			setIsFinished(true);
 			return;
 		}
 		setIdx((i) => i + 1);
+	}
+
+	async function retryQuiz() {
+		await startQuiz();
 	}
 
 	useEffect(() => {
@@ -228,7 +271,28 @@ export default function KnowledgeQuizPage() {
 						</div>
 					</div>
 
-					{current ? (
+					{isFinished ? (
+						<div style={{ marginTop: 12, background: '#0b0b0f', border: '1px solid #222', padding: 14, borderRadius: 8 }}>
+							<h2 style={{ marginTop: 0 }}>Quiz complete</h2>
+							<div style={{ marginTop: 8, opacity: 0.95, lineHeight: 1.6 }}>
+								<div>
+									Final score: <strong>{score.earned.toFixed(1)}</strong> / <strong>{score.possible.toFixed(1)}</strong>
+								</div>
+								<div>
+									Correct: <strong>{score.correct}</strong> out of <strong>{score.total}</strong>
+								</div>
+							</div>
+
+							<div style={{ marginTop: 14, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+								<button onClick={retryQuiz} disabled={busy} style={{ fontSize: '16px', padding: '10px 30px' }}>
+									{busy ? 'Restarting…' : 'Retry same quiz'}
+								</button>
+								<button onClick={() => navigate(teacherBackUrl)} disabled={busy} style={{ fontSize: '16px', padding: '10px 18px' }}>
+									Back to Teacher
+								</button>
+							</div>
+						</div>
+					) : current ? (
 						<div style={{ marginTop: 12, background: '#0b0b0f', border: '1px solid #222', padding: 14, borderRadius: 8 }}>
 							<div style={{ opacity: 0.8, fontSize: 13 }}>
 								{current.moduleTitle ? `Topic: ${current.moduleTitle}` : null}{current.moduleOrder != null ? ` (Module ${current.moduleOrder})` : null}
@@ -237,30 +301,23 @@ export default function KnowledgeQuizPage() {
 
 							<div style={{ marginTop: 12 }}>
 								{current.type === 'true_false' ? (
-									<div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-										<button disabled={busy || graded != null} onClick={() => setSelected('true')} style={{ padding: '10px 18px' }}>
-											True
-										</button>
-										<button disabled={busy || graded != null} onClick={() => setSelected('false')} style={{ padding: '10px 18px' }}>
-											False
-										</button>
-									</div>
+									<ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
+										<li style={{ marginTop: 10, paddingLeft: 0 }}>
+											<OptionRow value='true' label='A' text='True' />
+										</li>
+										<li style={{ marginTop: 10, paddingLeft: 0 }}>
+											<OptionRow value='false' label='B' text='False' />
+										</li>
+									</ul>
 								) : (
-									<ul style={{ margin: 0, paddingLeft: 18 }}>
+									<ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
 										{current.choices.map((c, i) => (
-											<li key={i} style={{ marginTop: 10 }}>
-												<label style={{ cursor: busy || graded != null ? 'not-allowed' : 'pointer' }}>
-													<input
-														type='radio'
-														name={`q-${current.id}`}
-														disabled={busy || graded != null}
-														checked={selected === choiceLabel(i)}
-														onChange={() => setSelected(choiceLabel(i))}
-													/>
-													<span style={{ marginLeft: 10 }}>
-														<strong>{choiceLabel(i)}.</strong> {String(c)}
-													</span>
-												</label>
+											<li key={i} style={{ marginTop: 10, paddingLeft: 0 }}>
+												<OptionRow
+													value={choiceLabel(i)}
+													label={choiceLabel(i)}
+													text={String(c)}
+												/>
 											</li>
 										))}
 									</ul>
