@@ -5,10 +5,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    host: '127.0.0.1',
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8801',
+        // Backend FastAPI server (see api_server.py / uvicorn).
+        target: 'http://127.0.0.1:8001',
         changeOrigin: true,
         secure: false,
       },

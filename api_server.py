@@ -15,7 +15,14 @@ from pydantic import BaseModel
 
 import insurance_mcp
 
-from langchain.teacher_agent import build_khan_style_lesson, render_lesson_script
+# NOTE: The FastAPI backend is used for deterministic endpoints (curriculum, knowledge quiz, etc.).
+# Some environments (notably Python 3.14+) may have incompatibilities with LangChain dependencies.
+# We keep the API server runnable by making teacher-agent helpers optional at import time.
+try:
+	from langchain.teacher_agent import build_khan_style_lesson, render_lesson_script  # type: ignore
+except Exception:  # pragma: no cover
+	build_khan_style_lesson = None  # type: ignore
+	render_lesson_script = None  # type: ignore
 
 
 DB_PATH = os.getenv("INSURANCE_DB_PATH", os.path.join("database", "insurance.db"))
@@ -86,6 +93,9 @@ class KnowledgeQuestionsRequest(BaseModel):
 	customer_id: int
 	limit: int = 10
 	module_order: int | None = None
+	# Optional: if provided, questions will be generated with a stable seed that
+	# matches the attempt. This prevents "Unknown question_id" when answering.
+	attempt_id: str | None = None
 
 
 class KnowledgeStartAttemptRequest(BaseModel):
@@ -104,7 +114,6 @@ class KnowledgeAnswerRequest(BaseModel):
 class KnowledgeModuleViewRequest(BaseModel):
 	customer_id: int
 	module_order: int
-
 
 def parse_onboarding_sentence(message: str) -> dict[str, Any]:
 	"""Parse a sentence like:
@@ -135,6 +144,8 @@ def parse_onboarding_sentence(message: str) -> dict[str, Any]:
 		raise ValueError("Couldn't find a 2-letter state code (e.g. VA, NY)")
 	state = m_state.group(1).upper()
 
+	# NOTE: Avoid unbounded backtracking here (these patterns are used on arbitrary user text).
+	# Keep captures short and stop at common separators.
 	m_name = re.search(r"\bmy\s*name\s*is\s*([^,\.]+)", text, re.IGNORECASE)
 	if not m_name:
 		raise ValueError("Couldn't find 'my name is ...'")
@@ -254,10 +265,36 @@ def show_curriculum(customer_id: int):
 def knowledge_questions(req: KnowledgeQuestionsRequest):
 	"""Return knowledge validation questions for a customer (optionally for a single module)."""
 	try:
+		seed: str | None = str(req.attempt_id) if req.attempt_id else None
+		# If caller didn't pass attempt_id, try to find the most recent attempt for
+		# this customer/module and use it as the seed.
+		if seed is None:
+			with sqlite3.connect(DB_PATH) as conn:
+				conn.row_factory = sqlite3.Row
+				row = conn.execute(
+					"""
+					SELECT id
+					FROM knowledge_quiz_attempts
+					WHERE customer_id = ?
+					  AND (? IS NULL OR module_order = ?)
+					ORDER BY rowid DESC
+					LIMIT 1;
+					""",
+					(
+						int(req.customer_id),
+						int(req.module_order) if req.module_order is not None else None,
+						int(req.module_order) if req.module_order is not None else None,
+					),
+				).fetchone()
+				if row is not None:
+					seed = str(row["id"])
+
 		qs = insurance_mcp.get_knowledge_questions_impl(
 			customer_id=int(req.customer_id),
 			limit=int(req.limit),
 			module_order=int(req.module_order) if req.module_order is not None else None,
+			mode="generated",
+			seed=seed,
 		)
 		return {"ok": True, "customerId": int(req.customer_id), "questions": qs}
 	except ValueError as e:
@@ -333,6 +370,15 @@ def teacher_lesson(req: TeacherLessonRequest):
 	This endpoint is intentionally deterministic (LLM-free) so the UI is stable.
 	"""
 	try:
+		if build_khan_style_lesson is None or render_lesson_script is None:
+			raise HTTPException(
+				status_code=501,
+				detail=(
+					"Teacher lesson generation isn't available in this environment. "
+					"(Optional LangChain dependencies failed to import.)"
+				),
+			)
+
 		customer_id = int(req.customer_id)
 		module_order = int(req.module_order)
 		if customer_id <= 0:

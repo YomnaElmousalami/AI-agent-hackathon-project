@@ -169,6 +169,7 @@ function CurriculumPlannerPage() {
 	function _isShowRequest(text) {
 		const t = (text || '').toLowerCase();
 		return t.includes('curriculum') && (t.includes('show') || t.includes('view') || t.includes('get') || t.includes('see'));
+				// (resources route removed)
 	}
 
 	function _isPlanRequest(text) {
@@ -317,24 +318,14 @@ function TeacherAgentPage() {
 	const [error, setError] = useState('');
 	const [notice, setNotice] = useState('');
 	const [curriculum, setCurriculum] = useState(null);
-	const [moduleOrder, setModuleOrder] = useState('1');
-	const [lesson, setLesson] = useState(null);
-	const [videoLink, setVideoLink] = useState('');
-	const [videoOverride, setVideoOverride] = useState('');
+	const [moduleOrder, setModuleOrder] = useState('');
 
 	const canLoadCurriculum = useMemo(() => !busy && String(customerId).trim().length > 0, [busy, customerId]);
-	const canTeach = useMemo(() => {
-		const id = Number(customerId);
-		const mo = Number(moduleOrder);
-		return !busy && Number.isFinite(id) && id > 0 && Number.isFinite(mo) && mo > 0;
-	}, [busy, customerId, moduleOrder]);
 
 	async function loadCurriculum() {
 		setBusy(true);
 		setError('');
 		setNotice('');
-		setLesson(null);
-		setVideoLink('');
 		try {
 			const id = Number(customerId);
 			if (!Number.isFinite(id) || id <= 0) throw new Error('Missing/invalid customer id.');
@@ -352,12 +343,6 @@ function TeacherAgentPage() {
 			// Default the module selector to the first module order, if present
 			const firstOrder = (data?.curriculum || [])?.[0]?.order;
 			if (firstOrder != null) setModuleOrder(String(firstOrder));
-			// Set an initial link for the first module.
-			const firstModule = (data?.curriculum || [])?.[0];
-			if (firstModule?.module) {
-				const q = encodeURIComponent(String(firstModule.module));
-				setVideoLink(`https://www.youtube.com/results?search_query=${q}`);
-			}
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -365,66 +350,80 @@ function TeacherAgentPage() {
 		}
 	}
 
-	async function teach() {
-		setBusy(true);
-		setError('');
-		setNotice('');
-		setLesson(null);
-		setVideoLink('');
-		try {
-			const id = Number(customerId);
-			const mo = Number(moduleOrder);
-			if (!Number.isFinite(id) || id <= 0) throw new Error('Missing/invalid customer id.');
-			if (!Number.isFinite(mo) || mo <= 0) throw new Error('Missing/invalid module order.');
-
-			const res = await fetch(`${API_BASE}/api/teacher/lesson`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ customer_id: id, module_order: mo }),
-			});
-			const data = await res.json().catch(() => null);
-			if (!res.ok) {
-				throw new Error(data?.detail || `Teaching request failed (${res.status})`);
-			}
-			setLesson(data?.lesson || null);
-		} catch (e) {
-			setError(e?.message || String(e));
-		} finally {
-			setBusy(false);
-		}
+	function _ytSearchUrl(query) {
+		const q = encodeURIComponent(String(query || '').trim() || 'auto insurance basics');
+		return `https://www.youtube.com/results?search_query=${q}`;
 	}
 
-	function curatedVideoUrlForTopic(text) {
-		const t = String(text || '').toLowerCase();
+	function curatedVideoUrlForModuleTitle(title) {
+		const t = String(title || '').trim();
+		if (!t) return _ytSearchUrl('auto insurance basics');
 
-		// Curated, single-video picks.
-		// Goal: always redirect to ONE video that’s relevant and watchable.
-		// If a topic doesn’t match, fall back to a general “Auto Insurance Explained”.
-		// Use a stable, evergreen explainer as the final fallback.
-		// (If this ever changes, swap the URL here.)
-		const fallback = 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y';
+		// Exact topic-to-video mapping per hackathon requirements.
+		// If a topic is specified as “YouTube search”, we intentionally return a search URL.
+		const map = {
+			'What is Insurance?': 'https://www.youtube.com/watch?v=SYnKjo8nbpg',
+			'Understanding Deductibles': 'https://www.youtube.com/watch?v=UoPN84v2KrU',
+			'Steps to Take During a Car Accident': _ytSearchUrl('what to do after a car accident steps YouTube'),
+			"Do’s and Don’ts of Safe Driving": _ytSearchUrl("safe driving tips do’s and don’ts YouTube"),
+			"Do's and Don'ts of Safe Driving": _ytSearchUrl("safe driving tips do’s and don’ts YouTube"),
+			'What is a Premium?': 'https://www.youtube.com/watch?v=cWEiafGi4QE',
+			'What is a Claim?': _ytSearchUrl('what is an insurance claim explained YouTube'),
+			'How to File a Claim': 'https://www.youtube.com/watch?v=lsq4hD6kg8o',
+			'What is Coverage?': 'https://www.youtube.com/watch?v=WaXyCIHVtXg',
+			'Types of Coverage for Auto Insurance': 'https://www.youtube.com/watch?v=q6ztnQLLZkg',
+			'Factors Affecting Insurance Rates': _ytSearchUrl('factors affecting auto insurance rates explained'),
+			'Tips for First-Time Drivers': 'https://www.youtube.com/watch?v=_sHAmGoKDWs',
+			'How Insurance Works for Young Drivers': 'https://www.youtube.com/watch?v=VJOMUeBvRWw',
+			'Impact of Driving History on Insurance Rates': _ytSearchUrl('impact of driving history on insurance rates YouTube'),
+			'The Importance of Safe Driving Courses': _ytSearchUrl('importance of safe driving courses insurance YouTube'),
+			'How to Maintain a Clean Driving Record': _ytSearchUrl('maintaining clean driving record tips YouTube'),
+			'Understanding Insurance Requirements for Student Drivers': _ytSearchUrl('student driver insurance requirements YouTube'),
+			'Common Auto Insurance Terms Explained': _ytSearchUrl('common auto insurance terms explained YouTube'),
+			'How to Choose the Right Insurance Plan': _ytSearchUrl('how to choose right car insurance plan YouTube'),
+			'Importance of Liability Coverage': _ytSearchUrl('What Is Liability Insurance Coverage? YouTube'),
+			'Understanding Comprehensive and Collision Coverage': _ytSearchUrl('comprehensive vs collision coverage YouTube'),
+			'How to Lower Your Insurance Premiums': _ytSearchUrl('how to lower insurance premiums YouTube'),
+			'Seasonal Driving Tips & Insurance Implications': _ytSearchUrl('seasonal driving tips insurance implications YouTube'),
+			'Impact of Traffic Violations on Insurance Rates': _ytSearchUrl('traffic violations effect on insurance rates YouTube'),
+			'How to Read Your Insurance Policy': _ytSearchUrl('how to read car insurance policy YouTube'),
+			'Benefits of Bundling Insurance Policies': _ytSearchUrl('benefits of bundling insurance policies YouTube'),
+			'Understanding No-Fault Insurance': _ytSearchUrl('no fault insurance explained YouTube'),
+			'What to Do in Case of a Total Loss': _ytSearchUrl('total loss claim explained car insurance YouTube'),
+			'How to Handle Uninsured Motorist Situations': _ytSearchUrl('Uninsured Motorist Insurance Explained YouTube'),
+			'Importance of Regular Vehicle Maintenance for Insurance': _ytSearchUrl('importance of vehicle maintenance insurance YouTube'),
+			'How to Update Your Insurance Policy': _ytSearchUrl('how to update insurance policy YouTube'),
+			'Understanding Policy Endorsements': _ytSearchUrl('policy endorsements auto insurance explained YouTube'),
+			'The Claims Process: Step-by-Step Guide': _ytSearchUrl('How Do Car Insurance Claims Work? YouTube'),
+			'How to Dispute a Denied Claim': _ytSearchUrl('dispute denied car insurance claim YouTube'),
+			'The Role of an Insurance Adjuster': _ytSearchUrl('insurance adjuster role explained YouTube'),
+			'Understanding Rental Car Coverage': _ytSearchUrl('rental car coverage explained auto insurance YouTube'),
+			'How to Switch Insurance Providers': _ytSearchUrl('how to switch auto insurance companies YouTube'),
+			'Impact of Life Changes on Insurance Needs': _ytSearchUrl('impact of life changes on insurance needs YouTube'),
+			'Understanding Roadside Assistance Coverage': _ytSearchUrl('roadside assistance coverage explained YouTube'),
+			'The Importance of Accurate Vehicle Info': _ytSearchUrl('accurate vehicle info auto insurance YouTube'),
+			'How to Avoid Insurance Fraud': _ytSearchUrl('how to avoid insurance fraud YouTube'),
+			'Understanding Gap Insurance': _ytSearchUrl('understanding gap insurance YouTube'),
+			'The Role of Telematics in Auto Insurance': _ytSearchUrl('telematics auto insurance YouTube'),
+			'Difference Between Actual Cash Value & Replacement Cost': _ytSearchUrl('ACV vs replacement cost car insurance YouTube'),
+			'How to Handle Multiple Vehicles on One Policy': _ytSearchUrl('multiple vehicles one policy auto insurance YouTube'),
+			'Impact of Driving History on Insurance': _ytSearchUrl('driving history impact insurance rates YouTube'),
+			'Understanding Grace Period for Premium Payments': _ytSearchUrl('grace period premium payments car insurance YouTube'),
+			'How to Get Discounts on Auto Insurance': _ytSearchUrl('how to get discounts on auto insurance YouTube'),
+			'Importance of Reviewing Policy Annually': _ytSearchUrl('importance reviewing insurance policy YouTube'),
+			'Difference Between State Minimums & Recommended Coverage': _ytSearchUrl('state minimum vs recommended coverage auto insurance YouTube'),
+			'How to Handle Insurance After a Move': _ytSearchUrl('insurance after move auto insurance YouTube'),
+			'The Role of Family Members in a Policy': _ytSearchUrl('role of family members insurance policy YouTube'),
+			'Impact of Vehicle Modifications on Insurance': _ytSearchUrl('vehicle modifications insurance impact YouTube'),
+			'How to Choose a Deductible Amount': _ytSearchUrl('how to choose a deductible amount YouTube'),
+			"Importance of Documenting Your Vehicle’s Condition": _ytSearchUrl('importance documenting vehicle condition for claims YouTube'),
+			"Importance of Documenting Your Vehicle's Condition": _ytSearchUrl('importance documenting vehicle condition for claims YouTube'),
+			'Difference Between Personal & Commercial Auto Insurance': _ytSearchUrl('personal vs commercial auto insurance YouTube'),
+		};
 
-		// If you want to swap any pick, edit just the URL here.
-		const picks = [
-			// NOTE: These IDs were updated because the previous ones were frequently unavailable.
-			// Deductible explainer
-			{ match: /deductible/, url: 'https://www.youtube.com/watch?v=2aV7qG3Jx6s' },
-			// Premium explainer
-			{ match: /premium/, url: 'https://www.youtube.com/watch?v=3a5mZB6q9fY' },
-			// Liability + core coverages
-			{ match: /liability|bodily\s*injury|property\s*damage/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
-			{ match: /collision|comprehensive|uninsured|underinsured|pip|personal\s*injury\s*protection|medical\s*payments|medpay/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
-			// Claims / accidents
-			{ match: /claim|accident|what\s*to\s*do\s*after/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
-			// General insurance basics
-			{ match: /insurance\s*basics|what\s*is\s*insurance|how\s*insurance\s*works|policy|declarations\s*page|dec\s*page/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
-			{ match: /auto\s*insurance|car\s*insurance|coverage|insurance/, url: 'https://www.youtube.com/watch?v=KZ8yGkB8f3Y' },
-		];
-
-		for (const p of picks) {
-			if (p.match.test(t)) return p.url;
-		}
-		return fallback;
+		if (map[t]) return map[t];
+		// Safe fallback for any other module title.
+		return _ytSearchUrl(t);
 	}
 
 	const selectedModule = useMemo(() => {
@@ -432,18 +431,8 @@ function TeacherAgentPage() {
 		if (!Array.isArray(curriculum)) return null;
 		return curriculum.find((m) => Number(m?.order) === mo) || null;
 	}, [curriculum, moduleOrder]);
-	const topicText = useMemo(() => {
-		const title = selectedModule?.module ? String(selectedModule.module) : '';
-		const desc = selectedModule?.description ? String(selectedModule.description) : '';
-		return `${title} ${desc}`.trim();
-	}, [selectedModule]);
-	const fallbackSearchUrl = useMemo(() => {
-		const q = encodeURIComponent(topicText || 'auto insurance basics');
-		return `https://www.youtube.com/results?search_query=${q}`;
-	}, [topicText]);
-	const singleVideoUrl = useMemo(() => curatedVideoUrlForTopic(topicText), [topicText]);
-	const alwaysFallbackVideoUrl = useMemo(() => curatedVideoUrlForTopic('auto insurance basics'), []);
-	const effectiveVideoUrl = videoOverride || videoLink || singleVideoUrl || alwaysFallbackVideoUrl || fallbackSearchUrl;
+	const selectedModuleTitle = useMemo(() => (selectedModule?.module ? String(selectedModule.module) : ''), [selectedModule]);
+	const effectiveVideoUrl = useMemo(() => curatedVideoUrlForModuleTitle(selectedModuleTitle), [selectedModuleTitle]);
 	const quizUrl = useMemo(() => {
 		const id = Number(customerId);
 		const mo = Number(moduleOrder);
@@ -463,7 +452,7 @@ function TeacherAgentPage() {
 
 			<div style={{ marginTop: 16 }}>
 				<div style={{ opacity: 0.95, lineHeight: 1.6 }}>
-					<div>Step 1: load your curriculum. Step 2: pick a module. Step 3: press Teach.</div>
+					<div>Step 1: load your curriculum. Step 2: pick a module.</div>
 				</div>
 			</div>
 
@@ -497,7 +486,7 @@ function TeacherAgentPage() {
 			{Array.isArray(curriculum) ? (
 				<div style={{ marginTop: 16 }}>
 					<h2 style={{ margin: 0 }}>Your Curriculum</h2>
-					<p style={{ marginTop: 8, opacity: 0.95 }}>Pick a module, then click Teach to get a short “Khan-style” lesson script.</p>
+					<p style={{ marginTop: 8, opacity: 0.95 }}>Pick a module, then watch the video or take a quiz.</p>
 					<ol style={{ textAlign: 'left' }}>
 						{curriculum.map((m, idx) => (
 							<li key={idx} style={{ marginBottom: 8 }}>
@@ -511,17 +500,23 @@ function TeacherAgentPage() {
 
 					<div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12 }}>
 						<div>
-							<label style={{ display: 'block', marginBottom: 6 }}>Module order</label>
-							<input
+							<label style={{ display: 'block', marginBottom: 6 }}>Module</label>
+							<select
 								value={moduleOrder}
 								onChange={(e) => setModuleOrder(e.target.value)}
-								style={{ width: 160, padding: 10 }}
-								placeholder='e.g. 1'
-							/>
+								disabled={!Array.isArray(curriculum) || curriculum.length === 0}
+								style={{ width: 520, maxWidth: '100%', padding: 10 }}
+							>
+								{Array.isArray(curriculum) && curriculum.length ? null : <option value=''>Load curriculum first…</option>}
+								{Array.isArray(curriculum)
+									? curriculum.map((m) => (
+										<option key={String(m?.order ?? m?.module)} value={String(m?.order ?? '')}>
+											{m?.order}. {m?.module}
+										</option>
+									))
+									: null}
+							</select>
 						</div>
-						<button onClick={teach} disabled={!canTeach} style={{ fontSize: '16px', padding: '10px 44px' }}>
-							{busy ? 'Teaching…' : 'Teach'}
-						</button>
 						<Link to={quizUrl} style={{ display: 'inline-block' }}>
 							<button disabled={busy} style={{ fontSize: '16px', padding: '10px 24px' }}>
 								Take a Quiz
@@ -531,88 +526,26 @@ function TeacherAgentPage() {
 
 					<div style={{ marginTop: 16 }}>
 						<h3 style={{ marginTop: 0, marginBottom: 8 }}>Video link</h3>
-						<div style={{ opacity: 0.9, marginBottom: 8 }}>
-							This opens a relevant video search in a new tab (more reliable than embeds).
-						</div>
 						<div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
 							<a
-									href={effectiveVideoUrl}
+								href={effectiveVideoUrl}
 								target='_blank'
 								rel='noreferrer'
 								style={{ display: 'inline-block' }}
 							>
 								<button style={{ fontSize: '16px', padding: '10px 44px' }}>Watch a video for this topic</button>
 							</a>
-								<button
-									onClick={() => setVideoLink(singleVideoUrl || alwaysFallbackVideoUrl || fallbackSearchUrl)}
-									disabled={busy}
-									style={{ fontSize: '16px', padding: '10px 24px' }}
-								>
-									Refresh link
-								</button>
-						</div>
-							<div style={{ marginTop: 10 }}>
-								<label style={{ display: 'block', marginBottom: 6, opacity: 0.9 }}>
-									Optional: paste a YouTube URL that works for you (overrides the picked video)
-								</label>
-								<input
-									value={videoOverride}
-									onChange={(e) => setVideoOverride(e.target.value)}
-									style={{ width: 'min(900px, 100%)', padding: 10 }}
-									placeholder='https://www.youtube.com/watch?v=...'
-								/>
-							</div>
-						{topicText ? (
-							<div style={{ marginTop: 8, opacity: 0.8, fontSize: 13 }}>
-								Search topic: <span style={{ fontFamily: 'monospace' }}>{topicText}</span>
-							</div>
-						) : null}
-							{singleVideoUrl ? (
-								<>
-									<div style={{ marginTop: 8, opacity: 0.8, fontSize: 13 }}>
-										Picked video: <span style={{ fontFamily: 'monospace' }}>{singleVideoUrl}</span>
-									</div>
-									<div style={{ marginTop: 6, opacity: 0.8, fontSize: 13 }}>
-										If it’s unavailable, try fallback:{' '}
-										<a href={alwaysFallbackVideoUrl} target='_blank' rel='noreferrer' style={{ color: '#fff', textDecoration: 'underline' }}>
-											{alwaysFallbackVideoUrl}
-										</a>
-									</div>
-								</>
-							) : (
-								<div style={{ marginTop: 8, opacity: 0.8, fontSize: 13 }}>
-									No curated match for this topic yet — using a fallback.
+							{selectedModuleTitle ? (
+								<div style={{ opacity: 0.9 }}>
+									Selected: <span style={{ fontWeight: 600 }}>{selectedModuleTitle}</span>
 								</div>
-							)}
-					</div>
-				</div>
-			) : null}
-
-			{lesson ? (
-				<div style={{ marginTop: 16 }}>
-					<h2 style={{ marginTop: 0 }}>{lesson.title}</h2>
-					<div style={{ marginTop: 8, background: '#0b0b0f', border: '1px solid #222', padding: 12, borderRadius: 8 }}>
-						<pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
-							{lesson.script}
-						</pre>
-					</div>
-
-					<div style={{ marginTop: 16 }}>
-						<h3 style={{ marginTop: 0, marginBottom: 8 }}>Watch a video</h3>
-						<div style={{ opacity: 0.9, marginBottom: 8 }}>
-							We’re opening a search in a new tab (more reliable than in-app embeds).
+							) : null}
 						</div>
-						<a
-							href={videoLink || singleVideoUrl || fallbackSearchUrl}
-							target='_blank'
-							rel='noreferrer'
-							style={{ display: 'inline-block' }}
-						>
-							<button style={{ fontSize: '16px', padding: '10px 44px' }}>Watch a video for this topic</button>
-						</a>
 					</div>
 				</div>
 			) : null}
+
+			{/* Teach functionality removed: no lesson panel */}
 
 			<div style={{ marginTop: 16 }}>
 				<Link to={customerIdParam ? `/curriculum?customerId=${customerIdParam}` : '/curriculum'} style={{ color: '#ffffff' }}>
@@ -637,6 +570,7 @@ export default function App() {
 			<Route path='/curriculum' element={<CurriculumPlannerPage />} />
 			<Route path='/teacher' element={<TeacherAgentPage />} />
 			<Route path='/quiz' element={<KnowledgeQuizPage />} />
+			{/* resources route removed */}
 		</Routes>
 	);
 }

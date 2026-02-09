@@ -3,7 +3,7 @@ import types
 
 import pytest
 
-from langchain import user_onboarding_agent as uoa
+import langchain.user_onboarding_agent as uoa
 
 
 class _FakeAgent:

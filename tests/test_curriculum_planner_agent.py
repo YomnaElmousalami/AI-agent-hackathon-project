@@ -1,6 +1,7 @@
 import pytest
 
-from langchain import curriculum_planner_agent as cpa
+from langchain.curriculum_planner_agent import handle_query as handle_query
+import langchain.curriculum_planner_agent as cpa
 
 
 class _FakeTool:

@@ -35,7 +35,81 @@ Continuous Improvement:
 
 
 ## Phase 2:
-To run the mcp: find "insurance_mcp.py" and type "python .\insurance_mcp.py" in command line and test on postman like it says on the buildathon instructions. 
+
+### Postman MCP testing (recommended)
+
+Postman expects an HTTP MCP endpoint (SSE-based) at:
+
+- `http://localhost:8000/mcp`
+
+Start the HTTP MCP server using:
+
+```powershell
+.\dev_mcp_postman.ps1
+```
+
+This script runs the Postman-friendly server runner (`run_mcp_postman.py`) using **Python 3.11** for stability.
+
+#### Windows note (Python 3.14)
+
+On some Windows + Python 3.14 setups, the MCP HTTP server may start and then immediately exit (which makes Postman show ECONNREFUSED / SSE fetch failed). If that happens, run the server using Python 3.11 via the helper script:
+
+```powershell
+.\dev_mcp_postman.ps1
+```
+
+If you want to try running the basic HTTP runner directly (may be unstable on Python 3.14):
+
+```powershell
+python .\run_mcp_http.py
+```
+
+Also, if Postman tries IPv6 first (`::1`), make sure `localhost` resolves to IPv4 (`127.0.0.1`) on your machine.
+
+#### Step-by-step: run MCP in Postman
+
+1) **Start the MCP server (Windows / Postman-friendly)**
+
+Open PowerShell at the repo root and run:
+
+```powershell
+.\dev_mcp_postman.ps1
+```
+
+This starts the MCP server using **Python 3.11** (more stable than Python 3.14 for MCP HTTP + SSE) and serves MCP at:
+
+- `http://localhost:8000/mcp`
+
+Keep this terminal running.
+
+2) **Connect Postman to your MCP server**
+
+- In Postman: **New** → choose **MCP**
+- Transport: **HTTP**
+- URL: **`http://localhost:8000/mcp`**
+
+Postman should auto-discover the tools from your server.
+
+3) **Execute a tool**
+
+Once connected, Postman will show a list of tools from `insurance_mcp.py`. Pick any tool, fill in the parameters form, and click **Send**.
+
+#### Troubleshooting
+
+- **SSE / ECONNREFUSED / ::1 (IPv6 localhost)**
+	- Postman sometimes tries IPv6 first (`::1`). If that fails, force IPv4 localhost:
+		- Edit (as Admin): `C:\Windows\System32\drivers\etc\hosts`
+		- Ensure these lines exist:
+			- `127.0.0.1 localhost`
+			- `# ::1 localhost`
+
+- **Port already in use**
+	- If port 8000 is busy, set before running the script:
+
+```powershell
+$env:MCP_PORT = "8000"   # change as needed
+.\dev_mcp_postman.ps1
+```
 
 ## Phase 3:
 Use a hugging face model, so far using llama3.2 but may change later: https://huggingface.co/models

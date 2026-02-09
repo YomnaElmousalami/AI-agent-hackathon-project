@@ -1,4 +1,4 @@
-from langchain import teacher_agent
+import langchain.teacher_agent as teacher_agent
 
 
 def test_build_khan_style_lesson_deductible_teen():

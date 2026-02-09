@@ -1030,7 +1030,7 @@ def submit_flashcard_answer_impl(session_id: str, card_id: str, answer: str) -> 
         "correct": correct,
         "score": score,
         "expected": expected,
-        "feedback": "Nice!" if correct else "Not quite — check the answer and try a similar one again.",
+        "feedback": "Nice!" if correct else "Not quite",
         "nextCard": next_card,
         "done": next_card is None,
     }
@@ -1048,6 +1048,291 @@ def knowledge_question_weight(q_type: str) -> float:
     return 1.0
 
 
+def _slugify_topic(text: str) -> str:
+    t = (text or "").strip().lower()
+    t = re.sub(r"[^a-z0-9\s_-]", "", t)
+    t = re.sub(r"[\s_-]+", "_", t).strip("_")
+    return t or "general"
+
+
+def _seed_token(text: str) -> str:
+    """Stable seed token for embedding inside question ids.
+
+    Important: must not contain underscores because question ids are underscore-delimited.
+    """
+
+    raw = (text or "").strip()
+    if not raw:
+        return "default"
+    # Keep alnum only to avoid separators; cap length for readability.
+    tok = re.sub(r"[^a-zA-Z0-9]", "", raw)
+    tok = tok[:32]
+    return tok or "default"
+
+
+def _topic_for_module(module_title: str, module_description: str) -> str:
+    """Deterministic mapping from module text -> topic key.
+
+    This is shared by both the legacy static bank and the new generator.
+    """
+
+    title_l = (module_title or "").lower()
+    desc_l = (module_description or "").lower()
+    combined = f"{title_l} {desc_l}".strip()
+
+    topic_keywords: list[tuple[str, list[str]]] = [
+        # Driving & safety
+        ("accident_steps", ["steps to take", "car accident", " accident", " crash"]),
+        (
+            "safe_driving",
+            [
+                "safe driving",
+                "do's and don'ts",
+                "driving tips",
+                "seasonal driving",
+                "clean driving record",
+            ],
+        ),
+        (
+            "rate_factors",
+            [
+                "insurance rates",
+                "rates",
+                "factors affecting",
+                "traffic violations",
+                "driving history",
+                "credit score",
+                "telematics",
+            ],
+        ),
+        ("discounts", ["discount", "discounts", "lower your insurance premiums", "bundling"]),
+        # Special coverages/situations
+        ("uninsured_motorist", ["uninsured motorist"]),
+        ("rental_car", ["rental car"]),
+        ("roadside", ["roadside assistance"]),
+        ("total_loss", ["total loss"]),
+        ("gap", ["gap insurance"]),
+        ("fraud", ["insurance fraud", " fraud"]),
+        # Core policy concepts
+        ("deductible", ["deduct"]),
+        ("premium", ["premium", "grace period"]),
+        ("claim", ["claim", "claims process", "file a claim", "denied claim", "dispute"]),
+        (
+            "policy_interpretation",
+            ["read your insurance policy", "policy", "declarations", "endorsement"],
+        ),
+        ("liability", ["liability"]),
+        ("coverage", ["types of coverage", "coverage", "coverages", "state minimum"]),
+        # Collision/comprehensive should be last because of the generic word "comprehensive"
+        (
+            "comp_collision",
+            ["comprehensive coverage", "collision coverage", " collision", " comprehensive "],
+        ),
+        # Other/special
+        ("vehicle_mods", ["vehicle modifications"]),
+        ("maintenance", ["vehicle maintenance"]),
+        ("switch_provider", ["switch insurance", "switch providers"]),
+        ("no_fault", ["no-fault", "no fault"]),
+        ("commercial_vs_personal", ["commercial auto", "personal and commercial"]),
+        ("multi_vehicle", ["multiple vehicles"]),
+        (
+            "young_driver",
+            ["first-time drivers", "young drivers", "student drivers", "safe driving courses"],
+        ),
+    ]
+
+    for t, kws in topic_keywords:
+        for kw in kws:
+            if kw and kw in combined:
+                return t
+    return "general"
+
+
+def generate_topic_aligned_questions(
+    *,
+    module_order: int,
+    module_title: str,
+    module_description: str,
+    count: int = 10,
+    seed: str | None = None,
+) -> List[Dict]:
+    """Generate *new* deterministic questions aligned to the detected topic.
+
+    Contract:
+    - Returns `count` questions (default 10).
+    - Mix: ~70% multiple-choice, ~30% true/false.
+    - Ids are unique per (module_order, seed) so quiz attempts can safely re-fetch.
+    - LLM-free.
+    """
+
+    mo = int(module_order)
+    topic = _topic_for_module(module_title, module_description)
+    # For ids we need topic to be a single underscore-delimited token.
+    topic_token = _slugify_topic(topic).replace("_", "") or "general"
+
+    # We intentionally avoid Python's built-in hash() because it's randomized per process.
+    seed_str = seed or now_date()
+    seed_slug = _seed_token(seed_str)
+
+    def qid(kind: str, i: int) -> str:
+        return f"kv2_m{mo}_{topic_token}_{seed_slug}_{kind}{i}"  # kv2 = new generator
+
+    def mc(i: int, prompt: str, choices: List[str], correct_index: int, explanation: str) -> Dict:
+        return {
+            "id": qid("mc", i),
+            "moduleOrder": mo,
+            "topic": topic,
+            "type": "multiple_choice",
+            "prompt": prompt,
+            "choices": choices,
+            "correctIndex": int(correct_index),
+            "expected": choices[int(correct_index)],
+            "explanation": explanation,
+            "weight": 1.0,
+        }
+
+    def tf(i: int, statement: str, correct: bool, explanation: str) -> Dict:
+        return {
+            "id": qid("tf", i),
+            "moduleOrder": mo,
+            "topic": topic,
+            "type": "true_false",
+            "prompt": f"True/False: {statement}",
+            "choices": ["True", "False"],
+            "correctIndex": 0 if bool(correct) else 1,
+            "expected": "True" if bool(correct) else "False",
+            "explanation": explanation,
+            "weight": 0.5,
+        }
+
+    # Templates per topic. We keep these short but specific.
+    templates: dict[str, list[Dict]] = {
+        "accident_steps": [
+            mc(
+                1,
+                "After ensuring everyone’s safety, what’s a good next step at the scene?",
+                [
+                    "Exchange info and document the scene",
+                    "Leave immediately",
+                    "Argue to decide fault",
+                    "Tell your insurer you already fixed everything",
+                ],
+                0,
+                "Documentation and exchanging info help with claims and safety.",
+            ),
+            mc(
+                2,
+                "Which information is most useful to collect from the other driver?",
+                [
+                    "Name, contact info, insurer, policy number, vehicle plate",
+                    "Their social media handle",
+                    "Their favorite restaurant",
+                    "Only their first name",
+                ],
+                0,
+                "Insurance and vehicle details are key for reporting.",
+            ),
+            tf(1, "Taking photos of vehicle damage and the intersection can help your claim.", True, "Photos are strong evidence."),
+            tf(2, "You should admit fault at the scene to speed everything up.", False, "Stick to facts; let insurers/police determine fault."),
+        ],
+        "safe_driving": [
+            mc(
+                1,
+                "Which habit best reduces crash risk in bad weather?",
+                ["Increase following distance", "Drive faster to get home", "Tailgate", "Turn off headlights"],
+                0,
+                "Space gives you time to react.",
+            ),
+            mc(
+                2,
+                "What’s a common insurance benefit of safe driving?",
+                ["Potential lower premiums/discounts", "Free gas", "No need for a license", "Guaranteed zero deductibles"],
+                0,
+                "Some carriers offer discounts for good driving behavior.",
+            ),
+            tf(1, "Distracted driving can lead to tickets and higher premiums.", True, "Violations and claims can increase cost."),
+            tf(2, "A clean driving record can help with both safety and cost.", True, "Lower risk often means lower price."),
+        ],
+        "rate_factors": [
+            mc(
+                1,
+                "Which factor commonly affects your auto insurance rate?",
+                ["Driving history", "Phone wallpaper", "Shoe size", "Favorite color"],
+                0,
+                "Past driving behavior is a key risk signal.",
+            ),
+            mc(
+                2,
+                "Why might an insurer offer telematics-based pricing?",
+                ["To price based on observed driving behavior", "To monitor your music", "To change your engine", "To avoid all claims"],
+                0,
+                "Usage-based insurance can reflect driving patterns.",
+            ),
+            tf(1, "Tickets and accidents can increase premiums.", True, "More risk often means higher cost."),
+            tf(2, "Your premium is always the same regardless of risk.", False, "Rates are tied to risk and underwriting."),
+        ],
+        "discounts": [
+            mc(
+                1,
+                "Which is a common way to earn an auto insurance discount?",
+                ["Bundling policies", "Driving with headlights off", "Ignoring renewal notices", "Paying late fees"],
+                0,
+                "Multi-policy bundling is a common discount.",
+            ),
+            mc(
+                2,
+                "Which practice can help keep costs down over time?",
+                ["Maintain a clean driving record", "Get more tickets", "File unnecessary claims", "Skip comparing quotes"],
+                0,
+                "Risk and claims frequency affect cost.",
+            ),
+            tf(1, "Some insurers offer good-student discounts.", True, "It depends on the carrier and eligibility."),
+            tf(2, "Discounts never change.", False, "Eligibility can change at renewal."),
+        ],
+    }
+
+    base = templates.get(topic)
+    if not base:
+        # Generic fallback aligned to the module by name.
+        base = [
+            mc(
+                1,
+                f"What is the main goal of the topic '{module_title}'?",
+                [
+                    "Learn an insurance concept and how to apply it",
+                    "Pick a new car color",
+                    "Learn cooking techniques",
+                    "Plan a vacation itinerary",
+                ],
+                0,
+                "This module is part of an insurance curriculum.",
+            ),
+            mc(
+                2,
+                "What’s a good first step if you’re unsure about coverage details?",
+                ["Review your policy documents and limits", "Assume full coverage for everything", "Ignore it", "Wait for a claim"],
+                0,
+                "Your declarations page/endorsements define coverage.",
+            ),
+            tf(1, "Insurance policies can include exclusions.", True, "Exclusions specify what’s not covered."),
+            tf(2, "Reading your policy can help you avoid surprises.", True, "Knowing limits/deductibles helps decisions."),
+        ]
+
+    # Expand deterministically to reach requested count.
+    out: List[Dict] = []
+    i = 0
+    while len(out) < int(count):
+        item = base[i % len(base)]
+        # Clone with a new id/index to keep uniqueness across the expanded list.
+        i += 1
+        cloned = dict(item)
+        kind = "mc" if cloned.get("type") == "multiple_choice" else "tf"
+        cloned["id"] = qid(kind, i)
+        out.append(cloned)
+
+    return out[: int(count)]
+
+
 def knowledge_bank_for_module(module_title: str, module_description: str, module_order: int) -> List[Dict]:
     """Deterministic question bank for a single curriculum module.
 
@@ -1055,28 +1340,10 @@ def knowledge_bank_for_module(module_title: str, module_description: str, module
     This is intentionally LLM-free so tests are stable.
     """
 
-    title_l = (module_title or "").lower()
-    desc_l = (module_description or "").lower()
-
     def qid(suffix: str) -> str:
         return f"kv_m{int(module_order)}_{suffix}"
 
-    if "deduct" in title_l or "deduct" in desc_l:
-        topic = "deductible"
-    elif "premium" in title_l or "premium" in desc_l:
-        topic = "premium"
-    elif "policy" in title_l or "endorsement" in title_l or "read your insurance policy" in title_l:
-        topic = "policy_interpretation"
-    elif "liability" in title_l:
-        topic = "liability"
-    elif "comprehensive" in title_l or "collision" in title_l:
-        topic = "comp_collision"
-    elif "coverage" in title_l or "cover" in title_l or "coverage" in desc_l:
-        topic = "coverage"
-    elif "claim" in title_l or "claim" in desc_l:
-        topic = "claim"
-    else:
-        topic = "general"
+    topic = _topic_for_module(module_title, module_description)
 
     def mc(suffix: str, prompt: str, choices: List[str], correct_index: int, explanation: str) -> Dict:
         return {
@@ -1496,6 +1763,490 @@ def knowledge_bank_for_module(module_title: str, module_description: str, module
             tf("tf5", "If you choose a higher deductible, your premium can sometimes be lower.", True, "That tradeoff is common."),
         ]
 
+    if topic == "accident_steps":
+        return [
+            mc(
+                "mc1",
+                "Right after a crash, what should you do first?",
+                ["Check for injuries and get to safety", "Argue with the other driver", "Drive away immediately", "Post online"],
+                0,
+                "Safety comes first: check injuries and move to a safe spot if you can.",
+            ),
+            mc(
+                "mc2",
+                "Which item is most helpful to document for an accident report/claim?",
+                ["Photos of damage + scene", "Only your favorite song", "The weather next week", "A random guess"],
+                0,
+                "Photos, location, and a timeline help insurers understand what happened.",
+            ),
+            mc(
+                "mc3",
+                "When should you exchange information with the other driver?",
+                ["After everyone is safe", "Never", "Only if they admit fault", "Only if you have full coverage"],
+                0,
+                "Once safe, exchange contact/insurance info and stick to facts.",
+            ),
+            mc(
+                "mc4",
+                "If police are required/appropriate, you should:",
+                ["Call and cooperate, then get the report number", "Wait a week", "Hide details", "Refuse to give any info"],
+                0,
+                "A police report can help document key facts.",
+            ),
+            mc(
+                "mc5",
+                "A good rule when talking about fault at the scene is:",
+                ["Share facts; let insurers decide fault", "Sign any document given", "Admit fault immediately", "Blame someone loudly"],
+                0,
+                "Stick to facts and evidence; fault decisions come later.",
+            ),
+            tf("tf1", "It’s helpful to take photos after an accident (if it’s safe).", True, "Photos are strong evidence."),
+            tf("tf2", "You should exchange insurance information after a crash.", True, "This is a standard step."),
+            tf("tf3", "You should leave the scene even if someone is injured.", False, "Leaving can be dangerous and illegal."),
+            tf("tf4", "Writing down the time/location can help later.", True, "It supports a clear timeline."),
+            tf("tf5", "Reporting promptly can matter for coverage.", True, "Policies often require prompt notice."),
+        ]
+
+    if topic == "safe_driving":
+        return [
+            mc(
+                "mc1",
+                "What’s a ‘do’ of safe driving?",
+                ["Keep a safe following distance", "Text while driving", "Speed in bad weather", "Ignore traffic signs"],
+                0,
+                "Space gives you time to react and reduces crash risk.",
+            ),
+            mc(
+                "mc2",
+                "In rain/snow, you should generally:",
+                ["Slow down and increase following distance", "Drive the same speed as dry roads", "Brake late", "Turn off headlights"],
+                0,
+                "Bad weather reduces traction and visibility.",
+            ),
+            mc(
+                "mc3",
+                "Why do safe driving habits matter for insurance?",
+                ["They can reduce accidents and keep rates lower", "They guarantee free insurance", "They replace a policy", "They remove all deductibles"],
+                0,
+                "Fewer violations/claims usually means lower risk (and often lower premiums).",
+            ),
+            mc(
+                "mc4",
+                "A ‘don’t’ of safe driving is:",
+                ["Driving distracted", "Scanning mirrors", "Using seatbelts", "Stopping at lights"],
+                0,
+                "Distraction increases crash risk.",
+            ),
+            mc(
+                "mc5",
+                "A defensive driving course might help by:",
+                ["Improving skills and sometimes earning a discount", "Making tickets disappear automatically", "Changing your deductible", "Canceling claims"],
+                0,
+                "Some insurers offer discounts for approved courses.",
+            ),
+            tf("tf1", "Speeding can increase accident risk.", True, "Higher speeds reduce reaction time."),
+            tf("tf2", "Safe driving can help keep your insurance rates lower over time.", True, "Rates track risk and history."),
+            tf("tf3", "Weather never affects stopping distance.", False, "Rain/snow increases stopping distance."),
+            tf("tf4", "Distracted driving can lead to tickets and accidents.", True, "Both can affect rates."),
+            tf("tf5", "Seatbelts help reduce injury severity.", True, "They’re a key safety feature."),
+        ]
+
+    if topic == "rate_factors":
+        return [
+            mc(
+                "mc1",
+                "Which can affect your auto insurance rate?",
+                ["Driving history", "Where you live", "How much coverage you buy", "All of the above"],
+                3,
+                "Rates reflect risk, location, and coverage choices.",
+            ),
+            mc(
+                "mc2",
+                "A traffic violation can:",
+                ["Increase your premium", "Always lower your premium", "Erase your deductible", "Guarantee claim payment"],
+                0,
+                "Violations can signal higher risk.",
+            ),
+            mc(
+                "mc3",
+                "Why might a higher annual mileage increase rates?",
+                ["More time driving can mean more exposure to crashes", "Because insurers dislike road trips", "It changes paint color", "It reduces coverage"],
+                0,
+                "More exposure can mean higher claim likelihood.",
+            ),
+            mc(
+                "mc4",
+                "Telematics programs generally track:",
+                ["Driving behavior (speeding/braking/time of day)", "Your car’s resale value", "Your phone contacts", "The weather"],
+                0,
+                "Usage-based insurance uses driving behavior/usage signals.",
+            ),
+            mc(
+                "mc5",
+                "More coverage/ lower deductibles often leads to:",
+                ["Higher premiums", "Lower premiums", "No change ever", "Illegal coverage"],
+                0,
+                "More protection usually costs more.",
+            ),
+            tf("tf1", "Tickets/accidents can impact your premium.", True, "They’re common rating factors."),
+            tf("tf2", "Where you park/garage a vehicle can affect risk.", True, "Location affects theft/crash risk."),
+            tf("tf3", "Rates are the same for everyone.", False, "Rates vary by risk factors."),
+            tf("tf4", "Coverage selections can change your premium.", True, "More coverage often costs more."),
+            tf("tf5", "Driving history is irrelevant to insurance rates.", False, "It’s one of the biggest factors."),
+        ]
+
+    if topic == "discounts":
+        return [
+            mc(
+                "mc1",
+                "Which is a common way to lower your premium?",
+                ["Ask about discounts and adjust deductible/coverage thoughtfully", "File unnecessary claims", "Hide tickets", "Cancel insurance"],
+                0,
+                "Discounts and smart coverage choices can reduce cost.",
+            ),
+            mc(
+                "mc2",
+                "Bundling usually means:",
+                ["Buying multiple policies (auto + renters/home) with one insurer", "Adding more deductibles", "Filing two claims", "Driving two cars"],
+                0,
+                "Bundling can sometimes earn a discount.",
+            ),
+            mc(
+                "mc3",
+                "A higher deductible often results in:",
+                ["Lower premium but more out-of-pocket if a claim happens", "Lower out-of-pocket always", "Guaranteed payout", "No change"],
+                0,
+                "You trade lower premiums for higher claim cost to you.",
+            ),
+            mc(
+                "mc4",
+                "Which could qualify as a discount?",
+                ["Good student / safe driver / multi-policy (depends on insurer)", "Late payments", "Multiple accidents", "Expired license"],
+                0,
+                "Discounts vary, but safe driving and bundling are common.",
+            ),
+            mc(
+                "mc5",
+                "The safest way to shop for savings is to:",
+                ["Compare quotes with the same coverages/limits", "Compare random prices with different coverages", "Pick the lowest without reading", "Ignore deductibles"],
+                0,
+                "Comparisons only make sense when coverage is comparable.",
+            ),
+            tf("tf1", "Bundling can sometimes reduce premiums.", True, "Many insurers offer multi-policy discounts."),
+            tf("tf2", "Raising your deductible can reduce premium.", True, "Common tradeoff."),
+            tf("tf3", "Discounts are identical at every insurer.", False, "They vary by insurer and state."),
+            tf("tf4", "Comparing quotes requires matching coverages.", True, "Otherwise it’s apples-to-oranges."),
+            tf("tf5", "Safe driving can help you earn discounts.", True, "Some programs reward behavior."),
+        ]
+
+    if topic == "uninsured_motorist":
+        return [
+            mc(
+                "mc1",
+                "Uninsured motorist coverage helps when:",
+                ["The at-fault driver has no insurance", "Your car needs gas", "You get a parking ticket", "You cancel your policy"],
+                0,
+                "It can protect you if the other driver is uninsured.",
+            ),
+            mc(
+                "mc2",
+                "What should you do after being hit by an uninsured driver?",
+                ["Report the accident and gather evidence", "Leave without info", "Hide the damage", "Wait months"],
+                0,
+                "Prompt reporting and evidence matter.",
+            ),
+            mc(
+                "mc3",
+                "Uninsured motorist may cover:",
+                ["Injuries to you/your passengers (varies by state/policy)", "Oil changes", "Your premium payments", "Traffic court fees"],
+                0,
+                "Coverage details vary, but it can help with injuries and sometimes property damage.",
+            ),
+            mc(
+                "mc4",
+                "A key reason to consider this coverage is:",
+                ["Not everyone carries enough insurance", "It replaces liability", "It cancels deductibles", "It forces the other driver to pay"],
+                0,
+                "It’s protection against others’ lack of coverage.",
+            ),
+            mc(
+                "mc5",
+                "If the other driver flees (hit-and-run), uninsured motorist may:",
+                ["Apply depending on your policy/state", "Never apply", "Always pay instantly", "Replace your premium"],
+                0,
+                "Many policies treat hit-and-run as uninsured, but rules vary.",
+            ),
+            tf("tf1", "Uninsured motorist coverage can be useful in a hit-and-run.", True, "Often, but depends on policy/state."),
+            tf("tf2", "It’s impossible to be hit by an uninsured driver.", False, "It happens."),
+            tf("tf3", "Coverage details can vary by state.", True, "Insurance is state-regulated."),
+            tf("tf4", "You should document and report promptly.", True, "Helps establish facts."),
+            tf("tf5", "Uninsured motorist is the same as liability coverage.", False, "They serve different purposes."),
+        ]
+
+    if topic == "rental_car":
+        return [
+            mc(
+                "mc1",
+                "Rental reimbursement typically helps pay for:",
+                ["A rental car while your car is being repaired for a covered claim", "Gas forever", "A new car", "Your deductible"],
+                0,
+                "It can cover rental costs up to a daily/total limit.",
+            ),
+            mc(
+                "mc2",
+                "Rental reimbursement usually has:",
+                ["Daily and total limits", "Unlimited coverage", "No rules", "No paperwork"],
+                0,
+                "Policies often cap $/day and max days.",
+            ),
+            mc(
+                "mc3",
+                "When would rental coverage apply?",
+                ["After a covered loss where your car can’t be used", "For vacations", "Any weekend", "Only when you speed"],
+                0,
+                "It’s tied to a covered claim.",
+            ),
+            mc(
+                "mc4",
+                "Before relying on this, you should check:",
+                ["Your policy limits and eligibility", "Your tire brand", "The other driver’s playlist", "Your car’s color"],
+                0,
+                "Limits and conditions matter.",
+            ),
+            mc(
+                "mc5",
+                "If the claim is denied, rental reimbursement typically:",
+                ["Wouldn’t apply", "Would still pay", "Becomes liability", "Cancels your premium"],
+                0,
+                "Coverage generally follows the covered claim.",
+            ),
+            tf("tf1", "Rental coverage often has a daily limit.", True, "Common structure."),
+            tf("tf2", "Rental coverage is usually unrelated to having a covered claim.", False, "It’s usually tied to covered loss."),
+            tf("tf3", "You should review limits/terms in your policy.", True, "Always."),
+            tf("tf4", "Rental reimbursement is the same as collision.", False, "Different coverage."),
+            tf("tf5", "Rental coverage may not be included unless you add it.", True, "Often optional."),
+        ]
+
+    if topic == "roadside":
+        return [
+            mc(
+                "mc1",
+                "Roadside assistance may help with:",
+                ["Towing, flat tire, jump-start (depending on plan)", "Paying your premium", "Replacing your car", "Traffic tickets"],
+                0,
+                "It’s for common breakdown-related services.",
+            ),
+            mc(
+                "mc2",
+                "Roadside assistance is typically:",
+                ["Optional add-on or included with some policies", "The same as liability", "Illegal", "Only for new cars"],
+                0,
+                "Depends on insurer/policy.",
+            ),
+            mc(
+                "mc3",
+                "A key thing to check is:",
+                ["Service limits and number of uses", "Your paint color", "Your radio station", "Your favorite snack"],
+                0,
+                "Many plans cap towing miles or calls.",
+            ),
+            mc(
+                "mc4",
+                "Roadside assistance primarily addresses:",
+                ["Breakdowns, not crash repairs", "Collision repairs", "Medical liability", "Policy limits"],
+                0,
+                "It’s separate from collision/comprehensive.",
+            ),
+            mc(
+                "mc5",
+                "If you also have a car club/credit card roadside benefit, you should:",
+                ["Compare benefits so you don’t pay twice", "Assume they’re identical", "Cancel insurance", "Ignore limits"],
+                0,
+                "Avoid duplicate coverage when possible.",
+            ),
+            tf("tf1", "Roadside assistance can include towing.", True, "Often included."),
+            tf("tf2", "Roadside assistance and collision coverage are the same.", False, "Different purposes."),
+            tf("tf3", "Roadside services may have limits.", True, "Common."),
+            tf("tf4", "You should know who to call (insurer/app/number).", True, "Helps in emergencies."),
+            tf("tf5", "Roadside assistance automatically covers any accident damage.", False, "That’s handled by other coverages."),
+        ]
+
+    if topic == "total_loss":
+        return [
+            mc(
+                "mc1",
+                "A total loss usually means:",
+                ["Repair cost is too high compared to the vehicle’s value", "The car has no tires", "You missed a payment", "You got a ticket"],
+                0,
+                "Insurers compare repair cost to the car’s value and state rules.",
+            ),
+            mc(
+                "mc2",
+                "If your car is totaled, the settlement is often based on:",
+                ["Actual cash value (ACV)", "Original sticker price always", "Your monthly premium", "A random number"],
+                0,
+                "Many policies pay ACV (market value) minus deductible (if applicable).",
+            ),
+            mc(
+                "mc3",
+                "If you still owe money on a totaled car, you might consider:",
+                ["Gap insurance (if eligible)", "Lowering liability limits", "Skipping documentation", "Ignoring the lender"],
+                0,
+                "Gap can cover the difference between ACV and loan balance in some cases.",
+            ),
+            mc(
+                "mc4",
+                "Asking for the valuation report helps because:",
+                ["You can review comparable vehicles and assumptions", "It makes coverage unlimited", "It cancels the deductible", "It changes your premium"],
+                0,
+                "You can verify comps, condition adjustments, etc.",
+            ),
+            mc(
+                "mc5",
+                "If you disagree with the value, a good next step is:",
+                ["Provide evidence (comps/condition/records) and ask for review", "Threaten without evidence", "Do nothing", "Delete records"],
+                0,
+                "Support your position with documentation.",
+            ),
+            tf("tf1", "Total loss settlements often use actual cash value.", True, "Common policy structure."),
+            tf("tf2", "A total loss always means the car is unrecoverable.", False, "It can be repairable but not economical."),
+            tf("tf3", "You can ask how the insurer calculated the value.", True, "You can request the valuation details."),
+            tf("tf4", "If you have a deductible, it may apply to certain coverages.", True, "Depending on the claim type."),
+            tf("tf5", "Keeping maintenance records can help support condition/value.", True, "Documentation helps."),
+        ]
+
+    if topic == "fraud":
+        return [
+            mc(
+                "mc1",
+                "Insurance fraud is:",
+                ["Lying or exaggerating to get paid by insurance", "Paying your premium", "Getting a quote", "Reading your policy"],
+                0,
+                "Fraud involves intentional deception.",
+            ),
+            mc(
+                "mc2",
+                "Which is a red flag you should avoid?",
+                ["A shop encouraging you to claim old damage as new", "Taking photos", "Keeping receipts", "Reporting honestly"],
+                0,
+                "Misrepresenting damage can be fraud.",
+            ),
+            mc(
+                "mc3",
+                "A possible consequence of fraud is:",
+                ["Denied claim and legal trouble", "Guaranteed payout", "Lower premiums", "Free upgrades"],
+                0,
+                "Fraud can lead to denial, cancellation, and prosecution.",
+            ),
+            mc(
+                "mc4",
+                "If you make an honest mistake on a claim, you should:",
+                ["Correct it as soon as possible", "Double down", "Destroy evidence", "Ignore the insurer"],
+                0,
+                "Prompt correction is best.",
+            ),
+            mc(
+                "mc5",
+                "The best approach when reporting is:",
+                ["Tell the truth and provide supporting documentation", "Guess details", "Inflate costs", "Copy someone else"],
+                0,
+                "Accuracy helps claims and avoids issues.",
+            ),
+            tf("tf1", "Exaggerating damage to get more money is fraud.", True, "That’s a classic example."),
+            tf("tf2", "Fraud can affect premiums for everyone.", True, "It increases costs system-wide."),
+            tf("tf3", "Fraud has no consequences.", False, "It can be serious."),
+            tf("tf4", "Honesty and documentation matter in claims.", True, "Best practice."),
+            tf("tf5", "It’s okay to claim damage that didn’t happen in the accident.", False, "That’s misrepresentation."),
+        ]
+
+    if topic == "gap":
+        return [
+            mc(
+                "mc1",
+                "Gap insurance is most relevant when:",
+                ["You owe more on a loan/lease than the car’s value", "You have a slow tire leak", "You want a lower deductible", "You got a ticket"],
+                0,
+                "It’s designed for loan/lease ‘gap’ scenarios.",
+            ),
+            mc(
+                "mc2",
+                "Why might there be a ‘gap’?",
+                ["Cars can depreciate faster than the loan balance", "Premiums are too low", "Liability limits are high", "Policies expire early"],
+                0,
+                "Depreciation can outpace principal payoff.",
+            ),
+            mc(
+                "mc3",
+                "Gap coverage typically applies after:",
+                ["A total loss covered by the policy", "Any oil change", "A parking ticket", "Switching insurers"],
+                0,
+                "It’s tied to total loss settlements.",
+            ),
+            mc(
+                "mc4",
+                "Gap insurance usually does NOT replace:",
+                ["Collision/comprehensive", "A phone plan", "A driver’s license", "A repair invoice"],
+                0,
+                "It complements your base coverage.",
+            ),
+            mc(
+                "mc5",
+                "A good way to know if you need gap is to compare:",
+                ["Loan/lease payoff vs current market value", "Your premium vs your deductible", "Your age vs your mileage", "Your tire pressure"],
+                0,
+                "Compare payoff and vehicle value.",
+            ),
+            tf("tf1", "Gap insurance is mainly about loan/lease balance vs vehicle value.", True, "That’s the point of gap."),
+            tf("tf2", "Gap is most relevant in a total loss scenario.", True, "It applies when the vehicle is totaled."),
+            tf("tf3", "Gap insurance is the same as liability.", False, "Different coverages."),
+            tf("tf4", "Depreciation can create a gap.", True, "Yes."),
+            tf("tf5", "You should review eligibility/terms.", True, "Rules vary by policy/lender."),
+        ]
+
+    if topic == "young_driver":
+        return [
+            mc(
+                "mc1",
+                "For new drivers, a key way to keep costs down is:",
+                ["Drive safely and avoid tickets/accidents", "File lots of claims", "Ignore seatbelts", "Speed to save time"],
+                0,
+                "Driving history is a major pricing factor.",
+            ),
+            mc(
+                "mc2",
+                "A common discount for teen/student drivers is:",
+                ["Good student discount (if offered)", "Late payment discount", "Accident discount", "Ticket discount"],
+                0,
+                "Many insurers offer good student discounts.",
+            ),
+            mc(
+                "mc3",
+                "Being listed correctly on a policy matters because:",
+                ["It ensures the insurer knows who drives the car", "It lowers deductible to zero", "It guarantees claim payment", "It changes car color"],
+                0,
+                "Accurate driver info is important for coverage and rating.",
+            ),
+            mc(
+                "mc4",
+                "A safe driving course can:",
+                ["Improve skills and maybe qualify for a discount", "Remove all limits", "Replace insurance", "Make you immune to accidents"],
+                0,
+                "Some policies offer discounts for course completion.",
+            ),
+            mc(
+                "mc5",
+                "For young drivers, why is insurance often more expensive?",
+                ["Less driving experience can mean higher risk", "Because cars are heavier", "Because deductibles are illegal", "Because premiums are random"],
+                0,
+                "Rates often reflect risk and experience.",
+            ),
+            tf("tf1", "Tickets can raise premiums for many drivers.", True, "Especially for new drivers."),
+            tf("tf2", "Good grades can sometimes help lower premiums.", True, "If the insurer offers a discount."),
+            tf("tf3", "It’s okay to leave a regular driver off the policy.", False, "That can create coverage/rating issues."),
+            tf("tf4", "Experience and history can affect rates.", True, "Common factor."),
+            tf("tf5", "Safe driving habits matter for both safety and cost.", True, "Win-win."),
+        ]
+
     return [
         mc(
             "mc1",
@@ -1541,7 +2292,7 @@ def knowledge_bank_for_module(module_title: str, module_description: str, module
         tf("tf2", "Policies can include exclusions.", True, "Exclusions define what’s not covered."),
         tf("tf3", "You never need to read your policy.", False, "Reading policy helps you know coverage."),
         tf("tf4", "Good evidence can speed up processes.", True, "Documentation helps."),
-        tf("tf5", "Coverage and cost depend on what you purchased.", True, "Your selections matter."),
+        tf("tf5", "Coverage and cost depend on what you purchased.", True, ""),
     ]
 
 
@@ -1554,6 +2305,8 @@ def get_knowledge_questions_impl(
     customer_id: int,
     limit: int = 3,
     module_order: int | None = None,
+    mode: str = "generated",
+    seed: str | None = None,
     database_path: str | None = None,
 ) -> List[Dict]:
     """Return a mixed question bank (MC + True/False) based on the user's curriculum.
@@ -1580,17 +2333,38 @@ def get_knowledge_questions_impl(
 
     selected_order = int(module_order) if module_order is not None else None
 
+    mode_l = (mode or "").strip().lower()
+    # For the new generator, ids depend on the seed. If callers don't pass a seed
+    # (e.g., simple previews), we still need stability so grading/recording can
+    # re-fetch the same question ids.
+    effective_seed = seed if seed is not None else "default"
+
     for m in curriculum:
         m_order = int(m.get("order"))
         if selected_order is not None and m_order != selected_order:
             continue
-        bank.extend(
-            knowledge_bank_for_module(
-                module_title=str(m.get("module")),
-                module_description=str(m.get("description")),
-                module_order=m_order,
+
+        module_title = str(m.get("module"))
+        module_description = str(m.get("description"))
+
+        if mode_l in {"legacy", "bank", "question_bank"}:
+            bank.extend(
+                knowledge_bank_for_module(
+                    module_title=module_title,
+                    module_description=module_description,
+                    module_order=m_order,
+                )
             )
-        )
+        else:
+            bank.extend(
+                generate_topic_aligned_questions(
+                    module_order=m_order,
+                    module_title=module_title,
+                    module_description=module_description,
+                    count=10,
+                    seed=effective_seed,
+                )
+            )
 
     bank.sort(key=lambda q: (int(q.get("moduleOrder", 0)), str(q.get("id", ""))))
 
@@ -1610,8 +2384,58 @@ def grade_knowledge_answer_impl(
 ) -> Dict:
     """Grade a knowledge validation answer and log a feedback event."""
 
-    bank = get_knowledge_questions_impl(int(customer_id), limit=200, database_path=database_path)
-    q = next((x for x in bank if x["id"] == question_id), None)
+    # IMPORTANT: the question bank is generated per module and concatenated.
+    # If ids aren't unique (or the bank differs between fetch and grade), the
+    # grader can't find the referenced question id and raises "Unknown question_id".
+    # We build a wide bank here (200 questions) and, when possible, narrow by
+    # module order encoded in the id format (e.g., 'kv_m3_mc1').
+    qid_text = str(question_id or "")
+
+    # Infer module order + generator seed from the question id.
+    # Supported formats:
+    # - Legacy bank: kv_m3_mc1
+    # - New generator: kv2_m3_{topic}_{seed}_mc1
+    inferred_module_order: int | None = None
+    inferred_seed: str | None = None
+
+    try:
+        if qid_text.startswith("kv2_m"):
+            # kv2_m{order}_{topicToken}_{seedToken}_{kind}{i}
+            # split: [kv2, m{order}, {topicToken}, {seedToken}, rest]
+            parts = qid_text.split("_")
+            if len(parts) >= 5:
+                m_part = parts[1]  # like 'm3'
+                if m_part.startswith("m") and m_part[1:].isdigit():
+                    inferred_module_order = int(m_part[1:])
+                inferred_seed = parts[3] or None
+        elif qid_text.startswith("kv_m"):
+            # kv_m3_mc1
+            tail = qid_text.split("kv_m", 1)[1]
+            digits = ""
+            for ch in tail:
+                if ch.isdigit():
+                    digits += ch
+                else:
+                    break
+            inferred_module_order = int(digits) if digits else None
+    except Exception:
+        inferred_module_order = None
+        inferred_seed = None
+
+    # Rebuild a wide-enough bank with the same generator + seed.
+    # For generated questions we must use the same seed that produced the id.
+    bank_mode = "generated" if qid_text.startswith("kv2_") else "legacy"
+    if bank_mode == "generated" and not inferred_seed:
+        inferred_seed = "default"
+    bank = get_knowledge_questions_impl(
+        int(customer_id),
+        limit=400,
+        module_order=inferred_module_order,
+        mode=bank_mode,
+        seed=inferred_seed,
+        database_path=database_path,
+    )
+    q = next((x for x in bank if x.get("id") == question_id), None)
     if not q:
         raise ValueError("Unknown question_id")
 
@@ -1679,7 +2503,7 @@ def grade_knowledge_answer_impl(
         "weight": weight,
         "type": q_type,
         "expected": expected,
-        "feedback": "Nice!" if correct else "Not quite — review the concept and try again.",
+    "feedback": "Nice!" if correct else "Not quite",
         "explanation": q.get("explanation", ""),
     }
 
@@ -1727,6 +2551,8 @@ def start_knowledge_quiz_attempt_impl(
             int(customer_id),
             limit=int(questions_limit),
             module_order=module_order,
+            mode="generated",
+            seed=attempt_id,
         )
     finally:
         if database_path is not None:
@@ -1806,11 +2632,27 @@ def record_knowledge_quiz_answer_impl(
     attempt_module_order = attempt["module_order"]
     attempt_module_order_int = int(attempt_module_order) if attempt_module_order is not None else None
 
+    # Determine which seed produced this question id.
+    # - If the caller fetched questions outside the attempt flow, ids use seed "default".
+    # - If they fetched questions for an attempt, we seed by attempt_id.
+    qid_text = str(question_id or "")
+    generation_seed = str(attempt_id)
+    if "_default_" in qid_text:
+        generation_seed = "default"
+
     prior_db_path = globals().get("db_path")
     if database_path is not None:
         globals()["db_path"] = database_path
     try:
-        graded = grade_knowledge_answer_impl(customer_id=int(customer_id), question_id=question_id, answer=answer)
+        # Grade must use same seed as the attempt question generation.
+        # We infer module order from the question id inside the grader.
+        prior_db_path_local = globals().get("db_path")
+        graded = grade_knowledge_answer_impl(
+            customer_id=int(customer_id),
+            question_id=question_id,
+            answer=answer,
+            database_path=None,
+        )
     finally:
         if database_path is not None:
             globals()["db_path"] = prior_db_path
@@ -1823,6 +2665,8 @@ def record_knowledge_quiz_answer_impl(
             int(customer_id),
             limit=200,
             module_order=attempt_module_order_int,
+            mode="generated",
+            seed=generation_seed,
         )
     finally:
         if database_path is not None:
@@ -3063,7 +3907,10 @@ if __name__ == "__main__":
     if transport == "stdio":
         mcp.run(transport="stdio")
     else:
-        stateless = os.getenv("MCP_STATELESS_HTTP", "false").strip().lower() in {"1", "true", "yes", "on"}
+        # Postman MCP support expects an SSE-style workflow. In practice, FastMCP's
+        # `stateless_http=True` is the most reliable mode on Windows dev machines.
+        # You can still force stateful mode by setting MCP_STATELESS_HTTP=false.
+        stateless = os.getenv("MCP_STATELESS_HTTP", "true").strip().lower() in {"1", "true", "yes", "on"}
         mcp.run(
             transport="http",
             host=os.getenv("MCP_HOST", "127.0.0.1"),
