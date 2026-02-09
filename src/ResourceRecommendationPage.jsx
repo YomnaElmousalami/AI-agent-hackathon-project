@@ -33,10 +33,10 @@ export default function ResourceRecommendationPage() {
 
 	const backUrl = useMemo(() => {
 		const id = Number(customerId);
-		if (!Number.isFinite(id) || id <= 0) return '/knowledge-quiz';
-		if (fromParam === 'quiz') return `/knowledge-quiz?customerId=${id}`;
+		if (!Number.isFinite(id) || id <= 0) return '/quiz';
+		if (fromParam === 'quiz') return `/quiz?customerId=${id}`;
 		if (fromParam === 'teacher') return `/teacher?customerId=${id}`;
-		return `/knowledge-quiz?customerId=${id}`;
+		return `/quiz?customerId=${id}`;
 	}, [customerId, fromParam]);
 
 	async function submit() {

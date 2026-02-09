@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Routes, Route, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import './oai-styles.css';
 import KnowledgeQuizPage from './KnowledgeQuizPage.jsx';
+import ResourceRecommendationPage from './ResourceRecommendationPage.jsx';
 
 const API_BASE = '';
 
@@ -570,7 +571,7 @@ export default function App() {
 			<Route path='/curriculum' element={<CurriculumPlannerPage />} />
 			<Route path='/teacher' element={<TeacherAgentPage />} />
 			<Route path='/quiz' element={<KnowledgeQuizPage />} />
-			{/* resources route removed */}
+			<Route path='/resources' element={<ResourceRecommendationPage />} />
 		</Routes>
 	);
 }

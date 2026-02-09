@@ -115,6 +115,18 @@ class KnowledgeModuleViewRequest(BaseModel):
 	customer_id: int
 	module_order: int
 
+
+class ResourceRecommendRequest(BaseModel):
+	customer_id: int
+	topic: str
+	state: str | None = None
+	limit: int = 8
+
+
+class ResourceSummarizeRequest(BaseModel):
+	resources: list[dict]
+	style: str = "general"
+
 def parse_onboarding_sentence(message: str) -> dict[str, Any]:
 	"""Parse a sentence like:
 	"Hey. My id is 2, my name is Samuel, I'm 16, I live in NY, my vehicle is a Toyota Camry, and my coverage type is full coverage."
@@ -357,6 +369,35 @@ def knowledge_record_module_view(req: KnowledgeModuleViewRequest):
 			module_order=int(req.module_order),
 		)
 		return {"ok": True, "view": row}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/resources/recommend")
+def recommend_resources(req: ResourceRecommendRequest):
+	"""Return curated, state-aware resource recommendations for a customer."""
+	try:
+		resources = insurance_mcp.recommend_resources_impl(
+			customer_id=int(req.customer_id),
+			topic=str(req.topic),
+			state=str(req.state) if req.state else None,
+			limit=int(req.limit),
+		)
+		return {"ok": True, "customerId": int(req.customer_id), "resources": resources}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/resources/summarize")
+def summarize_resources(req: ResourceSummarizeRequest):
+	"""Summarize a list of resources into one paragraph (deterministic)."""
+	try:
+		summary = insurance_mcp.summarize_resources_impl(list(req.resources or []), style=str(req.style or "general"))
+		return {"ok": True, **summary}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:

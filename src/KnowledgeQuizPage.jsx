@@ -286,6 +286,17 @@ export default function KnowledgeQuizPage() {
 		return Number.isFinite(id) && id > 0 ? `/teacher?customerId=${id}` : '/teacher';
 	}, [customerId, customerIdParam]);
 
+	const resourcesUrl = useMemo(() => {
+		const id = Number(customerId || customerIdParam);
+		if (!Number.isFinite(id) || id <= 0) return '/resources?from=quiz';
+		// Default topic: prefer module title if available, otherwise a generic starter.
+		const topicText = String(
+			curriculum.find((m) => String(m?.order ?? '') === String(moduleOrder))?.module ||
+			'auto insurance basics'
+		);
+		return `/resources?customerId=${id}&topic=${encodeURIComponent(topicText)}&from=quiz`;
+	}, [customerId, customerIdParam, curriculum, moduleOrder]);
+
 	return (
 		<div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -361,6 +372,9 @@ export default function KnowledgeQuizPage() {
 							<div style={{ marginTop: 14, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
 								<button onClick={retryQuiz} disabled={busy} style={{ fontSize: '16px', padding: '10px 30px' }}>
 									{busy ? 'Restarting…' : 'Retry same quiz'}
+								</button>
+								<button onClick={() => navigate(resourcesUrl)} disabled={busy} style={{ fontSize: '16px', padding: '10px 18px' }}>
+									Get learning resources
 								</button>
 								<button onClick={() => navigate(teacherBackUrl)} disabled={busy} style={{ fontSize: '16px', padding: '10px 18px' }}>
 									Back to Teacher
