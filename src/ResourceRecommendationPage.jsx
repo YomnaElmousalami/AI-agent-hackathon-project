@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
-const API_BASE = '';
+// In dev, Vite proxies /api -> backend (see vite.config.js). So we should use
+// a relative base; otherwise, you can trip over port mismatches.
+// In prod builds, you can set VITE_API_BASE to your deployed backend URL.
+const API_BASE = import.meta.env?.VITE_API_BASE || '';
 
 function normalizeResource(r) {
 	return {
@@ -54,9 +57,17 @@ export default function ResourceRecommendationPage() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ customer_id: id, topic: t, limit: 8 }),
 			});
-			const data = await res.json().catch(() => null);
+			const raw = await res.text().catch(() => '');
+			const data = raw ? (() => {
+				try {
+					return JSON.parse(raw);
+				} catch {
+					return null;
+				}
+			})() : null;
 			if (!res.ok) {
-				throw new Error(data?.detail || `Request failed (${res.status})`);
+				const detail = data?.detail || raw || '';
+				throw new Error(detail ? `Request failed (${res.status}): ${detail}` : `Request failed (${res.status})`);
 			}
 			const list = Array.isArray(data?.resources) ? data.resources : [];
 			setResources(list.map(normalizeResource));
