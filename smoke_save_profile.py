@@ -1,15 +1,3 @@
-"""Tiny smoke test: POST a profile to the API and verify it was written to SQLite.
-
-Run this while the API is up:
-  python .\\smoke_save_profile.py
-
-It will:
-- POST to /api/profile
-- Check the `customers` table for that id
-
-This avoids needing Postman while you iterate on the UI.
-"""
-
 from __future__ import annotations
 
 import json
