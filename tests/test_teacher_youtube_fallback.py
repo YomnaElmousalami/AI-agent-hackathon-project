@@ -10,7 +10,6 @@ def test_teacher_youtube_falls_back_to_embed_search_when_no_api_key(monkeypatch)
 	from api_server import app
 	import insurance_mcp
 
-	# Ensure curriculum exists for this id.
 	customer_id = 9991
 	insurance_mcp.get_customer_info_impl(
 		id=customer_id,
@@ -23,7 +22,6 @@ def test_teacher_youtube_falls_back_to_embed_search_when_no_api_key(monkeypatch)
 	try:
 		insurance_mcp.plan_curriculum_impl(customer_id)
 	except Exception:
-		# It's ok if it already exists.
 		pass
 
 	client = TestClient(app)
@@ -32,11 +30,9 @@ def test_teacher_youtube_falls_back_to_embed_search_when_no_api_key(monkeypatch)
 	data = res.json()
 	assert data.get("ok") is True
 
-	# The important bit: user can watch.
 	embed_url = data.get("embedUrl") or ""
 	assert embed_url.startswith(
 		("https://www.youtube.com/embed", "https://www.youtube-nocookie.com/embed")
 	)
 
-	# There should also be a normal search URL for "open in YouTube".
 	assert (data.get("searchUrl") or "").startswith("https://www.youtube.com/")
