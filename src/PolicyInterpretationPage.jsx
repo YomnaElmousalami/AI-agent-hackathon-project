@@ -20,6 +20,7 @@ export default function PolicyInterpretationPage() {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [result, setResult] = useState(null);
+	const [llmResponse, setLlmResponse] = useState('');
 
 	const canRun = useMemo(() => !busy && String(reportId).trim().length > 0, [busy, reportId]);
 
@@ -27,6 +28,7 @@ export default function PolicyInterpretationPage() {
 		setBusy(true);
 		setError('');
 		setResult(null);
+		setLlmResponse('');
 		try {
 			const rid = String(reportId).trim();
 			const res = await fetch(`${API_BASE}/api/policy/interpret`, {
@@ -37,6 +39,9 @@ export default function PolicyInterpretationPage() {
 			const data = await res.json().catch(() => null);
 			if (!res.ok) throw new Error(data?.detail || `Request failed (${res.status})`);
 			setResult(data);
+			if (data?.llmResponse) {
+				setLlmResponse(String(data.llmResponse));
+			}
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -84,6 +89,13 @@ export default function PolicyInterpretationPage() {
 					<pre style={{ whiteSpace: 'pre-wrap', background: '#101820', border: '1px solid #223344', padding: 12 }}>
 						{asText(result)}
 					</pre>
+				</div>
+			) : null}
+
+			{llmResponse ? (
+				<div style={{ marginTop: 16, background: '#0b1a2b', border: '1px solid #1f3b5d', padding: 12 }}>
+					<strong>Assistant response:</strong>
+					<div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{llmResponse}</div>
 				</div>
 			) : null}
 		</div>

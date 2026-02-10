@@ -13,6 +13,13 @@ from langchain.cli_utils import coerce_tool_result, read_prompt_or_stdin
 from langchain.agent_runner import create_insurance_react_agent, run_react_agent
 
 
+PROMPT = (
+	"You are the Policy Interpretation Agent for an auto insurance assistant.\n"
+	"Use the MCP tool interpret_policy(report_id) to retrieve coverage and deductible expectations.\n"
+	"Then explain the result clearly in 5-10 bullet points, including assumptions/exclusions if present.\n"
+)
+
+
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
 
@@ -53,12 +60,7 @@ async def run_cli():
 	report_id = read_prompt_or_stdin("Accident report id: ")
 
 	if mode in {"agent", "react", "llm"}:
-		prompt = (
-			"You are the Policy Interpretation Agent for an auto insurance assistant.\n"
-			"Use the MCP tool interpret_policy(report_id) to retrieve coverage and deductible expectations.\n"
-			"Then explain the result clearly in 5-10 bullet points, including assumptions/exclusions if present.\n"
-		)
-		agent = await create_insurance_react_agent(prompt=prompt, transport="stdio")
+		agent = await create_insurance_react_agent(prompt=PROMPT, transport="stdio")
 		await run_react_agent(agent, f"Interpret the policy for accident report id {report_id}.")
 		return
 
@@ -79,6 +81,11 @@ async def run_cli():
 		print("Possible exclusions:")
 		for e in res["exclusions"]:
 			print(f"- {e}")
+
+
+async def run_llm(report_id: str) -> str | None:
+	agent = await create_insurance_react_agent(prompt=PROMPT, transport="stdio")
+	return await run_react_agent(agent, f"Interpret the policy for accident report id {report_id}.")
 
 
 if __name__ == "__main__":

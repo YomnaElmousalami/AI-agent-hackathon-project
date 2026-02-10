@@ -16,6 +16,14 @@ from langchain.cli_utils import coerce_tool_result, read_prompt_or_stdin
 from langchain.agent_runner import create_insurance_react_agent, run_react_agent
 
 
+PROMPT = (
+	"You are the Action Plan Agent for an auto insurance accident assistant.\n"
+	"Use generate_action_plan(report_id) to get structured next steps and timelines.\n"
+	"Then reformat as a clear checklist with priorities and a short timeline.\n"
+	"If severity is high, put safety/medical steps first.\n"
+)
+
+
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
 
@@ -52,13 +60,7 @@ async def run_cli():
 	report_id = read_prompt_or_stdin("Accident report id: ")
 
 	if mode in {"agent", "react", "llm"}:
-		prompt = (
-			"You are the Action Plan Agent for an auto insurance accident assistant.\n"
-			"Use generate_action_plan(report_id) to get structured next steps and timelines.\n"
-			"Then reformat as a clear checklist with priorities and a short timeline.\n"
-			"If severity is high, put safety/medical steps first.\n"
-		)
-		agent = await create_insurance_react_agent(prompt=prompt, transport="stdio")
+		agent = await create_insurance_react_agent(prompt=PROMPT, transport="stdio")
 		await run_react_agent(agent, f"Generate an action plan for accident report id {report_id}.")
 		return
 
@@ -77,6 +79,11 @@ async def run_cli():
 	print("\nTimeline:")
 	for t in res.get("timelines", []):
 		print(f"- {t.get('when')}: {t.get('what')}")
+
+
+async def run_llm(report_id: str) -> str | None:
+	agent = await create_insurance_react_agent(prompt=PROMPT, transport="stdio")
+	return await run_react_agent(agent, f"Generate an action plan for accident report id {report_id}.")
 
 
 if __name__ == "__main__":

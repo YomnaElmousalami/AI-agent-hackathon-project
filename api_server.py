@@ -1,4 +1,5 @@
 import os
+import asyncio
 import shutil
 import subprocess
 from pathlib import Path
@@ -23,6 +24,36 @@ try:
 except Exception:  # pragma: no cover
 	build_khan_style_lesson = None  # type: ignore
 	render_lesson_script = None  # type: ignore
+
+try:
+	import langchain.user_onboarding_agent as user_onboarding_agent  # type: ignore
+except Exception:  # pragma: no cover
+	user_onboarding_agent = None  # type: ignore
+
+try:
+	import langchain.curriculum_planner_agent as curriculum_planner_agent  # type: ignore
+except Exception:  # pragma: no cover
+	curriculum_planner_agent = None  # type: ignore
+
+try:
+	import langchain.policy_interpretation_agent as policy_interpretation_agent  # type: ignore
+except Exception:  # pragma: no cover
+	policy_interpretation_agent = None  # type: ignore
+
+try:
+	import langchain.claims_preparation_agent as claims_preparation_agent  # type: ignore
+except Exception:  # pragma: no cover
+	claims_preparation_agent = None  # type: ignore
+
+try:
+	import langchain.action_plan_agent as action_plan_agent  # type: ignore
+except Exception:  # pragma: no cover
+	action_plan_agent = None  # type: ignore
+
+try:
+	import langchain.escalation_and_routing_agent as escalation_and_routing_agent  # type: ignore
+except Exception:  # pragma: no cover
+	escalation_and_routing_agent = None  # type: ignore
 
 
 DB_PATH = os.getenv("INSURANCE_DB_PATH", os.path.join("database", "insurance.db"))
@@ -205,6 +236,42 @@ def parse_onboarding_sentence(message: str) -> dict[str, Any]:
 	}
 
 
+async def _run_onboarding_llm(message: str) -> tuple[str | None, str | None]:
+	"""Run the LangGraph onboarding agent and return its final text (if any)."""
+
+	if user_onboarding_agent is None:
+		return None, "onboarding_agent_unavailable"
+
+	try:
+		agent = await user_onboarding_agent.initialize_agent()
+		text = await asyncio.wait_for(
+			user_onboarding_agent.run_agent(agent, message),
+			timeout=60,
+		)
+		return text, None
+	except Exception as e:
+		return None, str(e)
+
+
+async def _call_llm(fn, *args, **kwargs) -> tuple[str | None, str | None]:
+	if fn is None:
+		return None, "agent_unavailable"
+	try:
+		text = await fn(*args, **kwargs)
+		return text, None
+	except Exception as e:
+		return None, str(e)
+
+
+def _run_llm_sync(fn, *args, **kwargs) -> tuple[str | None, str | None]:
+	try:
+		return asyncio.run(_call_llm(fn, *args, **kwargs))
+	except RuntimeError:
+		return None, "event_loop_running"
+	except Exception as e:
+		return None, str(e)
+
+
 @app.post("/api/onboard")
 def onboard(req: OnboardRequest):
 	try:
@@ -231,7 +298,22 @@ def onboard(req: OnboardRequest):
 			coverageType=str(parsed["coverageType"]),
 		)
 
-	return {"ok": True, "parsed": parsed, "saved": result}
+	llm_response = None
+	llm_error = None
+	try:
+		llm_response, llm_error = asyncio.run(_run_onboarding_llm(req.message))
+	except RuntimeError:
+		# Event loop already running (unlikely in sync FastAPI handler); skip LLM.
+		llm_response = None
+		llm_error = "event_loop_running"
+
+	return {
+		"ok": True,
+		"parsed": parsed,
+		"saved": result,
+		"llmResponse": llm_response,
+		"llmError": llm_error,
+	}
 
 
 @app.get("/api/health")
@@ -276,7 +358,20 @@ def plan_curriculum(req: CurriculumRequest):
 			plan = insurance_mcp.plan_curriculum_impl(int(req.customer_id))
 		except AttributeError:
 			plan = insurance_mcp.plan_curriculum(int(req.customer_id))
-		return {"ok": True, "customerId": int(req.customer_id), "curriculum": plan}
+
+		llm_response, llm_error = _run_llm_sync(
+			getattr(curriculum_planner_agent, "run_llm", None),
+			int(req.customer_id),
+			action="plan",
+		)
+
+		return {
+			"ok": True,
+			"customerId": int(req.customer_id),
+			"curriculum": plan,
+			"llmResponse": llm_response,
+			"llmError": llm_error,
+		}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:
@@ -288,7 +383,18 @@ def show_curriculum(customer_id: int):
 	"""Get a persisted curriculum plan (impl equivalent: get_curriculum_impl)."""
 	try:
 		curriculum = insurance_mcp.get_curriculum_impl(int(customer_id))
-		return {"ok": True, "customerId": int(customer_id), "curriculum": curriculum}
+		llm_response, llm_error = _run_llm_sync(
+			getattr(curriculum_planner_agent, "run_llm", None),
+			int(customer_id),
+			action="show",
+		)
+		return {
+			"ok": True,
+			"customerId": int(customer_id),
+			"curriculum": curriculum,
+			"llmResponse": llm_response,
+			"llmError": llm_error,
+		}
 	except ValueError as e:
 		raise HTTPException(status_code=404, detail=str(e))
 	except Exception as e:
@@ -486,7 +592,11 @@ def policy_interpret(req: ReportIdRequest):
 	"""Policy Interpretation Agent."""
 	try:
 		res = insurance_mcp.interpret_policy_impl(report_id=str(req.report_id))
-		return {"ok": True, **res}
+		llm_response, llm_error = _run_llm_sync(
+			getattr(policy_interpretation_agent, "run_llm", None),
+			str(req.report_id),
+		)
+		return {"ok": True, **res, "llmResponse": llm_response, "llmError": llm_error}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:
@@ -498,7 +608,11 @@ def claims_prepare(req: ReportIdRequest):
 	"""Claims Preparation Agent (prepare claim packet)."""
 	try:
 		res = insurance_mcp.prepare_claim_packet_impl(report_id=str(req.report_id))
-		return {"ok": True, **res}
+		llm_response, llm_error = _run_llm_sync(
+			getattr(claims_preparation_agent, "run_llm", None),
+			str(req.report_id),
+		)
+		return {"ok": True, **res, "llmResponse": llm_response, "llmError": llm_error}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:
@@ -510,7 +624,11 @@ def action_plan(req: ReportIdRequest):
 	"""Action Plan Agent (generate next steps)."""
 	try:
 		res = insurance_mcp.generate_action_plan_impl(report_id=str(req.report_id))
-		return {"ok": True, **res}
+		llm_response, llm_error = _run_llm_sync(
+			getattr(action_plan_agent, "run_llm", None),
+			str(req.report_id),
+		)
+		return {"ok": True, **res, "llmResponse": llm_response, "llmError": llm_error}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:
@@ -522,7 +640,11 @@ def escalation(req: ReportIdRequest):
 	"""Escalation & Routing Agent (route to human vs emergency vs self-serve)."""
 	try:
 		res = insurance_mcp.escalate_and_route_impl(report_id=str(req.report_id))
-		return {"ok": True, **res}
+		llm_response, llm_error = _run_llm_sync(
+			getattr(escalation_and_routing_agent, "run_llm", None),
+			str(req.report_id),
+		)
+		return {"ok": True, **res, "llmResponse": llm_response, "llmError": llm_error}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:

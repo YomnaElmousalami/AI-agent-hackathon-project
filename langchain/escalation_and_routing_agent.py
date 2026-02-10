@@ -16,6 +16,14 @@ from langchain.cli_utils import coerce_tool_result, read_prompt_or_stdin
 from langchain.agent_runner import create_insurance_react_agent, run_react_agent
 
 
+PROMPT = (
+	"You are the Escalation & Routing Agent.\n"
+	"Use the tool escalate_and_route(report_id) to decide whether to route to a human or emergency contact.\n"
+	"Return a tight summary and list any phone numbers/links provided.\n"
+	"Never hallucinate phone numbers. Only output what the tool returns.\n"
+)
+
+
 def mcp_server_path() -> str:
 	return str(REPO_ROOT / "insurance_mcp.py")
 
@@ -52,13 +60,7 @@ async def run_cli():
 	report_id = read_prompt_or_stdin("Accident report id: ")
 
 	if mode in {"agent", "react", "llm"}:
-		prompt = (
-			"You are the Escalation & Routing Agent.\n"
-			"Use the tool escalate_and_route(report_id) to decide whether to route to a human or emergency contact.\n"
-			"Return a tight summary and list any phone numbers/links provided.\n"
-			"Never hallucinate phone numbers. Only output what the tool returns.\n"
-		)
-		agent = await create_insurance_react_agent(prompt=prompt, transport="stdio")
+		agent = await create_insurance_react_agent(prompt=PROMPT, transport="stdio")
 		await run_react_agent(agent, f"Escalate and route for accident report id {report_id}.")
 		return
 
@@ -89,6 +91,11 @@ async def run_cli():
 			print(f"- {label}: {line}")
 			if note:
 				print(f"  Note: {note}")
+
+
+async def run_llm(report_id: str) -> str | None:
+	agent = await create_insurance_react_agent(prompt=PROMPT, transport="stdio")
+	return await run_react_agent(agent, f"Escalate and route for accident report id {report_id}.")
 
 
 if __name__ == "__main__":

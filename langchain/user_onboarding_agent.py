@@ -64,7 +64,7 @@ async def initialize_agent():
     return agent
 
 
-async def run_agent(agent, user_query: str):
+async def run_agent(agent, user_query: str) -> str | None:
     """
         Avoids dumping raw streaming chunks.
     """
@@ -95,17 +95,19 @@ async def run_agent(agent, user_query: str):
     except (asyncio.CancelledError, KeyboardInterrupt):
         # Don't crash the whole CLI if the user interrupts or the LLM stream gets cancelled.
         print("\n(LLM response cancelled. Your profile is still saved.)")
-        return
+        return None
     except Exception as e:
         print(
             "The onboarding agent couldn't reach the LLM backend.\n"
             "If you're using Ollama, make sure it's running and your model is available.\n"
             f"Details: {e}"
         )
-        return
+        return None
 
     if final_text:
         print(final_text)
+
+    return final_text
 
 
 async def onboard(onboarding_agent, user_query: str):

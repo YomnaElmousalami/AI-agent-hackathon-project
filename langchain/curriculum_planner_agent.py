@@ -15,6 +15,20 @@ from langgraph.prebuilt import create_react_agent
 
 from llm.llama import get_llm
 
+
+PROMPT = (
+    "You are the Curriculum Planner Agent for an auto insurance learning app.\n"
+    "Your job is to create a personalized curriculum plan for a user.\n\n"
+    "You have access to MCP tools:\n"
+    "plan_curriculum(customer_id: int): creates and persists a curriculum plan for the customer_id\n"
+    "get_curriculum(customer_id: int): returns the latest persisted curriculum\n\n"
+    "Rules:\n"
+    "1) Always ask for customer_id if missing.\n"
+    "2) If the user asks to create, generate, or plan a curriculum, call plan_curriculum.\n"
+    "3) If the user asks to view, show, or get the curriculum, call get_curriculum.\n"
+    "4) Present results as a short ordered title list, then offer help to dive deeper.\n"
+)
+
 def mcp_server_path() -> str:
     repo_root = Path(__file__).resolve().parents[1]
     return str(repo_root / "insurance_mcp.py")
@@ -53,26 +67,14 @@ async def initialize_agent():
     agent = create_react_agent(
         model=llm,
         tools=tools,
-        prompt=(
-            "You are the Curriculum Planner Agent for an auto insurance learning app.\n"
-            "Your job is to create a personalized curriculum plan for a user.\n\n"
-            "You have access to MCP tools:\n"
-            "plan_curriculum(customer_id: int): creates and persists a curriculum plan for the customer_id\n"
-            "get_curriculum(customer_id: int): returns the latest persisted curriculum\n\n"
-            "Rules:\n"
-            "1) Always ask for customer_id if missing.\n"
-            "2) If the user asks to create, generate, or plan a curriculum, call plan_curriculum.\n"
-            "3) If the user asks to view, show, or get the curriculum, call get_curriculum.\n"
-            "4) Present results as a short ordered title list, then offer help to dive deeper.\n"
-        ),
+        prompt=PROMPT,
     )
 
     return agent
 
 
-async def run_agent(agent, user_query: str):
-    """Run the agent
-    """
+async def run_agent(agent, user_query: str) -> str | None:
+    """Run the agent and return final assistant text (if any)."""
 
     payload = {"messages": [{"role": "user", "content": user_query}]}
 
@@ -82,10 +84,10 @@ async def run_agent(agent, user_query: str):
         print(
             "Timed out waiting for the LLM. If you're using Ollama, make sure it's running and the model is pulled."
         )
-        return
+        return None
     except Exception as e:
         print(f"Agent error: {e}")
-        return
+        return None
 
     final_text: str | None = None
 
@@ -105,6 +107,17 @@ async def run_agent(agent, user_query: str):
         print(final_text)
     else:
         print("(No assistant text returned)")
+
+    return final_text
+
+
+async def run_llm(customer_id: int, action: str = "plan") -> str | None:
+    """Run the LLM agent using the CLI prompt with a structured query."""
+
+    verb = "plan" if action == "plan" else "show"
+    query = f"{verb} the curriculum for customer id {int(customer_id)}"
+    agent = await initialize_agent()
+    return await run_agent(agent, query)
 
 
 def extract_customer_id(text: str) -> int | None:

@@ -20,6 +20,7 @@ function OnboardingPage() {
 	const [error, setError] = useState('');
 	const [result, setResult] = useState(null);
 	const [status, setStatus] = useState('');
+	const [llmResponse, setLlmResponse] = useState('');
 
 	const canSubmit = useMemo(() => message.trim().length > 0 && !busy, [message, busy]);
 
@@ -59,6 +60,7 @@ function OnboardingPage() {
 		setError('');
 		setResult(null);
 		setStatus('');
+		setLlmResponse('');
 		try {
 			const profile = parseOnboardingSentence(message);
 
@@ -109,7 +111,11 @@ function OnboardingPage() {
 			}
 			setResult(data);
 			setStatus('saved');
-			navigate(`/curriculum?customerId=${profile.id}`);
+			if (data?.llmResponse) {
+				setLlmResponse(String(data.llmResponse));
+			} else {
+				navigate(`/curriculum?customerId=${profile.id}`);
+			}
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -162,6 +168,13 @@ function OnboardingPage() {
 					</div>
 				</div>
 			) : null}
+
+			{llmResponse ? (
+				<div style={{ marginTop: 16, background: '#0b1a2b', border: '1px solid #1f3b5d', padding: 12 }}>
+					<strong>Assistant response:</strong>
+					<div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{llmResponse}</div>
+				</div>
+			) : null}
 		</div>
 	);
 }
@@ -178,6 +191,7 @@ function CurriculumPlannerPage() {
 	const [notice, setNotice] = useState('');
 	const [action, setAction] = useState('');
 	const [showNext, setShowNext] = useState(false);
+	const [llmResponse, setLlmResponse] = useState('');
 	const canSubmit = useMemo(() => query.trim().length > 0 && !busy, [query, busy]);
 	const nextUrl = useMemo(() => {
 		const id = Number(customerId);
@@ -208,6 +222,7 @@ function CurriculumPlannerPage() {
 		setAction('');
 		setShowNext(false);
 		setResult(null);
+		setLlmResponse('');
 		try {
 			const id = _extractCustomerId();
 			const text = query.trim();
@@ -246,12 +261,18 @@ function CurriculumPlannerPage() {
 			}
 
 			if (isPlan) {
+				if (data?.llmResponse) {
+					setLlmResponse(String(data.llmResponse));
+				}
 				setNotice('Done.');
 				setShowNext(true);
 				return;
 			}
 
 			setResult(data);
+			if (data?.llmResponse) {
+				setLlmResponse(String(data.llmResponse));
+			}
 			setShowNext(true);
 		} catch (e) {
 			setError(e?.message || String(e));
@@ -319,6 +340,13 @@ function CurriculumPlannerPage() {
 							</li>
 						))}
 					</ol>
+				</div>
+			) : null}
+
+			{llmResponse ? (
+				<div style={{ marginTop: 16, background: '#0b1a2b', border: '1px solid #1f3b5d', padding: 12 }}>
+					<strong>Assistant response:</strong>
+					<div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{llmResponse}</div>
 				</div>
 			) : null}
 
