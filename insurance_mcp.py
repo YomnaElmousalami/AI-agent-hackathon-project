@@ -523,9 +523,9 @@ def plan_curriculum_impl(customer_id: int) -> List[Dict]:
     user_age = int(row["age"])
 
     curriculum = [
-        "What is Insurance?",
+        "What is Car Insurance?",
         "Understanding Deductibles",
-        "Steps to Take During a car accident",
+        "Steps to Take During a car accident.",
         "Do's and Don'ts of Safe Driving",
         "What is a premium?",
         "What is a claim?",
@@ -533,6 +533,8 @@ def plan_curriculum_impl(customer_id: int) -> List[Dict]:
         "What is coverage?",
         "Types of coverage for auto insurance",
         "Factors affecting insurance rates",
+        "Understanding the impact of driving history on insurance rates",
+        "How to maintain a clean driving record",
         "Common auto insurance terms explained",
         "How to choose the right insurance plan",
         "Importance of liability coverage",
@@ -545,44 +547,13 @@ def plan_curriculum_impl(customer_id: int) -> List[Dict]:
         "Understanding no-fault insurance",
         "What to do in case of a total loss",
         "How to handle uninsured motorist situations",
-        "The importance of regular vehicle maintenance for insurance purposes",
-        "How to update your insurance policy",
         "Understanding policy endorsements",
-        "The claims process: Step-by-step guide",
         "How to dispute a denied claim",
-        "The role of an insurance adjuster",
         "Understanding rental car coverage",
-        "How to switch insurance providers",
-        "The impact of life changes on your insurance needs",
-        "Understanding roadside assistance coverage",
-        "The importance of accurate vehicle information",
-        "How to avoid insurance fraud",
-        "Understanding gap insurance",
-        "The role of telematics in auto insurance",
-        "Understanding the difference between actual cash value and replacement cost",
-        "How to handle multiple vehicles on one policy",
-        "The impact of driving history on insurance rates",
-        "Understanding the grace period for premium payments",
-        "How to get discounts on auto insurance",
-        "The importance of reviewing your insurance policy annually",
-        "Understanding the difference between state minimums and recommended coverage",
-        "How to handle insurance after a move",
-        "The role of family members in an insurance policy",
-        "Understanding the impact of vehicle modifications on insurance",
-        "How to choose a deductible amount",
-        "The importance of documenting your vehicle's condition",
-        "Understanding the difference between personal and commercial auto insurance",
     ]
-
-    if user_age < 18:
-        curriculum.insert(10, "Tips for first-time drivers")
-        curriculum.insert(11, "How insurance works for young drivers")
-        curriculum.insert(12, "Understanding the impact of driving history on insurance rates")
-        curriculum.insert(13, "The importance of safe driving courses")
-        curriculum.insert(14, "How to maintain a clean driving record")
-        curriculum.insert(15, "Understanding insurance requirements for student drivers")
-    else:
-        curriculum.insert(10, "The role of credit scores in insurance")
+    # NOTE: Curriculum is now intentionally fixed to the curated 27-module list
+    # provided by the project owner (matches the Teacher Agent video library).
+    # If you want age-specific variants later, we can add an opt-in flag.
         
     curriculum_plan = [
         {
@@ -1081,6 +1052,8 @@ def _topic_for_module(module_title: str, module_description: str) -> str:
     combined = f"{title_l} {desc_l}".strip()
 
     topic_keywords: list[tuple[str, list[str]]] = [
+        # Curriculum fixed titles (ensure alignment)
+        ("car_insurance_basics", ["what is car insurance"]),
         # Driving & safety
         ("accident_steps", ["steps to take", "car accident", " accident", " crash"]),
         (
@@ -1116,7 +1089,15 @@ def _topic_for_module(module_title: str, module_description: str) -> str:
         # Core policy concepts
         ("deductible", ["deduct"]),
         ("premium", ["premium", "grace period"]),
-        ("claim", ["claim", "claims process", "file a claim", "denied claim", "dispute"]),
+    # Keep more specific claim-related topics BEFORE the generic "claim".
+    ("claim_filing", ["how to file a claim"]),
+    ("denied_claim", ["dispute a denied claim", "denied claim"]),
+    ("claim", ["claim", "claims process", "file a claim", "dispute"]),
+        ("coverage_types", ["types of coverage for auto insurance", "types of coverage"]),
+        ("choose_plan", ["choose the right insurance plan", "choose the right"]),
+        ("terms", ["terms explained", "auto insurance terms"]),
+        ("lower_premium", ["lower your insurance premiums", "lower your premiums"]),
+    ("endorsements", ["policy endorsements", "endorsement"]),
         (
             "policy_interpretation",
             ["read your insurance policy", "policy", "declarations", "endorsement"],
@@ -1206,7 +1187,33 @@ def generate_topic_aligned_questions(
         }
 
     # Templates per topic. We keep these short but specific.
+    # NOTE: These topic keys are derived from `_topic_for_module()`. If you add a
+    # new topic keyword mapping for the curriculum, add templates here too so
+    # quizzes stay aligned with the curriculum modules.
     templates: dict[str, list[Dict]] = {
+        "car_insurance_basics": [
+            mc(
+                1,
+                "What is car insurance mainly designed to do?",
+                [
+                    "Help pay for covered losses and protect you financially",
+                    "Pay for routine gas and oil changes",
+                    "Guarantee you never have an accident",
+                    "Replace your car every year",
+                ],
+                0,
+                "Insurance transfers some financial risk from you to the insurer.",
+            ),
+            mc(
+                2,
+                "Which is a common part of an auto policy?",
+                ["Coverages + limits + deductibles", "A free maintenance plan", "A loan contract", "A driver score"],
+                0,
+                "Policies describe what’s covered, up to what limits, and what you pay (deductibles).",
+            ),
+            tf(1, "Insurance is a contract between you and an insurer.", True, "A policy is a legal contract."),
+            tf(2, "Car insurance only matters after an accident.", False, "It also matters for legal compliance and peace of mind."),
+        ],
         "accident_steps": [
             mc(
                 1,
@@ -1288,6 +1295,155 @@ def generate_topic_aligned_questions(
             ),
             tf(1, "Some insurers offer good-student discounts.", True, "It depends on the carrier and eligibility."),
             tf(2, "Discounts never change.", False, "Eligibility can change at renewal."),
+        ],
+        "claim_filing": [
+            mc(
+                1,
+                "What’s a good first step when filing an auto claim?",
+                [
+                    "Report the loss and provide basic facts (time, place, what happened)",
+                    "Wait until repairs are finished",
+                    "Guess the other driver’s policy number",
+                    "Change the story if details are missing",
+                ],
+                0,
+                "Start by reporting promptly and sticking to facts.",
+            ),
+            mc(
+                2,
+                "Which documentation can help when you file a claim?",
+                ["Photos + police report (if applicable) + witness info", "Only your opinion", "Only a meme", "Nothing"],
+                0,
+                "Evidence helps the insurer evaluate the loss.",
+            ),
+            tf(1, "It’s generally better to report claims promptly.", True, "Many policies require prompt notice."),
+            tf(2, "Filing a claim automatically guarantees payment.", False, "Payment depends on coverage, limits, and exclusions."),
+        ],
+        "coverage_types": [
+            mc(
+                1,
+                "Which coverage commonly pays for damage to your car from a crash?",
+                ["Collision", "Liability", "Property tax", "Registration"],
+                0,
+                "Collision covers damage to your vehicle from a collision (subject to deductible).",
+            ),
+            mc(
+                2,
+                "Comprehensive coverage is most associated with:",
+                ["Theft, vandalism, hail, or animal strikes", "Rear-ending another car", "Your premium amount", "Traffic tickets"],
+                0,
+                "Comprehensive is for many non-collision losses (subject to deductible).",
+            ),
+            tf(1, "Liability coverage is mainly for injuries/damage you cause to others.", True, "That’s the core purpose."),
+            tf(2, "Every coverage has the same deductible.", False, "Deductibles vary and some coverages have none."),
+        ],
+        "choose_plan": [
+            mc(
+                1,
+                "When choosing an insurance plan, what should you compare?",
+                ["Coverages, limits, deductibles, exclusions, and price", "Only the logo", "Only the agent’s favorite", "Only the lowest deductible"],
+                0,
+                "You want a balance of protection and cost.",
+            ),
+            mc(
+                2,
+                "If you drive an older car with low value, one common approach is:",
+                ["Consider whether collision/comprehensive still make sense for the cost", "Always buy maximum everything", "Always remove liability", "Never review your policy"],
+                0,
+                "Coverage choices depend on risk, car value, and budget.",
+            ),
+            tf(1, "Higher limits generally provide more protection.", True, "More limit can reduce out-of-pocket exposure."),
+            tf(2, "The cheapest policy is always the best policy.", False, "Cheap can mean less protection or more exclusions."),
+        ],
+        "terms": [
+            mc(
+                1,
+                "Which pairing is correct?",
+                ["Premium = what you pay; deductible = what you pay first on a covered claim", "Premium = claim; deductible = limit", "Premium = ticket; deductible = discount", "Premium = repair; deductible = refund"],
+                0,
+                "Premium keeps coverage active; deductible is your share on many covered claims.",
+            ),
+            mc(
+                2,
+                "A policy limit is best described as:",
+                ["The maximum the insurer will pay for a covered loss", "The amount you pay monthly", "A repair estimate", "A vehicle registration fee"],
+                0,
+                "Limits cap insurer payment.",
+            ),
+            tf(1, "An exclusion describes something the policy doesn’t cover.", True, "Exclusions are ‘not covered’ items."),
+            tf(2, "A deductible is the same as a policy limit.", False, "They’re different: deductible is your part; limit is insurer cap."),
+        ],
+        "lower_premium": [
+            mc(
+                1,
+                "Which change often lowers premium (all else equal)?",
+                ["Raising your deductible", "Adding more tickets", "Lowering liability limits below legal minimums", "Filing many small claims"],
+                0,
+                "Higher deductibles can reduce premium because you take on more out-of-pocket risk.",
+            ),
+            mc(
+                2,
+                "Which is a smart way to reduce costs without changing coverage?",
+                ["Shop/compare quotes at renewal", "Cancel insurance for a month", "Ignore discounts", "Drive uninsured"],
+                0,
+                "Comparing quotes and asking about discounts can help.",
+            ),
+            tf(1, "Maintaining a clean driving record can help reduce costs.", True, "Lower risk often means lower rates."),
+            tf(2, "Insurance costs never change over time.", False, "Rates can change based on risk, location, and market factors."),
+        ],
+        "no_fault": [
+            mc(
+                1,
+                "In a no-fault system, a common idea is:",
+                ["Your own insurer may pay certain benefits regardless of fault", "Fault never matters for anything", "You can’t file any claims", "Liability coverage is illegal"],
+                0,
+                "No-fault typically affects how some injury benefits are handled.",
+            ),
+            mc(
+                2,
+                "Even in no-fault states, which can still be important?",
+                ["Limits and coverage types in your policy", "Your car’s paint color", "Your music playlist", "None of the above"],
+                0,
+                "You still need to understand your coverages and limits.",
+            ),
+            tf(1, "No-fault laws vary by state.", True, "Rules differ depending on jurisdiction."),
+            tf(2, "‘No-fault’ means no one is ever responsible for damages.", False, "Fault can still matter for property damage and lawsuits depending on rules."),
+        ],
+        "endorsements": [
+            mc(
+                1,
+                "A policy endorsement is best described as:",
+                ["A change/add-on that modifies your policy coverage", "A traffic ticket", "A claim payment", "A deductible"],
+                0,
+                "Endorsements change policy terms (add/remove/alter coverage).",
+            ),
+            mc(
+                2,
+                "If you add a new driver or car, what’s a good step?",
+                ["Update the policy so it reflects the new risk", "Keep it secret", "Assume it’s automatically covered", "Wait for a claim"],
+                0,
+                "Policies must be updated to match reality.",
+            ),
+            tf(1, "Endorsements can change premium.", True, "Coverage changes can affect price."),
+            tf(2, "Endorsements are the same as exclusions.", False, "Endorsements modify terms; exclusions limit coverage."),
+        ],
+        "denied_claim": [
+            mc(
+                1,
+                "If a claim is denied, what’s a reasonable next step?",
+                ["Ask for the written denial reason and review your policy language", "Threaten without reading anything", "Invent new facts", "Stop documenting"],
+                0,
+                "Start with the reason and the policy terms/exclusions.",
+            ),
+            mc(
+                2,
+                "Which is most helpful when disputing a denial?",
+                ["Evidence and policy references", "Only anger", "Only rumors", "A random guess"],
+                0,
+                "Documentation and policy language support your position.",
+            ),
+            tf(1, "Denials can happen due to exclusions, missed payments, or ineligible losses.", True, "Many reasons are possible."),
+            tf(2, "If you disagree with a denial, you can never appeal.", False, "Most insurers have an internal review/appeal process."),
         ],
     }
 

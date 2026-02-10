@@ -36,9 +36,6 @@ def main() -> None:
 		str(log_level),
 	]
 
-	# On Windows, running uvicorn in the same console group can cause spurious
-	# KeyboardInterrupts when other terminals execute commands.
-	# Detach the child process so it's stable during local dev.
 	creationflags = 0
 	kwargs: dict[str, object] = {}
 	if os.name == "nt":

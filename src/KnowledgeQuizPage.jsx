@@ -306,10 +306,6 @@ export default function KnowledgeQuizPage() {
 				</Link>
 			</div>
 
-			<div style={{ marginTop: 16, opacity: 0.95, lineHeight: 1.6 }}>
-				<div>Start a short quiz to confirm understanding.</div>
-			</div>
-
 			<div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12 }}>
 				<div>
 					<label style={{ display: 'block', marginBottom: 6 }}>Customer id</label>
@@ -339,12 +335,6 @@ export default function KnowledgeQuizPage() {
 			{error ? (
 				<div style={{ marginTop: 16, background: '#2b0000', border: '1px solid #660000', padding: 12 }}>
 					<strong>Problem:</strong> {error}
-				</div>
-			) : null}
-
-			{notice ? (
-				<div style={{ marginTop: 16, background: '#001b2b', border: '1px solid #004466', padding: 12 }}>
-					<strong>Note:</strong> {notice}
 				</div>
 			) : null}
 
@@ -436,7 +426,7 @@ export default function KnowledgeQuizPage() {
 									<div style={{ marginTop: 14, padding: 12, border: '1px solid #333', borderRadius: 8, background: graded.correct ? '#001b2b' : '#2b0000' }}>
 										<div>
 											<strong>{graded.correct ? 'Correct' : 'Not quite'}</strong>
-											{graded.correct ? <> — {graded.feedback}</> : null}
+												{/* Intentionally omit the extra "Nice!"-style feedback text. */}
 										</div>
 										{/* Per UX request: don't show any explanation text under quiz results. */}
 									</div>

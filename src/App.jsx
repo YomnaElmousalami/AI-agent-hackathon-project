@@ -3,6 +3,12 @@ import { Routes, Route, useNavigate, useSearchParams, Link } from 'react-router-
 import './oai-styles.css';
 import KnowledgeQuizPage from './KnowledgeQuizPage.jsx';
 import ResourceRecommendationPage from './ResourceRecommendationPage.jsx';
+import AccidentReportingPage from './AccidentReportingPage.jsx';
+import AccidentSeverityPage from './AccidentSeverityPage.jsx';
+import PolicyInterpretationPage from './PolicyInterpretationPage.jsx';
+import ClaimsPreparationPage from './ClaimsPreparationPage.jsx';
+import ActionPlanPage from './ActionPlanPage.jsx';
+import EscalationPage from './EscalationPage.jsx';
 
 const API_BASE = '';
 
@@ -56,23 +62,22 @@ function OnboardingPage() {
 		try {
 			const profile = parseOnboardingSentence(message);
 
-			const existingRes = await fetch(`${API_BASE}/api/customers/${profile.id}`);
-			if (existingRes.ok) {
-				const existingData = await existingRes.json();
-				setResult(existingData);
-				setStatus('exists');
-				navigate(`/curriculum?customerId=${profile.id}`);
-				return;
-			}
-			if (existingRes.status !== 404) {
-				let msg = `Lookup failed (${existingRes.status})`;
-				try {
-					const err = await existingRes.json();
-					msg = err?.detail || msg;
-				} catch {
-					
+			// Best-effort: if lookup fails (server error, network error), still try
+			// onboarding so the user can "upload" their profile into the DB.
+			let lookupStatus = 0;
+			try {
+				const existingRes = await fetch(`${API_BASE}/api/customers/${profile.id}`);
+				lookupStatus = existingRes.status;
+				if (existingRes.ok) {
+					const existingData = await existingRes.json();
+					setResult(existingData);
+					setStatus('exists');
+					navigate(`/curriculum?customerId=${profile.id}`);
+					return;
 				}
-				throw new Error(msg);
+				// 404 is expected for brand-new users; continue to onboard.
+			} catch {
+				// ignore and proceed to onboard
 			}
 
 			const res = await fetch(`${API_BASE}/api/onboard`, {
@@ -80,9 +85,27 @@ function OnboardingPage() {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ message }),
 			});
-			const data = await res.json();
+			const raw = await res.text().catch(() => '');
+			const data = raw
+				? (() => {
+					try {
+						return JSON.parse(raw);
+					} catch {
+						return null;
+					}
+				})()
+				: null;
 			if (!res.ok) {
-				throw new Error(data?.detail || 'Onboarding failed');
+				// If lookup was weird and onboarding also failed, give a helpful error.
+				const detail = data?.detail || raw || 'Onboarding failed';
+				throw new Error(
+					lookupStatus && lookupStatus !== 404
+						? `${detail} (lookup status was ${lookupStatus})`
+						: detail
+				);
+			}
+			if (!data) {
+				throw new Error('Onboarding succeeded, but the server returned an empty response.');
 			}
 			setResult(data);
 			setStatus('saved');
@@ -321,6 +344,14 @@ function TeacherAgentPage() {
 	const [curriculum, setCurriculum] = useState(null);
 	const [moduleOrder, setModuleOrder] = useState('');
 
+	function stripLeadingModuleNumber(title) {
+		// Some sources may already prefix titles with "27. ...".
+		// Since we render "{order}. {title}" in the UI, strip a leading numeric prefix
+		// to avoid "27. 27. ...".
+		const raw = String(title || '').trim();
+		return raw.replace(/^\s*\d+\s*[\.)-]\s*/, '').trim() || raw;
+	}
+
 	const canLoadCurriculum = useMemo(() => !busy && String(customerId).trim().length > 0, [busy, customerId]);
 
 	async function loadCurriculum() {
@@ -363,63 +394,34 @@ function TeacherAgentPage() {
 		// Exact topic-to-video mapping per hackathon requirements.
 		// If a topic is specified as “YouTube search”, we intentionally return a search URL.
 		const map = {
-			'What is Insurance?': 'https://www.youtube.com/watch?v=SYnKjo8nbpg',
-			'Understanding Deductibles': 'https://www.youtube.com/watch?v=UoPN84v2KrU',
-			'Steps to Take During a Car Accident': _ytSearchUrl('what to do after a car accident steps YouTube'),
-			"Do’s and Don’ts of Safe Driving": _ytSearchUrl("safe driving tips do’s and don’ts YouTube"),
-			"Do's and Don'ts of Safe Driving": _ytSearchUrl("safe driving tips do’s and don’ts YouTube"),
-			'What is a Premium?': 'https://www.youtube.com/watch?v=cWEiafGi4QE',
-			'What is a Claim?': _ytSearchUrl('what is an insurance claim explained YouTube'),
-			'How to File a Claim': 'https://www.youtube.com/watch?v=lsq4hD6kg8o',
-			'What is Coverage?': 'https://www.youtube.com/watch?v=WaXyCIHVtXg',
-			'Types of Coverage for Auto Insurance': 'https://www.youtube.com/watch?v=q6ztnQLLZkg',
-			'Factors Affecting Insurance Rates': _ytSearchUrl('factors affecting auto insurance rates explained'),
-			'Tips for First-Time Drivers': 'https://www.youtube.com/watch?v=_sHAmGoKDWs',
-			'How Insurance Works for Young Drivers': 'https://www.youtube.com/watch?v=VJOMUeBvRWw',
-			'Impact of Driving History on Insurance Rates': _ytSearchUrl('impact of driving history on insurance rates YouTube'),
-			'The Importance of Safe Driving Courses': _ytSearchUrl('importance of safe driving courses insurance YouTube'),
-			'How to Maintain a Clean Driving Record': _ytSearchUrl('maintaining clean driving record tips YouTube'),
-			'Understanding Insurance Requirements for Student Drivers': _ytSearchUrl('student driver insurance requirements YouTube'),
-			'Common Auto Insurance Terms Explained': _ytSearchUrl('common auto insurance terms explained YouTube'),
-			'How to Choose the Right Insurance Plan': _ytSearchUrl('how to choose right car insurance plan YouTube'),
-			'Importance of Liability Coverage': _ytSearchUrl('What Is Liability Insurance Coverage? YouTube'),
-			'Understanding Comprehensive and Collision Coverage': _ytSearchUrl('comprehensive vs collision coverage YouTube'),
-			'How to Lower Your Insurance Premiums': _ytSearchUrl('how to lower insurance premiums YouTube'),
-			'Seasonal Driving Tips & Insurance Implications': _ytSearchUrl('seasonal driving tips insurance implications YouTube'),
-			'Impact of Traffic Violations on Insurance Rates': _ytSearchUrl('traffic violations effect on insurance rates YouTube'),
-			'How to Read Your Insurance Policy': _ytSearchUrl('how to read car insurance policy YouTube'),
-			'Benefits of Bundling Insurance Policies': _ytSearchUrl('benefits of bundling insurance policies YouTube'),
-			'Understanding No-Fault Insurance': _ytSearchUrl('no fault insurance explained YouTube'),
-			'What to Do in Case of a Total Loss': _ytSearchUrl('total loss claim explained car insurance YouTube'),
-			'How to Handle Uninsured Motorist Situations': _ytSearchUrl('Uninsured Motorist Insurance Explained YouTube'),
-			'Importance of Regular Vehicle Maintenance for Insurance': _ytSearchUrl('importance of vehicle maintenance insurance YouTube'),
-			'How to Update Your Insurance Policy': _ytSearchUrl('how to update insurance policy YouTube'),
-			'Understanding Policy Endorsements': _ytSearchUrl('policy endorsements auto insurance explained YouTube'),
-			'The Claims Process: Step-by-Step Guide': _ytSearchUrl('How Do Car Insurance Claims Work? YouTube'),
-			'How to Dispute a Denied Claim': _ytSearchUrl('dispute denied car insurance claim YouTube'),
-			'The Role of an Insurance Adjuster': _ytSearchUrl('insurance adjuster role explained YouTube'),
-			'Understanding Rental Car Coverage': _ytSearchUrl('rental car coverage explained auto insurance YouTube'),
-			'How to Switch Insurance Providers': _ytSearchUrl('how to switch auto insurance companies YouTube'),
-			'Impact of Life Changes on Insurance Needs': _ytSearchUrl('impact of life changes on insurance needs YouTube'),
-			'Understanding Roadside Assistance Coverage': _ytSearchUrl('roadside assistance coverage explained YouTube'),
-			'The Importance of Accurate Vehicle Info': _ytSearchUrl('accurate vehicle info auto insurance YouTube'),
-			'How to Avoid Insurance Fraud': _ytSearchUrl('how to avoid insurance fraud YouTube'),
-			'Understanding Gap Insurance': _ytSearchUrl('understanding gap insurance YouTube'),
-			'The Role of Telematics in Auto Insurance': _ytSearchUrl('telematics auto insurance YouTube'),
-			'Difference Between Actual Cash Value & Replacement Cost': _ytSearchUrl('ACV vs replacement cost car insurance YouTube'),
-			'How to Handle Multiple Vehicles on One Policy': _ytSearchUrl('multiple vehicles one policy auto insurance YouTube'),
-			'Impact of Driving History on Insurance': _ytSearchUrl('driving history impact insurance rates YouTube'),
-			'Understanding Grace Period for Premium Payments': _ytSearchUrl('grace period premium payments car insurance YouTube'),
-			'How to Get Discounts on Auto Insurance': _ytSearchUrl('how to get discounts on auto insurance YouTube'),
-			'Importance of Reviewing Policy Annually': _ytSearchUrl('importance reviewing insurance policy YouTube'),
-			'Difference Between State Minimums & Recommended Coverage': _ytSearchUrl('state minimum vs recommended coverage auto insurance YouTube'),
-			'How to Handle Insurance After a Move': _ytSearchUrl('insurance after move auto insurance YouTube'),
-			'The Role of Family Members in a Policy': _ytSearchUrl('role of family members insurance policy YouTube'),
-			'Impact of Vehicle Modifications on Insurance': _ytSearchUrl('vehicle modifications insurance impact YouTube'),
-			'How to Choose a Deductible Amount': _ytSearchUrl('how to choose a deductible amount YouTube'),
-			"Importance of Documenting Your Vehicle’s Condition": _ytSearchUrl('importance documenting vehicle condition for claims YouTube'),
-			"Importance of Documenting Your Vehicle's Condition": _ytSearchUrl('importance documenting vehicle condition for claims YouTube'),
-			'Difference Between Personal & Commercial Auto Insurance': _ytSearchUrl('personal vs commercial auto insurance YouTube'),
+			// --- EXACT curriculum titles -> EXACT provided links ---
+			'What is Car Insurance?': 'https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s',
+			'Understanding Deductibles': 'https://www.youtube.com/watch?v=UoPN84v2KrU&t=3s',
+			'Steps to Take During a car accident.': 'https://www.youtube.com/watch?v=wToIYkLuwPY',
+			"Do's and Don'ts of Safe Driving": 'https://www.youtube.com/watch?v=qoaF04Lsux4',
+			'What is a premium?': 'https://www.youtube.com/watch?v=Ly3tiv7f4Hg',
+			'What is a claim?': 'https://www.youtube.com/watch?v=S-I6ZLrF3oQ',
+			'How to file a claim?': 'https://www.youtube.com/watch?v=lsq4hD6kg8o',
+			'What is coverage?': 'https://www.youtube.com/watch?v=iAXvv9BM-3U',
+			'Types of coverage for auto insurance': 'https://www.youtube.com/watch?v=g8uMWX1JcC4',
+			'Factors affecting insurance rates': 'https://www.youtube.com/watch?v=-QfmcoYYb5E',
+			'Understanding the impact of driving history on insurance rates': 'https://www.youtube.com/watch?v=e5ESP_FtOzo',
+			'How to maintain a clean driving record': 'https://www.youtube.com/watch?v=csO9yYp-vYE',
+			'Common auto insurance terms explained': 'https://www.youtube.com/watch?v=TVA2xaWzsSY',
+			'How to choose the right insurance plan': 'https://www.youtube.com/watch?v=LWDPRx3k4-8',
+			'Importance of liability coverage': 'https://www.youtube.com/watch?v=sulcwnaHAvI',
+			'Understanding comprehensive and collision coverage': 'https://www.youtube.com/watch?v=lMcxwBLOpjs',
+			'How to lower your insurance premiums': 'https://www.youtube.com/watch?v=IRi5Z7pp1K4',
+			'Seasonal driving tips and insurance implications': 'https://www.youtube.com/watch?v=46xdKVgTbJE',
+			'Impact of traffic violations on insurance rates': 'https://www.youtube.com/watch?v=x-N0jCGr0Bg',
+			'How to read your insurance policy': 'https://www.youtube.com/watch?v=NYwZVxYe8QU',
+			'Benefits of bundling insurance policies': 'https://www.youtube.com/watch?v=M_tpraTiJMk',
+			'Understanding no-fault insurance': 'https://www.youtube.com/watch?v=stdqM-OTmyk',
+			'What to do in case of a total loss': 'https://www.youtube.com/watch?v=Ynbgf5uda7Q',
+			'How to handle uninsured motorist situations': 'https://www.youtube.com/watch?v=jcuN4jDCE3M',
+			'Understanding policy endorsements': 'https://www.youtube.com/watch?v=am8XBrdFHfU',
+			'How to dispute a denied claim': 'https://www.youtube.com/watch?v=vsdXq0WOH8M',
+			'Understanding rental car coverage': 'https://www.youtube.com/watch?v=s6LcnFEqQxY'
 		};
 
 		if (map[t]) return map[t];
@@ -432,7 +434,10 @@ function TeacherAgentPage() {
 		if (!Array.isArray(curriculum)) return null;
 		return curriculum.find((m) => Number(m?.order) === mo) || null;
 	}, [curriculum, moduleOrder]);
-	const selectedModuleTitle = useMemo(() => (selectedModule?.module ? String(selectedModule.module) : ''), [selectedModule]);
+	const selectedModuleTitle = useMemo(
+		() => (selectedModule?.module ? stripLeadingModuleNumber(String(selectedModule.module)) : ''),
+		[selectedModule]
+	);
 	const effectiveVideoUrl = useMemo(() => curatedVideoUrlForModuleTitle(selectedModuleTitle), [selectedModuleTitle]);
 	const quizUrl = useMemo(() => {
 		const id = Number(customerId);
@@ -441,6 +446,16 @@ function TeacherAgentPage() {
 		if (Number.isFinite(mo) && mo > 0) return `/quiz?customerId=${id}&moduleOrder=${mo}`;
 		return `/quiz?customerId=${id}`;
 	}, [customerId, moduleOrder]);
+
+	const agentLinks = useMemo(() => {
+		const id = Number(customerId);
+		const qs = new URLSearchParams();
+		if (Number.isFinite(id) && id > 0) qs.set('customerId', String(id));
+		const q = qs.toString();
+		return {
+			accident: `/accident${q ? `?${q}` : ''}`,
+		};
+	}, [customerId]);
 
 	return (
 		<div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
@@ -455,6 +470,13 @@ function TeacherAgentPage() {
 				<div style={{ opacity: 0.95, lineHeight: 1.6 }}>
 					<div>Step 1: load your curriculum. Step 2: pick a module.</div>
 				</div>
+			</div>
+
+			<div style={{ marginTop: 12, background: '#001b2b', border: '1px solid #004466', padding: 12 }}>
+				<strong>Accident / Claims agents:</strong>{' '}
+				<Link to={agentLinks.accident} style={{ color: '#ffffff', textDecoration: 'underline' }}>
+					Start Accident Report
+				</Link>
 			</div>
 
 			<div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12 }}>
@@ -492,7 +514,7 @@ function TeacherAgentPage() {
 						{curriculum.map((m, idx) => (
 							<li key={idx} style={{ marginBottom: 8 }}>
 								<div style={{ fontWeight: 600 }}>
-									{m.order}. {m.module}
+									{m.order}. {stripLeadingModuleNumber(m.module)}
 								</div>
 								<div style={{ opacity: 0.9 }}>{m.description}</div>
 							</li>
@@ -512,7 +534,7 @@ function TeacherAgentPage() {
 								{Array.isArray(curriculum)
 									? curriculum.map((m) => (
 										<option key={String(m?.order ?? m?.module)} value={String(m?.order ?? '')}>
-											{m?.order}. {m?.module}
+											{m?.order}. {stripLeadingModuleNumber(m?.module)}
 										</option>
 									))
 									: null}
@@ -570,6 +592,12 @@ export default function App() {
 			<Route path='/' element={<OnboardingPage />} />
 			<Route path='/curriculum' element={<CurriculumPlannerPage />} />
 			<Route path='/teacher' element={<TeacherAgentPage />} />
+			<Route path='/accident' element={<AccidentReportingPage />} />
+			<Route path='/severity' element={<AccidentSeverityPage />} />
+			<Route path='/policy' element={<PolicyInterpretationPage />} />
+			<Route path='/claims' element={<ClaimsPreparationPage />} />
+			<Route path='/action-plan' element={<ActionPlanPage />} />
+			<Route path='/escalation' element={<EscalationPage />} />
 			<Route path='/quiz' element={<KnowledgeQuizPage />} />
 			<Route path='/resources' element={<ResourceRecommendationPage />} />
 		</Routes>

@@ -127,6 +127,28 @@ class ResourceSummarizeRequest(BaseModel):
 	resources: list[dict]
 	style: str = "general"
 
+
+# ---------------------------
+# Accident / Claims agent APIs
+# ---------------------------
+
+
+class StartAccidentReportRequest(BaseModel):
+	customer_id: int
+
+
+class UpdateAccidentReportRequest(BaseModel):
+	report_id: str
+	location: str | None = None
+	injured_count: int | None = None
+	vehicles_drivable: bool | None = None
+	evidence_urls: list[str] | None = None
+	notes: str | None = None
+
+
+class ReportIdRequest(BaseModel):
+	report_id: str
+
 def parse_onboarding_sentence(message: str) -> dict[str, Any]:
 	"""Parse a sentence like:
 	"Hey. My id is 2, my name is Samuel, I'm 16, I live in NY, my vehicle is a Toyota Camry, and my coverage type is full coverage."
@@ -398,6 +420,109 @@ def summarize_resources(req: ResourceSummarizeRequest):
 	try:
 		summary = insurance_mcp.summarize_resources_impl(list(req.resources or []), style=str(req.style or "general"))
 		return {"ok": True, **summary}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/accident/report/start")
+def accident_report_start(req: StartAccidentReportRequest):
+	"""Accident Reporting Agent: create a new accident report (case)."""
+	try:
+		res = insurance_mcp.start_accident_report_impl(customer_id=int(req.customer_id))
+		return {"ok": True, **res}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/accident/report/update")
+def accident_report_update(req: UpdateAccidentReportRequest):
+	"""Accident Reporting Agent: update an existing accident report."""
+	try:
+		res = insurance_mcp.update_accident_report_impl(
+			report_id=str(req.report_id),
+			location=str(req.location) if req.location is not None else None,
+			injured_count=int(req.injured_count) if req.injured_count is not None else None,
+			vehicles_drivable=bool(req.vehicles_drivable) if req.vehicles_drivable is not None else None,
+			evidence_urls=list(req.evidence_urls) if req.evidence_urls is not None else None,
+			notes=str(req.notes) if req.notes is not None else None,
+		)
+		return {"ok": True, **res}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/accident/report/finalize")
+def accident_report_finalize(req: ReportIdRequest):
+	"""Accident Reporting Agent: finalize report so downstream agents can run."""
+	try:
+		res = insurance_mcp.finalize_accident_report_impl(report_id=str(req.report_id))
+		return {"ok": True, **res}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/accident/severity")
+def accident_severity(req: ReportIdRequest):
+	"""Accident Severity Assessment Agent."""
+	try:
+		res = insurance_mcp.assess_accident_severity_impl(report_id=str(req.report_id))
+		return {"ok": True, **res}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/policy/interpret")
+def policy_interpret(req: ReportIdRequest):
+	"""Policy Interpretation Agent."""
+	try:
+		res = insurance_mcp.interpret_policy_impl(report_id=str(req.report_id))
+		return {"ok": True, **res}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/claims/prepare")
+def claims_prepare(req: ReportIdRequest):
+	"""Claims Preparation Agent (prepare claim packet)."""
+	try:
+		res = insurance_mcp.prepare_claim_packet_impl(report_id=str(req.report_id))
+		return {"ok": True, **res}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/action_plan")
+def action_plan(req: ReportIdRequest):
+	"""Action Plan Agent (generate next steps)."""
+	try:
+		res = insurance_mcp.generate_action_plan_impl(report_id=str(req.report_id))
+		return {"ok": True, **res}
+	except ValueError as e:
+		raise HTTPException(status_code=400, detail=str(e))
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/escalation")
+def escalation(req: ReportIdRequest):
+	"""Escalation & Routing Agent (route to human vs emergency vs self-serve)."""
+	try:
+		res = insurance_mcp.escalate_and_route_impl(report_id=str(req.report_id))
+		return {"ok": True, **res}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:
@@ -850,36 +975,117 @@ def curated_youtube_videos_for_topic(topic: str) -> list[dict[str, str]]:
 	if not t:
 		return []
 
+	def ytid(url_or_id: str) -> str:
+		"""Extract a YouTube video id from a URL (watch?v= / youtu.be / embed) or return the id."""
+		s = (url_or_id or "").strip()
+		if not s:
+			return ""
+		# If caller passed a raw 11-char id, keep it.
+		m = re.search(r"\b([A-Za-z0-9_-]{11})\b", s)
+		if not m:
+			return ""
+		# Prefer explicit v=... when present.
+		mv = re.search(r"(?:\?|&)v=([A-Za-z0-9_-]{11})\b", s)
+		if mv:
+			return mv.group(1)
+		# Prefer youtu.be/<id>
+		ms = re.search(r"youtu\.be/([A-Za-z0-9_-]{11})\b", s)
+		if ms:
+			return ms.group(1)
+		# Prefer /embed/<id>
+		me = re.search(r"/embed/([A-Za-z0-9_-]{11})\b", s)
+		if me:
+			return me.group(1)
+		# Otherwise, accept the first 11-char candidate.
+		return m.group(1)
+
 	curated: dict[str, list[str]] = {
+		# --- General foundations ---
+		"what is car insurance": [ytid("https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s")],
+		"car insurance": [ytid("https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s")],
+		"auto insurance": [ytid("https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s")],
+		"what is insurance": [ytid("https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s")],
 
-		"insurance": [
-			"3n3c8G8oGg0",  
-			"wGQG5g1Kp4o",  
-		],
+		# --- Core policy mechanics ---
+		"deductible": [ytid("https://www.youtube.com/watch?v=UoPN84v2KrU&t=3s")],
+		"deductibles": [ytid("https://www.youtube.com/watch?v=UoPN84v2KrU&t=3s")],
+		"premium": [ytid("https://www.youtube.com/watch?v=Ly3tiv7f4Hg")],
+		"claim": [ytid("https://www.youtube.com/watch?v=S-I6ZLrF3oQ")],
+		"how to file a claim": [ytid("https://www.youtube.com/watch?v=lsq4hD6kg8o")],
+		"file a claim": [ytid("https://www.youtube.com/watch?v=lsq4hD6kg8o")],
+		"coverage": [ytid("https://www.youtube.com/watch?v=iAXvv9BM-3U")],
+		"types of coverage for auto insurance": [ytid("https://www.youtube.com/watch?v=g8uMWX1JcC4")],
+		"types of coverage": [ytid("https://www.youtube.com/watch?v=g8uMWX1JcC4")],
+		"liability": [ytid("https://www.youtube.com/watch?v=sulcwnaHAvI")],
+		"comprehensive": [ytid("https://www.youtube.com/watch?v=lMcxwBLOpjs")],
+		"collision": [ytid("https://www.youtube.com/watch?v=lMcxwBLOpjs")],
+		"endorsement": [ytid("https://www.youtube.com/watch?v=am8XBrdFHfU")],
+		"endorsements": [ytid("https://www.youtube.com/watch?v=am8XBrdFHfU")],
+		"how to read your insurance policy": [ytid("https://www.youtube.com/watch?v=NYwZVxYe8QU")],
+		"read your insurance policy": [ytid("https://www.youtube.com/watch?v=NYwZVxYe8QU")],
+		"read your policy": [ytid("https://www.youtube.com/watch?v=NYwZVxYe8QU")],
+		"insurance policy": [ytid("https://www.youtube.com/watch?v=NYwZVxYe8QU")],
+		"how to choose the right insurance plan": [ytid("https://www.youtube.com/watch?v=LWDPRx3k4-8")],
+		"choose the right insurance plan": [ytid("https://www.youtube.com/watch?v=LWDPRx3k4-8")],
+		"bundling": [ytid("https://www.youtube.com/watch?v=M_tpraTiJMk")],
+		"bundle": [ytid("https://www.youtube.com/watch?v=M_tpraTiJMk")],
+		"no-fault": [ytid("https://www.youtube.com/watch?v=stdqM-OTmyk")],
+		"rental": [ytid("https://www.youtube.com/watch?v=s6LcnFEqQxY")],
+		"rental car": [ytid("https://www.youtube.com/watch?v=s6LcnFEqQxY")],
+		"rental car coverage": [ytid("https://www.youtube.com/watch?v=s6LcnFEqQxY")],
+		"uninsured": [ytid("https://www.youtube.com/watch?v=jcuN4jDCE3M")],
+		"uninsured motorist": [ytid("https://www.youtube.com/watch?v=jcuN4jDCE3M")],
+		"uninsured motorist situations": [ytid("https://www.youtube.com/watch?v=jcuN4jDCE3M")],
+		"total loss": [ytid("https://www.youtube.com/watch?v=Ynbgf5uda7Q")],
+		"what to do in case of a total loss": [ytid("https://www.youtube.com/watch?v=Ynbgf5uda7Q")],
+		"denied": [ytid("https://www.youtube.com/watch?v=vsdXq0WOH8M")],
+		"dispute": [ytid("https://www.youtube.com/watch?v=vsdXq0WOH8M")],
 
-		"auto": [
-			"wGQG5g1Kp4o",
-			"oE3oJ6g1p4o",
-		],
-		"coverage": [
-			"wGQG5g1Kp4o",
-		],
-		"deductible": [
-			"t3Jt8y8pZt8",
-		],
-		"premium": [
-			"ZcG2m9gk3uE",
-		],
+		# --- Rates & discounts ---
+		"rates": [ytid("https://www.youtube.com/watch?v=-QfmcoYYb5E")],
+		"insurance rates": [ytid("https://www.youtube.com/watch?v=-QfmcoYYb5E")],
+		"factors affecting insurance rates": [ytid("https://www.youtube.com/watch?v=-QfmcoYYb5E")],
+		"driving history": [ytid("https://www.youtube.com/watch?v=e5ESP_FtOzo")],
+		"impact of driving history": [ytid("https://www.youtube.com/watch?v=e5ESP_FtOzo")],
+		"clean driving record": [ytid("https://www.youtube.com/watch?v=csO9yYp-vYE")],
+		"maintain a clean driving record": [ytid("https://www.youtube.com/watch?v=csO9yYp-vYE")],
+		"traffic violations": [ytid("https://www.youtube.com/watch?v=x-N0jCGr0Bg")],
+		"impact of traffic violations": [ytid("https://www.youtube.com/watch?v=x-N0jCGr0Bg")],
+		"how to lower your insurance premiums": [ytid("https://www.youtube.com/watch?v=IRi5Z7pp1K4")],
+		"lower your insurance premiums": [ytid("https://www.youtube.com/watch?v=IRi5Z7pp1K4")],
+		"lower premiums": [ytid("https://www.youtube.com/watch?v=IRi5Z7pp1K4")],
+
+		# --- Driving safety & accident handling ---
+		"accident": [ytid("https://www.youtube.com/watch?v=wToIYkLuwPY")],
+		"car accident": [ytid("https://www.youtube.com/watch?v=wToIYkLuwPY")],
+		"steps to take during a car accident": [ytid("https://www.youtube.com/watch?v=wToIYkLuwPY")],
+		"safe driving": [ytid("https://www.youtube.com/watch?v=qoaF04Lsux4")],
+		"do's and don'ts": [ytid("https://www.youtube.com/watch?v=qoaF04Lsux4")],
+		"do's and don'ts of safe driving": [ytid("https://www.youtube.com/watch?v=qoaF04Lsux4")],
+		"seasonal": [ytid("https://www.youtube.com/watch?v=46xdKVgTbJE")],
+		"seasonal driving": [ytid("https://www.youtube.com/watch?v=46xdKVgTbJE")],
+		"seasonal driving tips": [ytid("https://www.youtube.com/watch?v=46xdKVgTbJE")],
+
+		# --- Study aids ---
+		"terms": [ytid("https://www.youtube.com/watch?v=TVA2xaWzsSY")],
+		"terms explained": [ytid("https://www.youtube.com/watch?v=TVA2xaWzsSY")],
+		"common auto insurance terms": [ytid("https://www.youtube.com/watch?v=TVA2xaWzsSY")],
 	}
 
+	# Pick the *best* match. Prefer longer/more-specific keys.
 	matched_ids: list[str] = []
+	best_len = 0
 	for k, ids in curated.items():
-		if k in t:
+		key = (k or "").strip().lower()
+		if not key:
+			continue
+		if key in t and len(key) > best_len and any(v for v in ids):
 			matched_ids = ids
-			break
+			best_len = len(key)
 
 	results: list[dict[str, str]] = []
-	for vid in matched_ids:
+	for vid_raw in matched_ids:
+		vid = ytid(vid_raw)
 		if not vid:
 			continue
 		results.append(

@@ -32,6 +32,23 @@ def extract_int(s: str) -> int | None:
     return int(m.group(0)) if m else None
 
 
+def display_module_title(order: int | None, title: Any) -> str:
+    """Format a curriculum module title for the Teacher Agent.
+
+    Some data sources may already prefix titles with numbers like "27. Topic".
+    Since we also display the explicit `order` ("27. {title}"), we strip a
+    leading numeric prefix from the title to avoid outputs like:
+      "27. 27. Understanding rental car coverage".
+    """
+
+    raw = "" if title is None else str(title)
+    cleaned = re.sub(r"^\s*\d+\s*[\.)-]\s*", "", raw).strip()
+    mo = "" if order is None else str(order)
+    if mo:
+        return f"{mo}. {cleaned or raw}"
+    return cleaned or raw
+
+
 @dataclass(frozen=True)
 class Lesson:
     title: str
@@ -238,7 +255,7 @@ async def run_cli_local():
     curriculum = insurance_mcp.get_curriculum_impl(customer_id)
     print("\nCurriculum modules:")
     for m in curriculum:
-        print(f"  {m.get('order')}. {m.get('module')}")
+        print(f"  {display_module_title(m.get('order'), m.get('module'))}")
 
     module_order = prompt_int("\nPick a module order: ", min_value=1)
 
@@ -280,7 +297,7 @@ async def run_cli():
 
     print("\nCurriculum modules:")
     for m in curriculum:
-        print(f"  {m.get('order')}. {m.get('module')}")
+        print(f"  {display_module_title(m.get('order'), m.get('module'))}")
 
     module_order = prompt_int("\nPick a module order: ", min_value=1)
 

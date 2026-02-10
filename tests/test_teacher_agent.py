@@ -27,3 +27,18 @@ def test_render_lesson_script_contains_sections():
 	assert "Key points:" in script
 	assert "Worked example:" in script
 	assert "Recap:" in script
+
+
+def test_display_module_title_strips_leading_order_prefix():
+	assert (
+		teacher_agent.display_module_title(27, "27. Understanding rental car coverage")
+		== "27. Understanding rental car coverage"
+	)
+	assert (
+		teacher_agent.display_module_title(27, "27) Understanding rental car coverage")
+		== "27. Understanding rental car coverage"
+	)
+	assert (
+		teacher_agent.display_module_title(27, "27 - Understanding rental car coverage")
+		== "27. Understanding rental car coverage"
+	)

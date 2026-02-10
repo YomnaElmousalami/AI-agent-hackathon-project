@@ -22,9 +22,6 @@ Accident Mode (Real-Time Assistance):
 outcomes
 - Escalation & Routing Agent summarizes the case and routes to human support only when necessary (Hospital phone numbers, etc.).
 
-Continuous Improvement:
-- Continuous Improvement & Feedback Agent analyzes where users get stuck and previous escalation patterns to improve future interactions. 
-
 **Technical Arcitecture Diagram:**
 
 **Expected Impact:**
@@ -107,7 +104,7 @@ Once connected, Postman will show a list of tools from `insurance_mcp.py`. Pick 
 	- If port 8000 is busy, set before running the script:
 
 ```powershell
-$env:MCP_PORT = "8000"   # change as needed
+$env:MCP_PORT = "8000"   
 .\dev_mcp_postman.ps1
 ```
 
@@ -187,19 +184,3 @@ python -m uvicorn api_server:app --host 127.0.0.1 --port 8801
 
 so frontend can work:
 npm run dev
-
-## YouTube videos (Option B: real, available videos via YouTube Data API)
-
-The Teacher page can fetch real embeddable YouTube videos per module topic.
-
-1) Create a Google Cloud project
-2) Enable **YouTube Data API v3**
-3) Create an API key
-4) Set it in your backend environment:
-
-```powershell
-$env:YOUTUBE_API_KEY = "YOUR_KEY_HERE"
-python -m uvicorn api_server:app --host 127.0.0.1 --port 8801
-```
-
-If `YOUTUBE_API_KEY` isn't set, `/api/teacher/youtube` will return a 501 with instructions.
