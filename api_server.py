@@ -16,44 +16,41 @@ from pydantic import BaseModel
 
 import insurance_mcp
 
-# NOTE: The FastAPI backend is used for deterministic endpoints (curriculum, knowledge quiz, etc.).
-# Some environments (notably Python 3.14+) may have incompatibilities with LangChain dependencies.
-# We keep the API server runnable by making teacher-agent helpers optional at import time.
 try:
-	from langchain.teacher_agent import build_khan_style_lesson, render_lesson_script  # type: ignore
-except Exception:  # pragma: no cover
-	build_khan_style_lesson = None  # type: ignore
-	render_lesson_script = None  # type: ignore
+	from langchain.teacher_agent import build_khan_style_lesson, render_lesson_script 
+except Exception: 
+	build_khan_style_lesson = None  
+	render_lesson_script = None  
 
 try:
-	import langchain.user_onboarding_agent as user_onboarding_agent  # type: ignore
-except Exception:  # pragma: no cover
-	user_onboarding_agent = None  # type: ignore
+	import langchain.user_onboarding_agent as user_onboarding_agent 
+except Exception: 
+	user_onboarding_agent = None 
 
 try:
-	import langchain.curriculum_planner_agent as curriculum_planner_agent  # type: ignore
-except Exception:  # pragma: no cover
-	curriculum_planner_agent = None  # type: ignore
+	import langchain.curriculum_planner_agent as curriculum_planner_agent 
+except Exception:
+	curriculum_planner_agent = None  
 
 try:
-	import langchain.policy_interpretation_agent as policy_interpretation_agent  # type: ignore
-except Exception:  # pragma: no cover
-	policy_interpretation_agent = None  # type: ignore
+	import langchain.policy_interpretation_agent as policy_interpretation_agent 
+except Exception:  
+	policy_interpretation_agent = None  
 
 try:
-	import langchain.claims_preparation_agent as claims_preparation_agent  # type: ignore
-except Exception:  # pragma: no cover
-	claims_preparation_agent = None  # type: ignore
+	import langchain.claims_preparation_agent as claims_preparation_agent 
+except Exception:  
+	claims_preparation_agent = None 
 
 try:
-	import langchain.action_plan_agent as action_plan_agent  # type: ignore
-except Exception:  # pragma: no cover
-	action_plan_agent = None  # type: ignore
+	import langchain.action_plan_agent as action_plan_agent  
+except Exception:  
+	action_plan_agent = None 
 
 try:
-	import langchain.escalation_and_routing_agent as escalation_and_routing_agent  # type: ignore
-except Exception:  # pragma: no cover
-	escalation_and_routing_agent = None  # type: ignore
+	import langchain.escalation_and_routing_agent as escalation_and_routing_agent 
+except Exception: 
+	escalation_and_routing_agent = None 
 
 
 DB_PATH = os.getenv("INSURANCE_DB_PATH", os.path.join("database", "insurance.db"))
@@ -124,8 +121,6 @@ class KnowledgeQuestionsRequest(BaseModel):
 	customer_id: int
 	limit: int = 10
 	module_order: int | None = None
-	# Optional: if provided, questions will be generated with a stable seed that
-	# matches the attempt. This prevents "Unknown question_id" when answering.
 	attempt_id: str | None = None
 
 
@@ -406,8 +401,6 @@ def knowledge_questions(req: KnowledgeQuestionsRequest):
 	"""Return knowledge validation questions for a customer (optionally for a single module)."""
 	try:
 		seed: str | None = str(req.attempt_id) if req.attempt_id else None
-		# If caller didn't pass attempt_id, try to find the most recent attempt for
-		# this customer/module and use it as the seed.
 		if seed is None:
 			with sqlite3.connect(DB_PATH) as conn:
 				conn.row_factory = sqlite3.Row
