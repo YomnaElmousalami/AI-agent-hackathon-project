@@ -6,7 +6,6 @@ import api_server
 
 
 def _ensure_customer(customer_id: int = 46) -> None:
-	# Ensure the customer exists (the recommend_resources_impl can derive state from profile).
 	with sqlite3.connect(api_server.DB_PATH) as conn:
 		conn.execute(
 			"INSERT OR IGNORE INTO customers (id, name, age, state, vehicle_name, coverage_type) VALUES (?, ?, ?, ?, ?, ?);",
