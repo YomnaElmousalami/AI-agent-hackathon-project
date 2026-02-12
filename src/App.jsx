@@ -332,14 +332,13 @@ function CurriculumPlannerPage() {
 			{result?.curriculum ? (
 				<div style={{ marginTop: 16 }}>
 					<h3 style={{ marginTop: 0 }}>Curriculum</h3>
-					<ol style={{ textAlign: 'left' }}>
+					<ul style={{ textAlign: 'left', listStyle: 'none', paddingLeft: 0 }}>
 						{result.curriculum.map((m, idx) => (
 							<li key={idx} style={{ marginBottom: 8 }}>
 								<div style={{ fontWeight: 600 }}>{m.module}</div>
-								<div style={{ opacity: 0.9 }}>{m.description}</div>
 							</li>
 						))}
-					</ol>
+					</ul>
 				</div>
 			) : null}
 
@@ -374,8 +373,8 @@ function TeacherAgentPage() {
 
 	function stripLeadingModuleNumber(title) {
 		// Some sources may already prefix titles with "27. ...".
-		// Since we render "{order}. {title}" in the UI, strip a leading numeric prefix
-		// to avoid "27. 27. ...".
+		// We now render titles without numbering, so strip a leading numeric prefix
+		// to keep the UI clean.
 		const raw = String(title || '').trim();
 		return raw.replace(/^\s*\d+\s*[\.)-]\s*/, '').trim() || raw;
 	}
@@ -538,16 +537,13 @@ function TeacherAgentPage() {
 				<div style={{ marginTop: 16 }}>
 					<h2 style={{ margin: 0 }}>Your Curriculum</h2>
 					<p style={{ marginTop: 8, opacity: 0.95 }}>Pick a module, then watch the video or take a quiz.</p>
-					<ol style={{ textAlign: 'left' }}>
+					<ul style={{ textAlign: 'left', listStyle: 'none', paddingLeft: 0 }}>
 						{curriculum.map((m, idx) => (
 							<li key={idx} style={{ marginBottom: 8 }}>
-								<div style={{ fontWeight: 600 }}>
-									{m.order}. {stripLeadingModuleNumber(m.module)}
-								</div>
-								<div style={{ opacity: 0.9 }}>{m.description}</div>
+								<div style={{ fontWeight: 600 }}>{stripLeadingModuleNumber(m.module)}</div>
 							</li>
 						))}
-					</ol>
+					</ul>
 
 					<div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 12 }}>
 						<div>
@@ -561,10 +557,10 @@ function TeacherAgentPage() {
 								{Array.isArray(curriculum) && curriculum.length ? null : <option value=''>Load curriculum first…</option>}
 								{Array.isArray(curriculum)
 									? curriculum.map((m) => (
-										<option key={String(m?.order ?? m?.module)} value={String(m?.order ?? '')}>
-											{m?.order}. {stripLeadingModuleNumber(m?.module)}
-										</option>
-									))
+											<option key={String(m?.order ?? m?.module)} value={String(m?.order ?? '')}>
+												{stripLeadingModuleNumber(m?.module)}
+											</option>
+										))
 									: null}
 							</select>
 						</div>
