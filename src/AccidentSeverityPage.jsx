@@ -1,15 +1,8 @@
 import { useMemo, useState } from 'react';
+import { jsPDF } from 'jspdf';
 import { Link, useSearchParams } from 'react-router-dom';
 
 const API_BASE = '';
-
-function asText(v) {
-	try {
-		return JSON.stringify(v, null, 2);
-	} catch {
-		return String(v);
-	}
-}
 
 export default function AccidentSeverityPage() {
 	const [searchParams] = useSearchParams();
@@ -20,6 +13,8 @@ export default function AccidentSeverityPage() {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [result, setResult] = useState(null);
+	const [pdfUrl, setPdfUrl] = useState('');
+	const [pdfName, setPdfName] = useState('accident-severity.pdf');
 
 	const canRun = useMemo(() => !busy && String(reportId).trim().length > 0, [busy, reportId]);
 
@@ -27,6 +22,10 @@ export default function AccidentSeverityPage() {
 		setBusy(true);
 		setError('');
 		setResult(null);
+		if (pdfUrl) {
+			URL.revokeObjectURL(pdfUrl);
+			setPdfUrl('');
+		}
 		try {
 			const rid = String(reportId).trim();
 			const res = await fetch(`${API_BASE}/api/accident/severity`, {
@@ -37,6 +36,94 @@ export default function AccidentSeverityPage() {
 			const data = await res.json().catch(() => null);
 			if (!res.ok) throw new Error(data?.detail || `Request failed (${res.status})`);
 			setResult(data);
+
+			const doc = new jsPDF();
+			let y = 18;
+			doc.setFontSize(16);
+			doc.text('Accident Severity Report', 14, y);
+			y += 10;
+			doc.setFontSize(11);
+			doc.text(`Generated: ${new Date().toLocaleString()}`, 14, y);
+			y += 8;
+
+			const details = [
+				`Report ID: ${data?.reportId ?? ''}`,
+				`Severity: ${data?.severity ?? ''}`,
+				`Urgency: ${data?.urgency ?? ''}`,
+				`Accident Type: ${data?.accidentType ?? 'N/A'}`,
+			];
+			details.forEach((line) => {
+				doc.text(line, 14, y);
+				y += 7;
+			});
+
+			const rationale = String(data?.rationale || '').trim();
+			if (rationale) {
+				doc.setFontSize(12);
+				doc.text('Rationale', 14, y);
+				y += 7;
+				doc.setFontSize(11);
+				const rationaleLines = doc.splitTextToSize(rationale, 180);
+				doc.text(rationaleLines, 14, y);
+				y += rationaleLines.length * 6 + 4;
+			}
+
+			const recommended = Array.isArray(data?.recommendedActions) ? data.recommendedActions : [];
+			if (recommended.length) {
+				doc.setFontSize(12);
+				doc.text('Recommended Actions', 14, y);
+				y += 7;
+				doc.setFontSize(11);
+				recommended.forEach((item) => {
+					const lines = doc.splitTextToSize(`• ${item}`, 180);
+					doc.text(lines, 14, y);
+					y += lines.length * 6;
+				});
+			}
+
+			const imageAnalysis = data?.imageAnalysis || null;
+			const imageError = data?.imageAnalysisError || '';
+			const imageScore = imageAnalysis?.severityScore ?? null;
+			const imageSummary = String(imageAnalysis?.summary || '').trim();
+			const imageActions = Array.isArray(imageAnalysis?.suggestedActions)
+				? imageAnalysis.suggestedActions
+				: [];
+
+			y += 6;
+			doc.setFontSize(12);
+			doc.text('Image-based Assessment', 14, y);
+			y += 7;
+			doc.setFontSize(11);
+			doc.text(`Severity Score: ${imageScore != null ? imageScore : 'N/A'}`, 14, y);
+			y += 7;
+			if (imageError) {
+				const errorLines = doc.splitTextToSize(`Image analysis error: ${imageError}`, 180);
+				doc.text(errorLines, 14, y);
+				y += errorLines.length * 6 + 2;
+			}
+			if (imageSummary) {
+				const summaryLines = doc.splitTextToSize(imageSummary, 180);
+				doc.text(summaryLines, 14, y);
+				y += summaryLines.length * 6 + 2;
+			} else {
+				doc.text('Summary: N/A', 14, y);
+				y += 7;
+			}
+			if (imageActions.length) {
+				imageActions.forEach((item) => {
+					const lines = doc.splitTextToSize(`• ${item}`, 180);
+					doc.text(lines, 14, y);
+					y += lines.length * 6;
+				});
+			} else {
+				doc.text('Suggested Actions: N/A', 14, y);
+				y += 7;
+			}
+
+			const blob = doc.output('blob');
+			const url = URL.createObjectURL(blob);
+			setPdfUrl(url);
+			setPdfName(`accident-severity-${rid || 'report'}.pdf`);
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -80,10 +167,23 @@ export default function AccidentSeverityPage() {
 
 			{result ? (
 				<div style={{ marginTop: 16 }}>
-					<h3 style={{ marginTop: 0 }}>Result</h3>
-					<pre style={{ whiteSpace: 'pre-wrap', background: '#101820', border: '1px solid #223344', padding: 12 }}>
-						{asText(result)}
-					</pre>
+					<h3 style={{ marginTop: 0 }}>Accident Severity PDF</h3>
+					{pdfUrl ? (
+						<a
+							href={pdfUrl}
+							download={pdfName}
+							style={{ color: '#ffffff', textDecoration: 'underline' }}
+						>
+							Download severity report (PDF)
+						</a>
+					) : (
+						<div style={{ opacity: 0.8 }}>Preparing PDF…</div>
+					)}
+					{result?.imageAnalysisError ? (
+						<div style={{ marginTop: 8, opacity: 0.8, fontSize: 13 }}>
+							Image analysis error: {String(result.imageAnalysisError)}
+						</div>
+					) : null}
 				</div>
 			) : null}
 		</div>

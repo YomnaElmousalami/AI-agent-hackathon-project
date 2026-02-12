@@ -22,17 +22,21 @@ export default function AccidentReportingPage() {
 	const [injuredCount, setInjuredCount] = useState('0');
 	const [vehiclesDrivable, setVehiclesDrivable] = useState('');
 	const [notes, setNotes] = useState('');
-	const [evidenceUrls, setEvidenceUrls] = useState('');
+	const [evidenceFiles, setEvidenceFiles] = useState([]);
 
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState('');
 	const [result, setResult] = useState(null);
+	const [finalized, setFinalized] = useState(false);
 
 	const canUpdate = useMemo(() => {
 		const id = Number(customerId);
-		return !busy && Number.isFinite(id) && id > 0;
-	}, [busy, customerId]);
-	const canFinalize = useMemo(() => !busy && String(reportId).trim().length > 0, [busy, reportId]);
+		return !busy && !finalized && Number.isFinite(id) && id > 0;
+	}, [busy, finalized, customerId]);
+	const canFinalize = useMemo(
+		() => !busy && !finalized && String(reportId).trim().length > 0,
+		[busy, finalized, reportId]
+	);
 
 	function parseVehiclesDrivable(v) {
 		const t = String(v || '').trim().toLowerCase();
@@ -40,6 +44,15 @@ export default function AccidentReportingPage() {
 		if (t === 'true' || t === 'yes' || t === 'y') return true;
 		if (t === 'false' || t === 'no' || t === 'n') return false;
 		return undefined;
+	}
+
+	function readFileAsDataUrl(file) {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(String(reader.result || ''));
+			reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`));
+			reader.readAsDataURL(file);
+		});
 	}
 
 	async function updateReport() {
@@ -68,10 +81,9 @@ export default function AccidentReportingPage() {
 			const injured = injuredCount === '' ? undefined : Number(injuredCount);
 			if (injured != null && !Number.isFinite(injured)) throw new Error('Injured count must be a number.');
 
-			const evidence = String(evidenceUrls || '')
-				.split(',')
-				.map((s) => s.trim())
-				.filter(Boolean);
+			const evidence = evidenceFiles.length
+				? (await Promise.all(evidenceFiles.map((file) => readFileAsDataUrl(file)))).filter(Boolean)
+				: [];
 
 			const payload = {
 				report_id: rid,
@@ -89,7 +101,7 @@ export default function AccidentReportingPage() {
 			});
 			const data = await res.json().catch(() => null);
 			if (!res.ok) throw new Error(data?.detail || `Request failed (${res.status})`);
-			setResult(data);
+			setResult('done');
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -114,7 +126,8 @@ export default function AccidentReportingPage() {
 			});
 			const data = await res.json().catch(() => null);
 			if (!res.ok) throw new Error(data?.detail || `Request failed (${res.status})`);
-			setResult(data);
+			setResult('done');
+			setFinalized(true);
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -154,7 +167,12 @@ export default function AccidentReportingPage() {
 			<div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
 				<div>
 					<label style={{ display: 'block', marginBottom: 6 }}>Customer id</label>
-					<input value={customerId} onChange={(e) => setCustomerId(e.target.value)} style={{ width: 240, padding: 10 }} />
+					<input
+						value={customerId}
+						onChange={(e) => setCustomerId(e.target.value)}
+						disabled={finalized}
+						style={{ width: 240, padding: 10 }}
+					/>
 				</div>
 			</div>
 
@@ -178,31 +196,73 @@ export default function AccidentReportingPage() {
 				</div>
 			) : null}
 
-			<div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-				<div>
+			<div
+				style={{
+					marginTop: 16,
+					display: 'flex',
+					flexWrap: 'wrap',
+					gap: 12,
+				}}
+			>
+				<div style={{ flex: '1 1 280px', minWidth: 0 }}>
 					<label style={{ display: 'block', marginBottom: 6 }}>Location (City, ST)</label>
-					<input value={location} onChange={(e) => setLocation(e.target.value)} style={{ width: '100%', padding: 10 }} placeholder='e.g. Norfolk, VA' />
+					<input
+						value={location}
+						onChange={(e) => setLocation(e.target.value)}
+						disabled={finalized}
+						style={{ width: '100%', padding: 10, boxSizing: 'border-box' }}
+						placeholder='e.g. Norfolk, VA'
+					/>
 				</div>
-				<div>
+				<div style={{ flex: '1 1 280px', minWidth: 0 }}>
 					<label style={{ display: 'block', marginBottom: 6 }}>Injured count</label>
-					<input value={injuredCount} onChange={(e) => setInjuredCount(e.target.value)} style={{ width: '100%', padding: 10 }} placeholder='0' />
+					<input
+						value={injuredCount}
+						onChange={(e) => setInjuredCount(e.target.value)}
+						disabled={finalized}
+						style={{ width: '100%', padding: 10, boxSizing: 'border-box' }}
+						placeholder='0'
+					/>
 				</div>
 			</div>
 
-			<div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-				<div>
+			<div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+				<div style={{ flex: '1 1 280px', minWidth: 0 }}>
 					<label style={{ display: 'block', marginBottom: 6 }}>Vehicle drivable? (true/false)</label>
-					<input value={vehiclesDrivable} onChange={(e) => setVehiclesDrivable(e.target.value)} style={{ width: '100%', padding: 10 }} placeholder='true / false' />
+					<input
+						value={vehiclesDrivable}
+						onChange={(e) => setVehiclesDrivable(e.target.value)}
+						disabled={finalized}
+						style={{ width: '100%', padding: 10, boxSizing: 'border-box' }}
+						placeholder='true / false'
+					/>
 				</div>
-				<div>
-					<label style={{ display: 'block', marginBottom: 6 }}>Evidence URLs (comma-separated)</label>
-					<input value={evidenceUrls} onChange={(e) => setEvidenceUrls(e.target.value)} style={{ width: '100%', padding: 10 }} placeholder='https://…/photo1.jpg, https://…/video.mp4' />
+				<div style={{ flex: '1 1 280px', minWidth: 0 }}>
+					<label style={{ display: 'block', marginBottom: 6 }}>Evidence images</label>
+					<input
+						type='file'
+						accept='image/*'
+						multiple
+						disabled={finalized}
+						onChange={(e) => setEvidenceFiles(Array.from(e.target.files || []))}
+						style={{ width: '100%', padding: 10, boxSizing: 'border-box' }}
+					/>
+					{evidenceFiles.length ? null : (
+						<div style={{ marginTop: 6, opacity: 0.7, fontSize: 13 }}>Upload one or more photos of the incident.</div>
+					)}
 				</div>
 			</div>
 
 			<div style={{ marginTop: 12 }}>
 				<label style={{ display: 'block', marginBottom: 6 }}>Notes</label>
-				<textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ width: 'min(720px, 100%)', padding: 10 }} placeholder='rear-end accident, side-impact, etc.' />
+				<textarea
+					value={notes}
+					onChange={(e) => setNotes(e.target.value)}
+					disabled={finalized}
+					rows={3}
+					style={{ width: 'min(720px, 100%)', padding: 10 }}
+					placeholder='rear-end accident, side-impact, etc.'
+				/>
 			</div>
 
 			<div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
@@ -223,14 +283,18 @@ export default function AccidentReportingPage() {
 			{result ? (
 				<div style={{ marginTop: 16 }}>
 					<h3 style={{ marginTop: 0 }}>Result</h3>
-					<pre style={{ whiteSpace: 'pre-wrap', background: '#101820', border: '1px solid #223344', padding: 12 }}>
-						{asText(result)}
-					</pre>
+					{result === 'done' ? (
+						<div style={{ background: '#101820', border: '1px solid #223344', padding: 12 }}>done</div>
+					) : (
+						<pre style={{ whiteSpace: 'pre-wrap', background: '#101820', border: '1px solid #223344', padding: 12 }}>
+							{asText(result)}
+						</pre>
+					)}
 				</div>
 			) : null}
 
 			<div style={{ marginTop: 16 }}>
-				<h3 style={{ marginTop: 0 }}>Next agents</h3>
+				<h3 style={{ marginTop: 0 }}>Next analysis</h3>
 				<div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
 					<Link to={nextLinks.severity} style={{ color: '#ffffff', textDecoration: 'underline' }}>
 						Severity Assessment

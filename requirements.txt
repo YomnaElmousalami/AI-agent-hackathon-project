@@ -8,3 +8,5 @@ pytest
 pytest-asyncio
 pytest-asyncio
 pypdf
+openai
+python-dotenv

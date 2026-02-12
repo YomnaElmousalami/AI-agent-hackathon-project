@@ -16,6 +16,19 @@ from pydantic import BaseModel
 
 import insurance_mcp
 
+import importlib
+try:
+	_openai_mod = importlib.import_module("openai")
+	OpenAI = getattr(_openai_mod, "OpenAI", None)
+except Exception:
+	OpenAI = None
+
+try:
+	from dotenv import load_dotenv
+	load_dotenv()
+except Exception:
+	pass
+
 try:
 	from langchain.teacher_agent import build_khan_style_lesson, render_lesson_script 
 except Exception: 
@@ -263,6 +276,71 @@ def _run_llm_sync(fn, *args, **kwargs) -> tuple[str | None, str | None]:
 		return asyncio.run(_call_llm(fn, *args, **kwargs))
 	except RuntimeError:
 		return None, "event_loop_running"
+	except Exception as e:
+		return None, str(e)
+
+
+def _analyze_accident_images(evidence_urls: list[str]) -> tuple[dict | None, str | None]:
+	if OpenAI is None:
+		return None, "openai_unavailable"
+	api_key = os.getenv("OPENAI_API_KEY")
+	if not api_key:
+		return None, "openai_api_key_missing"
+	if not evidence_urls:
+		return None, "no_evidence_images"
+
+	model = os.getenv("OPENAI_VISION_MODEL", "gpt-4o-mini")
+	client = OpenAI(api_key=api_key)
+	images = [url for url in evidence_urls if isinstance(url, str) and url.strip()]
+	if not images:
+		return None, "no_evidence_images"
+
+	content: list[dict[str, Any]] = [
+		{
+			"type": "text",
+			"text": (
+				"Analyze the accident images and assess severity. "
+				"Return JSON with: severity_score (1-10 integer), summary (1-3 sentences), "
+				"suggested_actions (array of 3-6 short actions)."
+			),
+		},
+	]
+	for url in images[:4]:
+		content.append({"type": "image_url", "image_url": {"url": url}})
+
+	try:
+		response = client.chat.completions.create(
+			model=model,
+			messages=[
+				{"role": "system", "content": "You are an insurance accident severity assessor."},
+				{"role": "user", "content": content},
+			],
+			temperature=0.2,
+			response_format={"type": "json_object"},
+		)
+		raw = response.choices[0].message.content or ""
+		data = json.loads(raw)
+		score = data.get("severity_score")
+		try:
+			score = int(round(float(score))) if score is not None else None
+		except Exception:
+			score = None
+		summary = str(data.get("summary") or "").strip()
+		suggested = data.get("suggested_actions") or data.get("suggestedActions") or []
+		if isinstance(suggested, str):
+			suggested = [suggested]
+		if not isinstance(suggested, list):
+			suggested = []
+		suggested = [str(item).strip() for item in suggested if str(item).strip()]
+
+		return (
+			{
+				"severityScore": score,
+				"summary": summary,
+				"suggestedActions": suggested,
+			},
+			None,
+		)
 	except Exception as e:
 		return None, str(e)
 
@@ -573,7 +651,31 @@ def accident_severity(req: ReportIdRequest):
 	"""Accident Severity Assessment Agent."""
 	try:
 		res = insurance_mcp.assess_accident_severity_impl(report_id=str(req.report_id))
-		return {"ok": True, **res}
+		image_analysis = None
+		image_error = None
+		try:
+			with sqlite3.connect(DB_PATH) as conn:
+				conn.row_factory = sqlite3.Row
+				row = conn.execute(
+					"SELECT evidence_urls FROM accident_reports WHERE id = ?;",
+					(str(req.report_id),),
+				).fetchone()
+				if row is not None:
+					raw = row["evidence_urls"] or "[]"
+					try:
+						evidence = json.loads(raw)
+					except Exception:
+						evidence = []
+					if isinstance(evidence, list):
+						image_analysis, image_error = _analyze_accident_images(evidence)
+					else:
+						image_error = "invalid_evidence_format"
+				else:
+					image_error = "report_not_found"
+		except Exception as e:
+			image_error = str(e)
+
+		return {"ok": True, **res, "imageAnalysis": image_analysis, "imageAnalysisError": image_error}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:
