@@ -1,4 +1,3 @@
-#imports
 from fastmcp import FastMCP
 from typing import List, Dict
 from datetime import datetime, timezone
@@ -405,9 +404,6 @@ def row_to_dict(row: sqlite3.Row | None) -> Dict | None:
         return None
     return {k: row[k] for k in row.keys()}
 
-#Code here is for Learning & Education Mode:
-#for user onboarding agent
-
 def get_customer_info_impl(
     *,
     id: int,
@@ -514,7 +510,6 @@ def plan_curriculum_impl(customer_id: int) -> List[Dict]:
             (customer_id,),
         ).fetchone()
 
-    #may remove later
     if row is None:
         raise ValueError(
             f"Customer {customer_id} not found. Call get_customer_info first to store the profile."
@@ -551,9 +546,6 @@ def plan_curriculum_impl(customer_id: int) -> List[Dict]:
         "How to dispute a denied claim",
         "Understanding rental car coverage",
     ]
-    # NOTE: Curriculum is now intentionally fixed to the curated 27-module list
-    # provided by the project owner (matches the Teacher Agent video library).
-    # If you want age-specific variants later, we can add an opt-in flag.
         
     curriculum_plan = [
         {
@@ -600,7 +592,6 @@ def plan_curriculum_impl(customer_id: int) -> List[Dict]:
 
     return curriculum_plan
 
-#for teacher agent, to be determined
 @mcp.tool()
 def get_curriculum(customer_id: int) -> List[Dict]:
     return get_curriculum_impl(customer_id=customer_id)
@@ -1035,7 +1026,6 @@ def _seed_token(text: str) -> str:
     raw = (text or "").strip()
     if not raw:
         return "default"
-    # Keep alnum only to avoid separators; cap length for readability.
     tok = re.sub(r"[^a-zA-Z0-9]", "", raw)
     tok = tok[:32]
     return tok or "default"
@@ -1052,9 +1042,7 @@ def _topic_for_module(module_title: str, module_description: str) -> str:
     combined = f"{title_l} {desc_l}".strip()
 
     topic_keywords: list[tuple[str, list[str]]] = [
-        # Curriculum fixed titles (ensure alignment)
         ("car_insurance_basics", ["what is car insurance"]),
-        # Driving & safety
         ("accident_steps", ["steps to take", "car accident", " accident", " crash"]),
         (
             "safe_driving",
@@ -1079,17 +1067,14 @@ def _topic_for_module(module_title: str, module_description: str) -> str:
             ],
         ),
         ("discounts", ["discount", "discounts", "lower your insurance premiums", "bundling"]),
-        # Special coverages/situations
         ("uninsured_motorist", ["uninsured motorist"]),
         ("rental_car", ["rental car"]),
         ("roadside", ["roadside assistance"]),
         ("total_loss", ["total loss"]),
         ("gap", ["gap insurance"]),
         ("fraud", ["insurance fraud", " fraud"]),
-        # Core policy concepts
         ("deductible", ["deduct"]),
         ("premium", ["premium", "grace period"]),
-    # Keep more specific claim-related topics BEFORE the generic "claim".
     ("claim_filing", ["how to file a claim"]),
     ("denied_claim", ["dispute a denied claim", "denied claim"]),
     ("claim", ["claim", "claims process", "file a claim", "dispute"]),
@@ -1104,12 +1089,10 @@ def _topic_for_module(module_title: str, module_description: str) -> str:
         ),
         ("liability", ["liability"]),
         ("coverage", ["types of coverage", "coverage", "coverages", "state minimum"]),
-        # Collision/comprehensive should be last because of the generic word "comprehensive"
         (
             "comp_collision",
             ["comprehensive coverage", "collision coverage", " collision", " comprehensive "],
         ),
-        # Other/special
         ("vehicle_mods", ["vehicle modifications"]),
         ("maintenance", ["vehicle maintenance"]),
         ("switch_provider", ["switch insurance", "switch providers"]),
@@ -1148,15 +1131,13 @@ def generate_topic_aligned_questions(
 
     mo = int(module_order)
     topic = _topic_for_module(module_title, module_description)
-    # For ids we need topic to be a single underscore-delimited token.
     topic_token = _slugify_topic(topic).replace("_", "") or "general"
 
-    # We intentionally avoid Python's built-in hash() because it's randomized per process.
     seed_str = seed or now_date()
     seed_slug = _seed_token(seed_str)
 
     def qid(kind: str, i: int) -> str:
-        return f"kv2_m{mo}_{topic_token}_{seed_slug}_{kind}{i}"  # kv2 = new generator
+        return f"kv2_m{mo}_{topic_token}_{seed_slug}_{kind}{i}"  
 
     def mc(i: int, prompt: str, choices: List[str], correct_index: int, explanation: str) -> Dict:
         return {
@@ -1186,10 +1167,6 @@ def generate_topic_aligned_questions(
             "weight": 0.5,
         }
 
-    # Templates per topic. We keep these short but specific.
-    # NOTE: These topic keys are derived from `_topic_for_module()`. If you add a
-    # new topic keyword mapping for the curriculum, add templates here too so
-    # quizzes stay aligned with the curriculum modules.
     templates: dict[str, list[Dict]] = {
         "car_insurance_basics": [
             mc(
@@ -1449,7 +1426,6 @@ def generate_topic_aligned_questions(
 
     base = templates.get(topic)
     if not base:
-        # Generic fallback aligned to the module by name.
         base = [
             mc(
                 1,
@@ -1474,12 +1450,10 @@ def generate_topic_aligned_questions(
             tf(2, "Reading your policy can help you avoid surprises.", True, "Knowing limits/deductibles helps decisions."),
         ]
 
-    # Expand deterministically to reach requested count.
     out: List[Dict] = []
     i = 0
     while len(out) < int(count):
         item = base[i % len(base)]
-        # Clone with a new id/index to keep uniqueness across the expanded list.
         i += 1
         cloned = dict(item)
         kind = "mc" if cloned.get("type") == "multiple_choice" else "tf"
@@ -2490,9 +2464,6 @@ def get_knowledge_questions_impl(
     selected_order = int(module_order) if module_order is not None else None
 
     mode_l = (mode or "").strip().lower()
-    # For the new generator, ids depend on the seed. If callers don't pass a seed
-    # (e.g., simple previews), we still need stability so grading/recording can
-    # re-fetch the same question ids.
     effective_seed = seed if seed is not None else "default"
 
     for m in curriculum:
@@ -2540,32 +2511,20 @@ def grade_knowledge_answer_impl(
 ) -> Dict:
     """Grade a knowledge validation answer and log a feedback event."""
 
-    # IMPORTANT: the question bank is generated per module and concatenated.
-    # If ids aren't unique (or the bank differs between fetch and grade), the
-    # grader can't find the referenced question id and raises "Unknown question_id".
-    # We build a wide bank here (200 questions) and, when possible, narrow by
-    # module order encoded in the id format (e.g., 'kv_m3_mc1').
     qid_text = str(question_id or "")
 
-    # Infer module order + generator seed from the question id.
-    # Supported formats:
-    # - Legacy bank: kv_m3_mc1
-    # - New generator: kv2_m3_{topic}_{seed}_mc1
     inferred_module_order: int | None = None
     inferred_seed: str | None = None
 
     try:
         if qid_text.startswith("kv2_m"):
-            # kv2_m{order}_{topicToken}_{seedToken}_{kind}{i}
-            # split: [kv2, m{order}, {topicToken}, {seedToken}, rest]
             parts = qid_text.split("_")
             if len(parts) >= 5:
-                m_part = parts[1]  # like 'm3'
+                m_part = parts[1]  
                 if m_part.startswith("m") and m_part[1:].isdigit():
                     inferred_module_order = int(m_part[1:])
                 inferred_seed = parts[3] or None
         elif qid_text.startswith("kv_m"):
-            # kv_m3_mc1
             tail = qid_text.split("kv_m", 1)[1]
             digits = ""
             for ch in tail:
@@ -2578,8 +2537,6 @@ def grade_knowledge_answer_impl(
         inferred_module_order = None
         inferred_seed = None
 
-    # Rebuild a wide-enough bank with the same generator + seed.
-    # For generated questions we must use the same seed that produced the id.
     bank_mode = "generated" if qid_text.startswith("kv2_") else "legacy"
     if bank_mode == "generated" and not inferred_seed:
         inferred_seed = "default"
@@ -2788,9 +2745,6 @@ def record_knowledge_quiz_answer_impl(
     attempt_module_order = attempt["module_order"]
     attempt_module_order_int = int(attempt_module_order) if attempt_module_order is not None else None
 
-    # Determine which seed produced this question id.
-    # - If the caller fetched questions outside the attempt flow, ids use seed "default".
-    # - If they fetched questions for an attempt, we seed by attempt_id.
     qid_text = str(question_id or "")
     generation_seed = str(attempt_id)
     if "_default_" in qid_text:
@@ -2800,8 +2754,6 @@ def record_knowledge_quiz_answer_impl(
     if database_path is not None:
         globals()["db_path"] = database_path
     try:
-        # Grade must use same seed as the attempt question generation.
-        # We infer module order from the question id inside the grader.
         prior_db_path_local = globals().get("db_path")
         graded = grade_knowledge_answer_impl(
             customer_id=int(customer_id),
@@ -3067,8 +3019,6 @@ def summarize_resources_impl(resources: List[Dict], style: str = "general") -> D
     return {"style": style, "summary": general}
 
 #for, Accident Reporting Agent 
-
-
 @mcp.tool()
 def start_accident_report(customer_id: int) -> Dict:
     return start_accident_report_impl(customer_id=customer_id)
@@ -4063,9 +4013,6 @@ if __name__ == "__main__":
     if transport == "stdio":
         mcp.run(transport="stdio")
     else:
-        # Postman MCP support expects an SSE-style workflow. In practice, FastMCP's
-        # `stateless_http=True` is the most reliable mode on Windows dev machines.
-        # You can still force stateful mode by setting MCP_STATELESS_HTTP=false.
         stateless = os.getenv("MCP_STATELESS_HTTP", "true").strip().lower() in {"1", "true", "yes", "on"}
         mcp.run(
             transport="http",

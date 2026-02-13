@@ -93,7 +93,6 @@ async def run_agent(agent, user_query: str) -> str | None:
                 if role in {"ai", "assistant"} and content:
                     final_text = content
     except (asyncio.CancelledError, KeyboardInterrupt):
-        # Don't crash the whole CLI if the user interrupts or the LLM stream gets cancelled.
         print("\n(LLM response cancelled. Your profile is still saved.)")
         return None
     except Exception as e:

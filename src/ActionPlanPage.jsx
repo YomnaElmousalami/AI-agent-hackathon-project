@@ -3,14 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 const API_BASE = '';
 
-function asText(v) {
-	try {
-		return JSON.stringify(v, null, 2);
-	} catch {
-		return String(v);
-	}
-}
-
 export default function ActionPlanPage() {
 	const [searchParams] = useSearchParams();
 	const reportIdParam = searchParams.get('reportId') || '';
@@ -60,7 +52,7 @@ export default function ActionPlanPage() {
 	return (
 		<div style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-				<h1 style={{ margin: 0 }}>Action Plan Agent</h1>
+				<h1 style={{ margin: 0 }}>Action Plan</h1>
 				<Link to={backLink} style={{ color: '#ffffff', textDecoration: 'underline' }}>
 					Back to Accident Report
 				</Link>
@@ -85,10 +77,41 @@ export default function ActionPlanPage() {
 
 			{result ? (
 				<div style={{ marginTop: 16 }}>
-					<h3 style={{ marginTop: 0 }}>Result</h3>
-					<pre style={{ whiteSpace: 'pre-wrap', background: '#101820', border: '1px solid #223344', padding: 12 }}>
-						{asText(result)}
-					</pre>
+					<h3 style={{ marginTop: 0 }}>Action Plan</h3>
+					<div style={{ background: '#101820', border: '1px solid #223344', padding: 12 }}>
+						<div style={{ marginBottom: 8 }}>
+							<strong>Severity:</strong> {result.severity || 'N/A'}
+						</div>
+						{result.policySummary ? (
+							<div style={{ marginBottom: 8 }}>
+								<strong>Policy summary:</strong> {result.policySummary}
+							</div>
+						) : null}
+
+						{Array.isArray(result.steps) && result.steps.length ? (
+							<div style={{ marginBottom: 12 }}>
+								<strong>Next steps:</strong>
+								<ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+									{result.steps.map((item, idx) => (
+										<li key={idx}>
+											{`${String(item?.step || '').trim()}${item?.priority ? ` (priority: ${item.priority})` : ''}.`}
+										</li>
+									))}
+								</ul>
+							</div>
+						) : null}
+
+						{Array.isArray(result.timelines) && result.timelines.length ? (
+							<div>
+								<strong>Timelines:</strong>
+								<ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+									{result.timelines.map((item, idx) => (
+										<li key={idx}>{`${item?.when || 'When'}: ${item?.what || 'Details'}.`}</li>
+									))}
+								</ul>
+							</div>
+						) : null}
+					</div>
 				</div>
 			) : null}
 

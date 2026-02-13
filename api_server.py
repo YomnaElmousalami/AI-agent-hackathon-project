@@ -1,4 +1,6 @@
 import os
+import base64
+import io
 import asyncio
 import shutil
 import subprocess
@@ -28,6 +30,11 @@ try:
 	load_dotenv()
 except Exception:
 	pass
+
+try:
+	from pypdf import PdfReader
+except Exception:
+	PdfReader = None
 
 try:
 	from langchain.teacher_agent import build_khan_style_lesson, render_lesson_script 
@@ -111,7 +118,6 @@ class TeacherLessonRequest(BaseModel):
 class TeacherVideoRequest(BaseModel):
 	customer_id: int
 	module_order: int
-	# Optional: let the caller freeze an id so they can re-fetch it.
 	video_id: str | None = None
 
 
@@ -166,12 +172,6 @@ class ResourceSummarizeRequest(BaseModel):
 	resources: list[dict]
 	style: str = "general"
 
-
-# ---------------------------
-# Accident / Claims agent APIs
-# ---------------------------
-
-
 class StartAccidentReportRequest(BaseModel):
 	customer_id: int
 
@@ -187,6 +187,12 @@ class UpdateAccidentReportRequest(BaseModel):
 
 class ReportIdRequest(BaseModel):
 	report_id: str
+
+
+class PolicyInterpretRequest(BaseModel):
+	report_id: str
+	policy_pdf_base64: str | None = None
+	policy_image_base64: list[str] | None = None
 
 def parse_onboarding_sentence(message: str) -> dict[str, Any]:
 	"""Parse a sentence like:
@@ -217,8 +223,7 @@ def parse_onboarding_sentence(message: str) -> dict[str, Any]:
 		raise ValueError("Couldn't find a 2-letter state code (e.g. VA, NY)")
 	state = m_state.group(1).upper()
 
-	# NOTE: Avoid unbounded backtracking here (these patterns are used on arbitrary user text).
-	# Keep captures short and stop at common separators.
+
 	m_name = re.search(r"\bmy\s*name\s*is\s*([^,\.]+)", text, re.IGNORECASE)
 	if not m_name:
 		raise ValueError("Couldn't find 'my name is ...'")
@@ -345,6 +350,85 @@ def _analyze_accident_images(evidence_urls: list[str]) -> tuple[dict | None, str
 		return None, str(e)
 
 
+def _extract_pdf_text(policy_pdf_base64: str) -> tuple[str | None, str | None]:
+	if PdfReader is None:
+		return None, "pypdf_unavailable"
+	if not policy_pdf_base64:
+		return None, "missing_pdf"
+	try:
+		payload = policy_pdf_base64.split(",")[-1]
+		pdf_bytes = base64.b64decode(payload)
+		reader = PdfReader(io.BytesIO(pdf_bytes))
+		pages = [page.extract_text() or "" for page in reader.pages]
+		text = "\n".join(pages).strip()
+		return (text if text else None), (None if text else "empty_pdf_text")
+	except Exception as e:
+		return None, str(e)
+
+
+def _analyze_policy_pdf(text: str, accident_context: str | None = None, image_urls: list[str] | None = None) -> tuple[dict | None, str | None]:
+	if OpenAI is None:
+		return None, "openai_unavailable"
+	api_key = os.getenv("OPENAI_API_KEY")
+	if not api_key:
+		return None, "openai_api_key_missing"
+	if not text:
+		return None, "missing_policy_text"
+
+	model = os.getenv("OPENAI_VISION_MODEL", "gpt-4o-mini")
+	client = OpenAI(api_key=api_key)
+	trimmed = text[:6000]
+	context = (accident_context or "").strip()
+	images = [url for url in (image_urls or []) if isinstance(url, str) and url.strip()]
+	try:
+		content: list[dict[str, Any]] = [
+			{
+				"type": "text",
+				"text": (
+					"Analyze this auto insurance policy text and return JSON with fields: "
+					"coverageSummary (string), estimatedDeductible (number or null), "
+					"estimatedOutOfPocket (number or null), assumptions (array of strings), "
+					"exclusions (array of strings). If unknown, use null or empty arrays. "
+					"Consider the accident details when summarizing coverage.\n\n"
+					f"Accident details:\n{context or 'N/A'}\n\n"
+					f"Policy text:\n{trimmed}"
+				),
+			},
+		]
+		for url in images[:4]:
+			content.append({"type": "image_url", "image_url": {"url": url}})
+
+		response = client.chat.completions.create(
+			model=model,
+			messages=[
+				{"role": "system", "content": "You are an insurance policy analyst."},
+				{"role": "user", "content": content},
+			],
+			temperature=0.2,
+			response_format={"type": "json_object"},
+		)
+		raw = response.choices[0].message.content or ""
+		data = json.loads(raw)
+		assumptions = data.get("assumptions") or []
+		exclusions = data.get("exclusions") or []
+		if isinstance(assumptions, str):
+			assumptions = [assumptions]
+		if isinstance(exclusions, str):
+			exclusions = [exclusions]
+		return (
+			{
+				"coverageSummary": str(data.get("coverageSummary") or "").strip(),
+				"estimatedDeductible": data.get("estimatedDeductible"),
+				"estimatedOutOfPocket": data.get("estimatedOutOfPocket"),
+				"assumptions": [str(a).strip() for a in assumptions if str(a).strip()],
+				"exclusions": [str(e).strip() for e in exclusions if str(e).strip()],
+			},
+			None,
+		)
+	except Exception as e:
+		return None, str(e)
+
+
 @app.post("/api/onboard")
 def onboard(req: OnboardRequest):
 	try:
@@ -376,7 +460,6 @@ def onboard(req: OnboardRequest):
 	try:
 		llm_response, llm_error = asyncio.run(_run_onboarding_llm(req.message))
 	except RuntimeError:
-		# Event loop already running (unlikely in sync FastAPI handler); skip LLM.
 		llm_response = None
 		llm_error = "event_loop_running"
 
@@ -683,15 +766,54 @@ def accident_severity(req: ReportIdRequest):
 
 
 @app.post("/api/policy/interpret")
-def policy_interpret(req: ReportIdRequest):
+def policy_interpret(req: PolicyInterpretRequest):
 	"""Policy Interpretation Agent."""
 	try:
 		res = insurance_mcp.interpret_policy_impl(report_id=str(req.report_id))
+		pdf_analysis = None
+		pdf_error = None
+		if req.policy_pdf_base64 or req.policy_image_base64:
+			text = ""
+			text_error = None
+			if req.policy_pdf_base64:
+				text, text_error = _extract_pdf_text(req.policy_pdf_base64)
+			if text_error:
+				pdf_error = text_error
+			else:
+				accident_context = ""
+				try:
+					with sqlite3.connect(DB_PATH) as conn:
+						conn.row_factory = sqlite3.Row
+						row = conn.execute(
+							"SELECT location, injured_count, vehicles_drivable, notes FROM accident_reports WHERE id = ?;",
+							(str(req.report_id),),
+						).fetchone()
+						if row is not None:
+							accident_context = (
+								f"Location: {row['location'] or 'N/A'}\n"
+								f"Injured count: {row['injured_count'] if row['injured_count'] is not None else 'N/A'}\n"
+								f"Vehicle drivable: {None if row['vehicles_drivable'] is None else bool(row['vehicles_drivable'])}\n"
+								f"Notes: {row['notes'] or 'N/A'}"
+							)
+				except Exception:
+					accident_context = ""
+				pdf_analysis, pdf_error = _analyze_policy_pdf(
+					text or "",
+					accident_context=accident_context,
+					image_urls=req.policy_image_base64,
+				)
 		llm_response, llm_error = _run_llm_sync(
 			getattr(policy_interpretation_agent, "run_llm", None),
 			str(req.report_id),
 		)
-		return {"ok": True, **res, "llmResponse": llm_response, "llmError": llm_error}
+		return {
+			"ok": True,
+			**res,
+			"llmResponse": llm_response,
+			"llmError": llm_error,
+			"pdfInterpretation": pdf_analysis,
+			"pdfInterpretationError": pdf_error,
+		}
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 	except Exception as e:
@@ -826,17 +948,6 @@ def teacher_lesson(req: TeacherLessonRequest):
 
 
 def ensure_ffmpeg_available() -> None:
-	"""Ensure the backend can find an ffmpeg executable.
-
-	We primarily rely on PATH, but Windows winget installs often put ffmpeg
-	under the WinGet Packages directory without updating the environment for an
-	already-running server process.
-
-	Support these discovery options:
-	- FFMPEG_BIN env var (full path to ffmpeg.exe)
-	- PATH lookup (shutil.which)
-	- WinGet default install location (Gyan.FFmpeg)
-	"""
 	ff = os.getenv("FFMPEG_BIN")
 	if ff and Path(ff).exists():
 		return
@@ -870,10 +981,6 @@ def safe_filename(s: str) -> str:
 
 
 def render_lesson_to_mp4(*, title: str, script: str, out_path: Path) -> None:
-	"""Create a simple MP4 using ffmpeg with burned-in text.
-
-	This is intentionally basic: a dark background + centered text.
-	"""
 	ensure_ffmpeg_available()
 	out_path = Path(out_path)
 	out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -986,15 +1093,6 @@ def teacher_video(req: TeacherVideoRequest):
 
 @app.post("/api/teacher/embedded_video")
 def teacher_embedded_video(req: TeacherEmbeddedVideoRequest):
-	"""Return a *guaranteed playable* embedded video URL for a module.
-
-	Third-party platforms (YouTube/Vimeo) can block iframe embeds unpredictably.
-	This endpoint always returns a URL served by this API under /media.
-
-	Strategy:
-	- If a pre-generated video exists for this module, use it.
-	- Otherwise, generate a simple MP4 via ffmpeg (if available).
-	"""
 	try:
 		customer_id = int(req.customer_id)
 		module_order = int(req.module_order)
@@ -1082,16 +1180,6 @@ def vimeo_embed_for_video_id(video_id: str) -> str:
 
 
 def curated_vimeo_videos_for_topic(topic: str) -> list[dict[str, str]]:
-	"""Best-effort curated Vimeo videos for common insurance topics.
-
-	Why curated:
-	- Vimeo search without an API key is not reliable.
-	- We want a demo that always has *some* embeddable video.
-
-	Notes:
-	- Vimeo IDs can still disappear over time, but this is typically more stable
-	  than random YouTube embeds without API verification.
-	"""
 
 	t = (topic or "").strip().lower()
 	if not t:
@@ -1130,11 +1218,6 @@ def curated_vimeo_videos_for_topic(topic: str) -> list[dict[str, str]]:
 
 @app.post("/api/teacher/vimeo")
 def teacher_vimeo(req: TeacherVimeoRequest):
-	"""Return a Vimeo embed URL for a module.
-
-	This is intended as a more reliable embedded-video fallback when YouTube
-	embeds are unavailable and no YouTube API key is configured.
-	"""
 	try:
 		customer_id = int(req.customer_id)
 		module_order = int(req.module_order)
@@ -1176,54 +1259,35 @@ def teacher_vimeo(req: TeacherVimeoRequest):
 
 
 def curated_youtube_videos_for_topic(topic: str) -> list[dict[str, str]]:
-	"""Return a small list of known embeddable videos for common insurance topics.
-
-	Why this exists:
-	- Demos shouldn't hard-fail if the YouTube Data API key isn't configured.
-	- A curated list gives us a stable, watchable default.
-
-	Notes:
-	- These are best-effort. Videos can still disappear over time.
-	- If nothing matches, return an empty list and the caller can fall back to
-	  the embeddable search playlist.
-	"""
 
 	t = (topic or "").strip().lower()
 	if not t:
 		return []
 
 	def ytid(url_or_id: str) -> str:
-		"""Extract a YouTube video id from a URL (watch?v= / youtu.be / embed) or return the id."""
 		s = (url_or_id or "").strip()
 		if not s:
 			return ""
-		# If caller passed a raw 11-char id, keep it.
 		m = re.search(r"\b([A-Za-z0-9_-]{11})\b", s)
 		if not m:
 			return ""
-		# Prefer explicit v=... when present.
 		mv = re.search(r"(?:\?|&)v=([A-Za-z0-9_-]{11})\b", s)
 		if mv:
 			return mv.group(1)
-		# Prefer youtu.be/<id>
 		ms = re.search(r"youtu\.be/([A-Za-z0-9_-]{11})\b", s)
 		if ms:
 			return ms.group(1)
-		# Prefer /embed/<id>
 		me = re.search(r"/embed/([A-Za-z0-9_-]{11})\b", s)
 		if me:
 			return me.group(1)
-		# Otherwise, accept the first 11-char candidate.
 		return m.group(1)
 
 	curated: dict[str, list[str]] = {
-		# --- General foundations ---
 		"what is car insurance": [ytid("https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s")],
 		"car insurance": [ytid("https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s")],
 		"auto insurance": [ytid("https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s")],
 		"what is insurance": [ytid("https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s")],
 
-		# --- Core policy mechanics ---
 		"deductible": [ytid("https://www.youtube.com/watch?v=UoPN84v2KrU&t=3s")],
 		"deductibles": [ytid("https://www.youtube.com/watch?v=UoPN84v2KrU&t=3s")],
 		"premium": [ytid("https://www.youtube.com/watch?v=Ly3tiv7f4Hg")],
@@ -1258,7 +1322,6 @@ def curated_youtube_videos_for_topic(topic: str) -> list[dict[str, str]]:
 		"denied": [ytid("https://www.youtube.com/watch?v=vsdXq0WOH8M")],
 		"dispute": [ytid("https://www.youtube.com/watch?v=vsdXq0WOH8M")],
 
-		# --- Rates & discounts ---
 		"rates": [ytid("https://www.youtube.com/watch?v=-QfmcoYYb5E")],
 		"insurance rates": [ytid("https://www.youtube.com/watch?v=-QfmcoYYb5E")],
 		"factors affecting insurance rates": [ytid("https://www.youtube.com/watch?v=-QfmcoYYb5E")],
@@ -1272,7 +1335,6 @@ def curated_youtube_videos_for_topic(topic: str) -> list[dict[str, str]]:
 		"lower your insurance premiums": [ytid("https://www.youtube.com/watch?v=IRi5Z7pp1K4")],
 		"lower premiums": [ytid("https://www.youtube.com/watch?v=IRi5Z7pp1K4")],
 
-		# --- Driving safety & accident handling ---
 		"accident": [ytid("https://www.youtube.com/watch?v=wToIYkLuwPY")],
 		"car accident": [ytid("https://www.youtube.com/watch?v=wToIYkLuwPY")],
 		"steps to take during a car accident": [ytid("https://www.youtube.com/watch?v=wToIYkLuwPY")],
@@ -1283,13 +1345,11 @@ def curated_youtube_videos_for_topic(topic: str) -> list[dict[str, str]]:
 		"seasonal driving": [ytid("https://www.youtube.com/watch?v=46xdKVgTbJE")],
 		"seasonal driving tips": [ytid("https://www.youtube.com/watch?v=46xdKVgTbJE")],
 
-		# --- Study aids ---
 		"terms": [ytid("https://www.youtube.com/watch?v=TVA2xaWzsSY")],
 		"terms explained": [ytid("https://www.youtube.com/watch?v=TVA2xaWzsSY")],
 		"common auto insurance terms": [ytid("https://www.youtube.com/watch?v=TVA2xaWzsSY")],
 	}
 
-	# Pick the *best* match. Prefer longer/more-specific keys.
 	matched_ids: list[str] = []
 	best_len = 0
 	for k, ids in curated.items():
@@ -1331,10 +1391,6 @@ def youtube_api_get_json(url: str, *, timeout_sec: float = 10.0) -> dict:
 
 
 def youtube_search_videos(*, query: str, max_results: int = 5) -> list[dict[str, str]]:
-	"""Search YouTube for embeddable videos using the official Data API.
-
-	Returns a list of dicts: {videoId, title, channelTitle, url, embedUrl}
-	"""
 	key = youtube_api_key()
 	if not key:
 		return []

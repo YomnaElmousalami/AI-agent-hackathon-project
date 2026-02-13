@@ -114,8 +114,6 @@ export default function AccidentReportingPage() {
 		setError('');
 		setResult(null);
 		try {
-			// Finalize should only run on an existing report.
-			// If the user hasn't updated/saved yet, prompt them to do so.
 			const rid = String(reportId).trim();
 			if (!rid) throw new Error('No report found yet. Click "Update Report" first to create and save the report.');
 

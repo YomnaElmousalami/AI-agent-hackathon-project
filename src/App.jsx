@@ -64,8 +64,6 @@ function OnboardingPage() {
 		try {
 			const profile = parseOnboardingSentence(message);
 
-			// Best-effort: if lookup fails (server error, network error), still try
-			// onboarding so the user can "upload" their profile into the DB.
 			let lookupStatus = 0;
 			try {
 				const existingRes = await fetch(`${API_BASE}/api/customers/${profile.id}`);
@@ -77,9 +75,7 @@ function OnboardingPage() {
 					navigate(`/curriculum?customerId=${profile.id}`);
 					return;
 				}
-				// 404 is expected for brand-new users; continue to onboard.
 			} catch {
-				// ignore and proceed to onboard
 			}
 
 			const res = await fetch(`${API_BASE}/api/onboard`, {
@@ -98,7 +94,6 @@ function OnboardingPage() {
 				})()
 				: null;
 			if (!res.ok) {
-				// If lookup was weird and onboarding also failed, give a helpful error.
 				const detail = data?.detail || raw || 'Onboarding failed';
 				throw new Error(
 					lookupStatus && lookupStatus !== 404
@@ -207,7 +202,6 @@ function CurriculumPlannerPage() {
 	function _isShowRequest(text) {
 		const t = (text || '').toLowerCase();
 		return t.includes('curriculum') && (t.includes('show') || t.includes('view') || t.includes('get') || t.includes('see'));
-				// (resources route removed)
 	}
 
 	function _isPlanRequest(text) {
@@ -372,9 +366,6 @@ function TeacherAgentPage() {
 	const [moduleOrder, setModuleOrder] = useState('');
 
 	function stripLeadingModuleNumber(title) {
-		// Some sources may already prefix titles with "27. ...".
-		// We now render titles without numbering, so strip a leading numeric prefix
-		// to keep the UI clean.
 		const raw = String(title || '').trim();
 		return raw.replace(/^\s*\d+\s*[\.)-]\s*/, '').trim() || raw;
 	}
@@ -399,7 +390,6 @@ function TeacherAgentPage() {
 				throw new Error(data?.detail || `Failed to load curriculum (${res.status})`);
 			}
 			setCurriculum(data?.curriculum || []);
-			// Default the module selector to the first module order, if present
 			const firstOrder = (data?.curriculum || [])?.[0]?.order;
 			if (firstOrder != null) setModuleOrder(String(firstOrder));
 		} catch (e) {
@@ -418,10 +408,7 @@ function TeacherAgentPage() {
 		const t = String(title || '').trim();
 		if (!t) return _ytSearchUrl('auto insurance basics');
 
-		// Exact topic-to-video mapping per hackathon requirements.
-		// If a topic is specified as “YouTube search”, we intentionally return a search URL.
 		const map = {
-			// --- EXACT curriculum titles -> EXACT provided links ---
 			'What is Car Insurance?': 'https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s',
 			'Understanding Deductibles': 'https://www.youtube.com/watch?v=UoPN84v2KrU&t=3s',
 			'Steps to Take During a car accident.': 'https://www.youtube.com/watch?v=wToIYkLuwPY',
@@ -452,7 +439,6 @@ function TeacherAgentPage() {
 		};
 
 		if (map[t]) return map[t];
-		// Safe fallback for any other module title.
 		return _ytSearchUrl(t);
 	}
 
@@ -592,7 +578,7 @@ function TeacherAgentPage() {
 				</div>
 			) : null}
 
-			{/* Teach functionality removed: no lesson panel */}
+			{}
 
 			<div style={{ marginTop: 16 }}>
 				<Link to={customerIdParam ? `/curriculum?customerId=${customerIdParam}` : '/curriculum'} style={{ color: '#ffffff' }}>

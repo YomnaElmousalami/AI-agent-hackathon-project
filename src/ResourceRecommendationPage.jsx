@@ -1,9 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
-// In dev, Vite proxies /api -> backend (see vite.config.js). So we should use
-// a relative base; otherwise, you can trip over port mismatches.
-// In prod builds, you can set VITE_API_BASE to your deployed backend URL.
 const API_BASE = import.meta.env?.VITE_API_BASE || '';
 
 function normalizeResource(r) {

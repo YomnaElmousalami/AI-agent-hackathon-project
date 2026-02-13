@@ -70,7 +70,6 @@ export default function KnowledgeQuizPage() {
 				}
 				const list = Array.isArray(data?.curriculum) ? data.curriculum : [];
 				setCurriculum(list);
-				// If user hasn't selected a module yet, default to the first module.
 				if (!moduleOrder && list.length && list[0]?.order != null) {
 					setModuleOrder(String(list[0].order));
 				}
@@ -87,8 +86,6 @@ export default function KnowledgeQuizPage() {
 		return () => {
 			cancelled = true;
 		};
-		// Intentionally only reacts to customerId changes.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [customerId]);
 
 	async function startQuiz() {
@@ -108,7 +105,6 @@ export default function KnowledgeQuizPage() {
 			const mo = moduleOrder ? Number(moduleOrder) : null;
 			const moduleOrderBody = mo != null && Number.isFinite(mo) && mo > 0 ? mo : null;
 
-			// Start attempt (persisted)
 			const startRes = await fetch(`${API_BASE}/api/knowledge/attempts/start`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -124,12 +120,9 @@ export default function KnowledgeQuizPage() {
 				throw new Error('Failed to start quiz (missing attemptId).');
 			}
 
-			// Fetch questions for display
 			const qRes = await fetch(`${API_BASE}/api/knowledge/questions`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				// IMPORTANT: tie questions to the same attempt to keep question_ids consistent
-				// between "start attempt" and "answer".
 				body: JSON.stringify({
 					customer_id: id,
 					limit: 10,
@@ -147,7 +140,6 @@ export default function KnowledgeQuizPage() {
 			}
 			setQuestions(qs);
 
-			// Record module view if module is selected
 			if (moduleOrderBody != null) {
 				fetch(`${API_BASE}/api/knowledge/module_view`, {
 					method: 'POST',
@@ -273,7 +265,6 @@ export default function KnowledgeQuizPage() {
 
 	useEffect(() => {
 		if (customerIdParam && String(customerIdParam) !== String(customerId)) return;
-		// no-op
 	}, [customerIdParam, customerId]);
 
 	const progressText = useMemo(() => {
@@ -289,7 +280,6 @@ export default function KnowledgeQuizPage() {
 	const resourcesUrl = useMemo(() => {
 		const id = Number(customerId || customerIdParam);
 		if (!Number.isFinite(id) || id <= 0) return '/resources?from=quiz';
-		// Default topic: prefer module title if available, otherwise a generic starter.
 		const topicText = String(
 			curriculum.find((m) => String(m?.order ?? '') === String(moduleOrder))?.module ||
 			'auto insurance basics'
@@ -426,9 +416,9 @@ export default function KnowledgeQuizPage() {
 									<div style={{ marginTop: 14, padding: 12, border: '1px solid #333', borderRadius: 8, background: graded.correct ? '#001b2b' : '#2b0000' }}>
 										<div>
 											<strong>{graded.correct ? 'Correct' : 'Not quite'}</strong>
-												{/* Intentionally omit the extra "Nice!"-style feedback text. */}
+												{}
 										</div>
-										{/* Per UX request: don't show any explanation text under quiz results. */}
+										{}
 									</div>
 							) : null}
 						</div>

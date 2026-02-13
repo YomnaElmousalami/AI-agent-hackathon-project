@@ -1,19 +1,3 @@
-"""Reset the local SQLite database.
-
-Why:
-- Curriculum plans are persisted in SQLite.
-- After changing the curriculum generator, existing customers will still
-  see the old modules until the DB is cleared.
-
-This script:
-- Backs up database/insurance.db -> database/insurance.db.bak (if present)
-- Deletes database/insurance.db
-- Recreates the schema via database.insurance_db.init_db
-
-Usage:
-  python scripts/reset_db.py
-"""
-
 from __future__ import annotations
 
 import sys

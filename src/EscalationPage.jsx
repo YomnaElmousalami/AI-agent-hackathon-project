@@ -3,14 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 const API_BASE = '';
 
-function asText(v) {
-	try {
-		return JSON.stringify(v, null, 2);
-	} catch {
-		return String(v);
-	}
-}
-
 export default function EscalationPage() {
 	const [searchParams] = useSearchParams();
 	const reportIdParam = searchParams.get('reportId') || '';
@@ -60,7 +52,7 @@ export default function EscalationPage() {
 	return (
 		<div style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-				<h1 style={{ margin: 0 }}>Escalation & Routing Agent</h1>
+				<h1 style={{ margin: 0 }}>Escalation & Routing</h1>
 				<Link to={backLink} style={{ color: '#ffffff', textDecoration: 'underline' }}>
 					Back to Accident Report
 				</Link>
@@ -85,10 +77,33 @@ export default function EscalationPage() {
 
 			{result ? (
 				<div style={{ marginTop: 16 }}>
-					<h3 style={{ marginTop: 0 }}>Result</h3>
-					<pre style={{ whiteSpace: 'pre-wrap', background: '#101820', border: '1px solid #223344', padding: 12 }}>
-						{asText(result)}
-					</pre>
+					<h3 style={{ marginTop: 0 }}>Escalation Summary</h3>
+					<div style={{ background: '#101820', border: '1px solid #223344', padding: 12 }}>
+						<p style={{ marginTop: 0 }}>
+							{`We routed this case to ${result.routedTo || 'the appropriate channel'} because ${result.reason || 'we evaluated the report details'}.`}
+						</p>
+						{result.summary ? (
+							<p>{`Summary: ${result.summary}.`}</p>
+						) : null}
+						{result.customerState ? (
+							<p>{`Detected state for contacts: ${result.customerState}.`}</p>
+						) : null}
+
+						{Array.isArray(result.contactNumbers) && result.contactNumbers.length ? (
+							<div style={{ marginTop: 12 }}>
+								<strong>Recommended contacts:</strong>
+								<ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+									{result.contactNumbers.map((contact, idx) => (
+										<li key={idx}>
+											{contact.label}
+											{contact.phone ? ` — Phone: ${contact.phone}` : ''}
+											{contact.url ? ` — ${contact.url}` : ''}.
+										</li>
+									))}
+								</ul>
+							</div>
+						) : null}
+					</div>
 				</div>
 			) : null}
 

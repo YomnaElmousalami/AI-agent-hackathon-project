@@ -64,7 +64,6 @@ async def run_cli():
 		await run_react_agent(agent, f"Escalate and route for accident report id {report_id}.")
 		return
 
-	# Default: deterministic tool call
 	tools = await setup_mcp_client()
 	tool = pick_tool(tools, "escalate_and_route")
 	res = await tool.ainvoke({"report_id": report_id})
