@@ -3,6 +3,36 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 const API_BASE = import.meta.env?.VITE_API_BASE || '';
 
+const MODULE_TOPICS = [
+	{ value: 'what is car insurance?', label: 'What Is Car Insurance?' },
+	{ value: 'understanding deductibles', label: 'Understanding Deductibles' },
+	{ value: 'steps to take during a car accident', label: 'Steps to Take During a Car Accident' },
+	{ value: 'do’s and don’ts of safe driving', label: 'Do’s and Don’ts of Safe Driving' },
+	{ value: 'what is a premium?', label: 'What Is a Premium?' },
+	{ value: 'what is a claim?', label: 'What Is a Claim?' },
+	{ value: 'how to file a claim', label: 'How to File a Claim' },
+	{ value: 'what is coverage?', label: 'What Is Coverage?' },
+	{ value: 'types of coverage for auto insurance', label: 'Types of Coverage for Auto Insurance' },
+	{ value: 'factors affecting insurance rates', label: 'Factors Affecting Insurance Rates' },
+	{ value: 'impact of driving history on rates', label: 'Impact of Driving History on Rates' },
+	{ value: 'how to maintain a clean driving record', label: 'How to Maintain a Clean Driving Record' },
+	{ value: 'common auto insurance terms explained', label: 'Common Auto Insurance Terms Explained' },
+	{ value: 'how to choose the right insurance plan', label: 'How to Choose the Right Insurance Plan' },
+	{ value: 'importance of liability coverage', label: 'Importance of Liability Coverage' },
+	{ value: 'understanding comprehensive & collision coverage', label: 'Understanding Comprehensive & Collision Coverage' },
+	{ value: 'how to lower your insurance premiums', label: 'How to Lower Your Insurance Premiums' },
+	{ value: 'seasonal driving tips & insurance implications', label: 'Seasonal Driving Tips & Insurance Implications' },
+	{ value: 'impact of traffic violations on rates', label: 'Impact of Traffic Violations on Rates' },
+	{ value: 'how to read your insurance policy', label: 'How to Read Your Insurance Policy' },
+	{ value: 'benefits of bundling insurance policies', label: 'Benefits of Bundling Insurance Policies' },
+	{ value: 'understanding no-fault insurance', label: 'Understanding No-Fault Insurance' },
+	{ value: 'what to do in case of a total loss', label: 'What to Do in Case of a Total Loss' },
+	{ value: 'how to handle uninsured motorist situations', label: 'How to Handle Uninsured Motorist Situations' },
+	{ value: 'understanding policy endorsements', label: 'Understanding Policy Endorsements' },
+	{ value: 'how to dispute a denied claim', label: 'How to Dispute a Denied Claim' },
+	{ value: 'understanding rental car coverage', label: 'Understanding Rental Car Coverage' },
+];
+
 function normalizeResource(r) {
 	return {
 		type: String(r?.type || r?.source || 'resource'),
@@ -97,12 +127,20 @@ export default function ResourceRecommendationPage() {
 				</div>
 				<div>
 					<label style={{ display: 'block', marginBottom: 6 }}>Topic</label>
-					<input
+					<select
 						value={topic}
 						onChange={(e) => setTopic(e.target.value)}
-						placeholder="deductible, claims process, liability vs collision, discounts..."
 						style={{ width: '100%', padding: 10 }}
-					/>
+					>
+						<option value="" disabled>
+							Select a topic
+						</option>
+						{MODULE_TOPICS.map((item) => (
+							<option key={item.value} value={item.value}>
+								{item.label}
+							</option>
+						))}
+					</select>
 				</div>
 			</div>
 

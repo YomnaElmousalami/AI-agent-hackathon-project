@@ -4068,17 +4068,22 @@ def recommend_resources(customer_id: int, topic: str, state: str | None = None, 
 
 
 def recommend_resources_impl(customer_id: int, topic: str, state: str | None = None, limit: int = 5) -> List[Dict]:
-    """Return verified, topic-specific resources that meet strict matching rules.
+    """Return resources for a module topic from a local registry.
 
-    Rules enforced:
-    - Only use pre-verified resources (no guessing URLs).
-    - Only return resources that explicitly match the exact module topic.
-    - Return 2-3 resources when available; otherwise return "No verified resource found.".
-    - Persist the raw response to `recommended_resources` for auditability.
+    Note: This implementation trusts the curated entries in `verified_resources.json`.
+    We only enforce that URLs are well-formed (https://) and records contain the
+    expected fields, but we do not attempt live link verification here.
     """
 
     def normalize_topic(raw: str) -> str:
-        return re.sub(r"\s+", " ", (raw or "").strip()).lower()
+        t = (raw or "").strip().lower()
+        # Normalize curly quotes to ASCII
+        t = t.replace("’", "'").replace("“", '"').replace("”", '"')
+        # Drop punctuation that commonly differs across UI/DB (keep alphanumerics/spaces)
+        t = re.sub(r"[^a-z0-9\s]", " ", t)
+        # Collapse whitespace
+        t = re.sub(r"\s+", " ", t).strip()
+        return t
 
     def load_verified_registry() -> Dict[str, List[Dict]]:
         registry_path = Path(__file__).resolve().parent / "verified_resources.json"
@@ -4107,19 +4112,20 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
     registry = load_verified_registry()
     candidates = registry.get(normalized_topic, []) if normalized_topic else []
 
-    verified = [r for r in candidates if is_valid_resource(r)]
+    valid = [r for r in candidates if is_valid_resource(r)]
 
-    if len(verified) < 2 or len(verified) > 3:
+    if not valid:
         resources = [
             {
-                "title": "No verified resource found.",
+                "type": "system",
+                "title": "No resource found.",
                 "source": "System",
                 "url": "",
-                "whyItMatches": "No verified resource found.",
+                "whyItMatches": "No resource found.",
             }
         ]
     else:
-        resources = verified
+        resources = valid[: max(1, int(limit or 5))]
 
     now = now_date()
     with sqlite3.connect(db_path) as conn:

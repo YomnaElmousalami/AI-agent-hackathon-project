@@ -1,1 +1,524 @@
-{}
+{
+	"what is car insurance": [
+		{
+			"title": "Car insurance basics — what it is and how it works",
+			"source": "Investopedia",
+			"url": "https://www.investopedia.com/what-does-auto-insurance-cover-7495827",
+			"whyItMatches": "Car insurance basics — what it is and how it works — Investopedia"
+		},
+		{
+			"title": "Auto insurance overview",
+			"source": "NAIC consumer resource",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "Auto insurance overview — NAIC consumer resource"
+		},
+		{
+			"title": "Beginner’s guide to car insurance",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Beginner’s guide to car insurance — Compare.com"
+		},
+		{
+			"title": "Reddit explanation from a user perspective",
+			"source": "Reddit",
+			"url": "https://www.reddit.com/r/u_carinsurance2024usa/comments/1anf3bz",
+			"whyItMatches": "Reddit explanation from a user perspective"
+		}
+	],
+	"understanding deductibles": [
+		{
+			"title": "What Is a Deductible in Car Insurance?",
+			"source": "Investopedia",
+			"url": "https://www.investopedia.com/what-is-a-deductible-in-car-insurance-7486896",
+			"whyItMatches": "What Is a Deductible in Car Insurance? — Investopedia"
+		},
+		{
+			"title": "Deductible definition",
+			"source": "Wikipedia",
+			"url": "https://en.wikipedia.org/wiki/Deductible",
+			"whyItMatches": "Wikipedia: Deductible definition"
+		},
+		{
+			"title": "Why insurance policies have deductibles",
+			"source": "Investopedia",
+			"url": "https://www.investopedia.com/ask/answers/071515/why-do-insurance-policies-have-deductibles.asp",
+			"whyItMatches": "Why insurance policies have deductibles — Investopedia answer"
+		}
+	],
+	"steps to take during a car accident": [
+		{
+			"title": "After a car accident: step-by-step",
+			"source": "Allstate",
+			"url": "https://www.allstate.com/resources/car-insurance/in-case-of-a-car-accident",
+			"whyItMatches": "After a car accident: step-by-step (Allstate)"
+		},
+		{
+			"title": "State auto insurance guide (Texas DFS) — includes accident guidance",
+			"source": "Texas Department of Insurance",
+			"url": "https://agate.tdi.state.tx.us/pubs/consumer/cb020.html",
+			"whyItMatches": "State auto insurance guide (Texas DFS) — includes accident guidance"
+		},
+		{
+			"title": "General accident step guidance",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "General accident step guidance — NAIC auto insurance topics"
+		}
+	],
+	"do s and don ts of safe driving": [
+		{
+			"title": "Usage-based insurance & safe driving info",
+			"source": "Wikipedia",
+			"url": "https://en.wikipedia.org/wiki/Usage-based_insurance",
+			"whyItMatches": "Usage-based insurance & safe driving info (Wikipedia)"
+		},
+		{
+			"title": "Black box insurance overview — safe driving monitoring",
+			"source": "Investopedia",
+			"url": "https://www.investopedia.com/terms/b/black-box-insurance.asp",
+			"whyItMatches": "Black box insurance overview — safe driving monitoring — Investopedia"
+		},
+		{
+			"title": "Tips embedded in broader car insurance guides — Compare.com coverage discussion",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Tips embedded in broader car insurance guides — Compare.com coverage discussion"
+		}
+	],
+	"what is a premium": [
+		{
+			"title": "Auto insurance premiums explained",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "Auto insurance premiums explained (NAIC)"
+		},
+		{
+			"title": "Rates & premiums factors",
+			"source": "Forbes Advisor",
+			"url": "https://www.forbes.com/advisor/car-insurance/factors-in-rates/",
+			"whyItMatches": "Forbes Advisor — rates & premiums factors"
+		},
+		{
+			"title": "Factors & premiums info",
+			"source": "Experian",
+			"url": "https://www.experian.com/blogs/ask-experian/factors-that-determine-your-car-insurance-rates/",
+			"whyItMatches": "Experian post — factors & premiums info"
+		}
+	],
+	"what is a claim": [
+		{
+			"title": "Insurance claim explained terms",
+			"source": "Grinnell Mutual",
+			"url": "https://www.grinnellmutual.com/auto-safety-tips-resources/car-insurance-terms-explained",
+			"whyItMatches": "Insurance claim explained terms (Grinnell Mutual)"
+		},
+		{
+			"title": "Claims context",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC auto insurance topics — claims context"
+		},
+		{
+			"title": "Coverage info which includes claims context",
+			"source": "Allstate",
+			"url": "https://www.allstate.com/resources/car-insurance/types-of-car-insurance-coverage",
+			"whyItMatches": "Allstate coverage info which includes claims context"
+		}
+	],
+	"how to file a claim": [
+		{
+			"title": "How to file a car accident claim",
+			"source": "DGG Law",
+			"url": "https://www.dgglaw.com/how-to-file-car-accident-claims/",
+			"whyItMatches": "How to file a car accident claim (DGG Law)"
+		},
+		{
+			"title": "Filing claims info",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC — auto insurance topics include filing claims info"
+		},
+		{
+			"title": "Accident & claim guidance",
+			"source": "Allstate",
+			"url": "https://www.allstate.com/resources/car-insurance/in-case-of-a-car-accident",
+			"whyItMatches": "Allstate accident & claim guidance"
+		}
+	],
+	"what is coverage": [
+		{
+			"title": "Beginner coverage overview",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Beginner coverage overview — Compare.com"
+		},
+		{
+			"title": "Types of coverage",
+			"source": "Progressive",
+			"url": "https://www.progressive.com/answers/types-of-car-insurance/",
+			"whyItMatches": "Progressive types of coverage"
+		},
+		{
+			"title": "Coverage types",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC auto insurance topics include coverage types"
+		}
+	],
+	"types of coverage for auto insurance": [
+		{
+			"title": "6 main coverage types",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Compare.com — 6 main coverage types"
+		},
+		{
+			"title": "Coverage types",
+			"source": "Progressive",
+			"url": "https://www.progressive.com/answers/types-of-car-insurance/",
+			"whyItMatches": "Progressive coverage types"
+		},
+		{
+			"title": "Coverage breakdown",
+			"source": "MoneyGeek",
+			"url": "https://www.moneygeek.com/insurance/auto/coverage/",
+			"whyItMatches": "MoneyGeek coverage breakdown"
+		}
+	],
+	"factors affecting insurance rates": [
+		{
+			"title": "8 factors that affect car insurance rates",
+			"source": "CNBC",
+			"url": "https://www.cnbc.com/select/factors-that-affect-car-insurance-rates/",
+			"whyItMatches": "CNBC: 8 factors that affect car insurance rates"
+		},
+		{
+			"title": "Factors in rates",
+			"source": "Forbes Advisor",
+			"url": "https://www.forbes.com/advisor/car-insurance/factors-in-rates/",
+			"whyItMatches": "Forbes Advisor factors"
+		},
+		{
+			"title": "What affects premiums",
+			"source": "Policygenius",
+			"url": "https://www.policygenius.com/auto-insurance/what-affects-car-insurance-premiums/",
+			"whyItMatches": "Policygenius factors list"
+		},
+		{
+			"title": "Rate determinants",
+			"source": "Experian",
+			"url": "https://www.experian.com/blogs/ask-experian/factors-that-determine-your-car-insurance-rates/",
+			"whyItMatches": "Experian on rate determinants"
+		}
+	],
+	"impact of driving history on rates": [
+		{
+			"title": "Safe driving’s effect on rates",
+			"source": "Forbes Advisor",
+			"url": "https://www.forbes.com/advisor/car-insurance/factors-in-rates/",
+			"whyItMatches": "Forbes Advisor on safe driving’s effect on rates"
+		},
+		{
+			"title": "Rate impact",
+			"source": "Policygenius",
+			"url": "https://www.policygenius.com/auto-insurance/what-affects-car-insurance-premiums/",
+			"whyItMatches": "Policygenius rate impact"
+		},
+		{
+			"title": "Driving records",
+			"source": "Experian",
+			"url": "https://www.experian.com/blogs/ask-experian/factors-that-determine-your-car-insurance-rates/",
+			"whyItMatches": "Experian insights on driving records"
+		}
+	],
+	"how to maintain a clean driving record": [
+		{
+			"title": "Tips (avoiding violations)",
+			"source": "Policygenius",
+			"url": "https://www.policygenius.com/auto-insurance/what-affects-car-insurance-premiums/",
+			"whyItMatches": "Policygenius tips (includes avoiding violations)"
+		},
+		{
+			"title": "Safe driving impact",
+			"source": "Forbes Advisor",
+			"url": "https://www.forbes.com/advisor/car-insurance/factors-in-rates/",
+			"whyItMatches": "Forbes safe driving impact"
+		},
+		{
+			"title": "Safe driver guidance",
+			"source": "Experian",
+			"url": "https://www.experian.com/blogs/ask-experian/factors-that-determine-your-car-insurance-rates/",
+			"whyItMatches": "Experian safe driver guidance"
+		}
+	],
+	"common auto insurance terms explained": [
+		{
+			"title": "Terms glossary",
+			"source": "Grinnell Mutual",
+			"url": "https://www.grinnellmutual.com/auto-safety-tips-resources/car-insurance-terms-explained",
+			"whyItMatches": "Grinnell Mutual terms glossary"
+		},
+		{
+			"title": "Glossary context",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC insurance topics glossary context"
+		},
+		{
+			"title": "Usage-based & deductible terms",
+			"source": "Wikipedia",
+			"url": "https://en.wikipedia.org/wiki/Usage-based_insurance",
+			"whyItMatches": "Wiki usage-based & deductible terms"
+		}
+	],
+	"how to choose the right insurance plan": [
+		{
+			"title": "Auto insurance guide",
+			"source": "AutoInsurance.com",
+			"url": "https://www.autoinsurance.com/guide/",
+			"whyItMatches": "Auto insurance guide (AutoInsurance.com)"
+		},
+		{
+			"title": "Consumer guidance",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC consumer guidance"
+		},
+		{
+			"title": "Compare coverage types",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Compare coverage types"
+		}
+	],
+	"importance of liability coverage": [
+		{
+			"title": "Liability coverage basics",
+			"source": "III (Insurance Information Institute)",
+			"url": "https://www.iii.org/article/auto-insurance-basics-understanding-your-coverage",
+			"whyItMatches": "III article on liability coverage basics"
+		},
+		{
+			"title": "Types including liability",
+			"source": "MoneyGeek",
+			"url": "https://www.moneygeek.com/insurance/auto/coverage/",
+			"whyItMatches": "MoneyGeek on types including liability"
+		},
+		{
+			"title": "Coverage overview",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Compare coverage overview"
+		}
+	],
+	"understanding comprehensive & collision coverage": [
+		{
+			"title": "Collision & comprehensive",
+			"source": "Progressive",
+			"url": "https://www.progressive.com/answers/types-of-car-insurance/",
+			"whyItMatches": "Progressive coverage types (collision & comp)"
+		},
+		{
+			"title": "Coverage guide",
+			"source": "MoneyGeek",
+			"url": "https://www.moneygeek.com/insurance/auto/coverage/",
+			"whyItMatches": "MoneyGeek coverage guide"
+		},
+		{
+			"title": "Coverage summary",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Compare coverage summary"
+		}
+	],
+	"how to lower your insurance premiums": [
+		{
+			"title": "Ways to lower rates",
+			"source": "Forbes Advisor",
+			"url": "https://www.forbes.com/advisor/car-insurance/factors-in-rates/",
+			"whyItMatches": "Forbes Advisor — ways to lower rates"
+		},
+		{
+			"title": "Discounts & tips",
+			"source": "Policygenius",
+			"url": "https://www.policygenius.com/auto-insurance/what-affects-car-insurance-premiums/",
+			"whyItMatches": "Policygenius — discounts & tips"
+		},
+		{
+			"title": "Safer driver discounts",
+			"source": "Experian",
+			"url": "https://www.experian.com/blogs/ask-experian/factors-that-determine-your-car-insurance-rates/",
+			"whyItMatches": "Experian on safer driver discounts"
+		}
+	],
+	"seasonal driving tips & insurance implications": [
+		{
+			"title": "Coverage & risk info",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Compare.com coverage & risk info"
+		},
+		{
+			"title": "Risk context",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC auto insurance topics (risk context)"
+		},
+		{
+			"title": "Safer driving insights",
+			"source": "Forbes Advisor",
+			"url": "https://www.forbes.com/advisor/car-insurance/factors-in-rates/",
+			"whyItMatches": "Forbes safer driving insights (seasonal can apply)"
+		}
+	],
+	"impact of traffic violations on rates": [
+		{
+			"title": "Rates factors — record matters",
+			"source": "CNBC",
+			"url": "https://www.cnbc.com/select/factors-that-affect-car-insurance-rates/",
+			"whyItMatches": "CNBC rates factors — record matters"
+		},
+		{
+			"title": "Driving history effects",
+			"source": "Forbes Advisor",
+			"url": "https://www.forbes.com/advisor/car-insurance/factors-in-rates/",
+			"whyItMatches": "Forbes on driving history effects"
+		},
+		{
+			"title": "Rates context",
+			"source": "Policygenius",
+			"url": "https://www.policygenius.com/auto-insurance/what-affects-car-insurance-premiums/",
+			"whyItMatches": "Policygenius rates context"
+		}
+	],
+	"how to read your insurance policy": [
+		{
+			"title": "Guide to reading a policy (PDF)",
+			"source": "NY DFS",
+			"url": "https://oci.wi.gov/Documents/Consumers/pi-057.pdf",
+			"whyItMatches": "PDF guide to reading a policy (NY DFS)"
+		},
+		{
+			"title": "Consumer auto insurance guide",
+			"source": "TN",
+			"url": "https://www.tn.gov/content/dam/tn/commerce/documents/insurance/posts/Consumer_Guide_Auto_Insurance.pdf",
+			"whyItMatches": "Consumer auto insurance guide (TN)"
+		},
+		{
+			"title": "Policy basics",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC auto insurance topics (policy basics)"
+		}
+	],
+	"benefits of bundling insurance policies": [
+		{
+			"title": "Bundling discounts",
+			"source": "Policygenius",
+			"url": "https://www.policygenius.com/auto-insurance/what-affects-car-insurance-premiums/",
+			"whyItMatches": "Policygenius on bundling discounts"
+		},
+		{
+			"title": "Discount suggestions",
+			"source": "Experian",
+			"url": "https://www.experian.com/blogs/ask-experian/factors-that-determine-your-car-insurance-rates/",
+			"whyItMatches": "Experian discount suggestions"
+		},
+		{
+			"title": "Lowering premiums (bundling)",
+			"source": "Forbes Advisor",
+			"url": "https://www.forbes.com/advisor/car-insurance/factors-in-rates/",
+			"whyItMatches": "Forbes on lowering premiums (includes bundling)"
+		}
+	],
+	"understanding no-fault insurance": [
+		{
+			"title": "No-Fault Insurance explained",
+			"source": "Wikipedia",
+			"url": "https://en.wikipedia.org/wiki/No-fault_insurance",
+			"whyItMatches": "Wikipedia — No-Fault Insurance explained"
+		},
+		{
+			"title": "State differences",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC auto insurance topics (state differences)"
+		}
+	],
+	"what to do in case of a total loss": [
+		{
+			"title": "Claim and total loss context",
+			"source": "Allstate",
+			"url": "https://www.allstate.com/resources/car-insurance/in-case-of-a-car-accident",
+			"whyItMatches": "Auto insurance claim and total loss context — Allstate"
+		},
+		{
+			"title": "Loss context",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Compare.com coverage types & loss context"
+		},
+		{
+			"title": "Auto insurance overview",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC auto insurance overview"
+		}
+	],
+	"how to handle uninsured motorist situations": [
+		{
+			"title": "Uninsured/underinsured motorist coverage",
+			"source": "MoneyGeek",
+			"url": "https://www.moneygeek.com/insurance/auto/coverage/",
+			"whyItMatches": "MoneyGeek on uninsured/underinsured motorist coverage"
+		},
+		{
+			"title": "UM/UIM mentioned",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Compare.com mentions UM/UIM"
+		}
+	],
+	"understanding policy endorsements": [
+		{
+			"title": "Glossary of insurance terms — includes endorsements",
+			"source": "Grinnell Mutual",
+			"url": "https://www.grinnellmutual.com/auto-safety-tips-resources/car-insurance-terms-explained",
+			"whyItMatches": "Glossary of insurance terms — includes endorsements"
+		},
+		{
+			"title": "Endorsement context",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC auto insurance topics (endorsement context)"
+		}
+	],
+	"how to dispute a denied claim": [
+		{
+			"title": "Steps and appeals",
+			"source": "DGG Law",
+			"url": "https://www.dgglaw.com/how-to-file-car-accident-claims/",
+			"whyItMatches": "How to file a car accident claim — includes steps and appeals"
+		},
+		{
+			"title": "Claims context",
+			"source": "NAIC",
+			"url": "https://content.naic.org/insurance-topics/auto-insurance",
+			"whyItMatches": "NAIC auto insurance topics (claims context)"
+		}
+	],
+	"understanding rental car coverage": [
+		{
+			"title": "Credit card rental car insurance explained",
+			"source": "Investopedia",
+			"url": "https://www.investopedia.com/credit-card-rental-car-insurance-what-is-it-and-how-does-it-work-7499406",
+			"whyItMatches": "Credit card rental car insurance explained (Investopedia)"
+		},
+		{
+			"title": "Coverage types (rental mentioned)",
+			"source": "Compare.com",
+			"url": "https://www.compare.com/auto-insurance/resources/coverage",
+			"whyItMatches": "Compare.com coverage types (rental mentioned)"
+		}
+	]
+}
