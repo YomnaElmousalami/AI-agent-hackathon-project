@@ -47,8 +47,6 @@ def pick_tool(tools, name: str):
 
 
 async def run_cli():
-	# SYSTEM RESET — READ CAREFULLY
-	# Output the FULL list of all 27 topics from scratch, with ONLY the links explicitly provided, in exact order, no extra commentary or formatting.
 	topics_and_links = [
 		("What Is Car Insurance?", [
 			"https://www.investopedia.com/what-does-auto-insurance-cover-7495827",

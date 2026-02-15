@@ -31,7 +31,7 @@ def main() -> None:
 		kwargs["stdout"] = None
 		kwargs["stderr"] = None
 
-	proc = subprocess.Popen(cmd, creationflags=creationflags, **kwargs)  # type: ignore[arg-type]
+	proc = subprocess.Popen(cmd, creationflags=creationflags, **kwargs)  
 	print(f"uvicorn started (pid={proc.pid}) on http://{host}:{port}")
 	print("Close this terminal or Ctrl+C here to stop this launcher; the server is detached.")
 	raise SystemExit(proc.wait())
