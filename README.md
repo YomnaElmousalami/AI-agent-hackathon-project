@@ -29,7 +29,6 @@ outcomes
 **Expected Impact:**
 - Reduce more than 30% of Tier-1 customer support calls
 - Improve customer satisfaction by at least 10%
-- Have an average response time of 3 seconds or less
 - Explain complicated concepts more simply for the average teen mind
 
 ## Phase 3:
@@ -37,7 +36,7 @@ Hugging face model: llama3.2, in the llm directory llama.py file
 
 ## Phase 2 and 4:
 
-# To run in the frontend:
+### To run in the frontend:
 
 so database can work:
 python -m uvicorn api_server:app --host 127.0.0.1 --port 8801
@@ -45,7 +44,7 @@ python -m uvicorn api_server:app --host 127.0.0.1 --port 8801
 so frontend can work:
 npm run dev
 
-# To run each agent in the cli 
+### To run each agent in the cli 
 Learning & Education Mode:
 
 - To run the user onboarding agent in the cli:
