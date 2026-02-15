@@ -14,26 +14,46 @@ def _assert_topic(module_title: str, expected_topic: str):
     assert topics == {expected_topic}
 
 
-def test_topic_alignment_accident_steps():
-    _assert_topic("Steps to Take During a car accident", "accident_steps")
+def test_topic_alignment_basics():
+    _assert_topic("What Is Car Insurance?", "car_insurance_basics")
+    _assert_topic("Understanding Deductibles", "deductibles_full")
+    _assert_topic("What Is a Premium?", "premium_basics")
 
 
-def test_topic_alignment_safe_driving():
-    _assert_topic("Do's and Don'ts of Safe Driving", "safe_driving")
+def test_topic_alignment_safe_driving_and_accidents():
+    _assert_topic("Steps to Take During a Car Accident", "accident_steps")
+    _assert_topic("Do’s and Don’ts of Safe Driving", "safe_driving")
+    _assert_topic("Filing a Claim After an Accident", "claim_after_accident")
 
 
-def test_topic_alignment_rates_and_discounts():
-    _assert_topic("Factors affecting insurance rates", "rate_factors")
-    _assert_topic("How to get discounts on auto insurance", "discounts")
+def test_topic_alignment_coverages():
+    _assert_topic("Types of Car Insurance Coverage", "coverage_types")
+    _assert_topic("Liability Insurance", "liability")
+    _assert_topic("Collision Coverage", "collision")
+    _assert_topic("Comprehensive Coverage", "comprehensive")
+    _assert_topic("Medical Payments / PIP", "medical_payments")
+    _assert_topic("Uninsured / Underinsured Motorist Coverage", "uninsured_underinsured")
+    _assert_topic("Gap Insurance", "gap_insurance")
+    _assert_topic("Rental Car Coverage", "rental_car")
 
 
-def test_topic_alignment_special_coverages():
-    _assert_topic("How to handle uninsured motorist situations", "uninsured_motorist")
-    _assert_topic("Understanding rental car coverage", "rental_car")
-    _assert_topic("Understanding roadside assistance coverage", "roadside")
+def test_topic_alignment_premiums_deductibles_and_claims():
+    _assert_topic("Deductibles", "deductibles_short")
+    _assert_topic("Premiums", "premiums_short")
+    _assert_topic("Insurance Claims", "claims_short")
+    _assert_topic("Insurance Adjusters", "adjusters")
 
 
-def test_topic_alignment_total_loss_and_gap_and_fraud():
-    _assert_topic("What to do in case of a total loss", "total_loss")
-    _assert_topic("Understanding gap insurance", "gap")
-    _assert_topic("How to avoid insurance fraud", "fraud")
+def test_topic_alignment_policy_and_limits():
+    _assert_topic("Insurance Policy", "policy")
+    _assert_topic("Coverage Limits", "coverage_limits")
+    _assert_topic("Policy Renewal and Cancellation", "policy_renewal")
+    _assert_topic("State Insurance Requirements", "state_requirements")
+
+
+def test_topic_alignment_rates_and_behavior():
+    _assert_topic("Factors Affecting Insurance Rates", "rate_factors_short")
+    _assert_topic("Driving Record Impact", "driving_record_impact")
+    _assert_topic("Discounts", "discounts_short")
+    _assert_topic("Avoiding Insurance Fraud", "fraud")
+    _assert_topic("Responsible Driving and Insurance", "responsible_driving")

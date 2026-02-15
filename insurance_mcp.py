@@ -520,31 +520,31 @@ def plan_curriculum_impl(customer_id: int) -> List[Dict]:
     curriculum = [
         "What is Car Insurance?",
         "Understanding Deductibles",
-        "Steps to Take During a car accident.",
-        "Do's and Don'ts of Safe Driving",
-        "What is a premium?",
-        "What is a claim?",
-        "How to file a claim?",
-        "What is coverage?",
-        "Types of coverage for auto insurance",
-        "Factors affecting insurance rates",
-        "Understanding the impact of driving history on insurance rates",
-        "How to maintain a clean driving record",
-        "Common auto insurance terms explained",
-        "How to choose the right insurance plan",
-        "Importance of liability coverage",
-        "Understanding comprehensive and collision coverage",
-        "How to lower your insurance premiums",
-        "Seasonal driving tips and insurance implications",
-        "Impact of traffic violations on insurance rates",
-        "How to read your insurance policy",
-        "Benefits of bundling insurance policies",
-        "Understanding no-fault insurance",
-        "What to do in case of a total loss",
-        "How to handle uninsured motorist situations",
-        "Understanding policy endorsements",
-        "How to dispute a denied claim",
-        "Understanding rental car coverage",
+        "Steps to Take During a Car Accident",
+        "Do’s and Don’ts of Safe Driving",
+        "What Is a Premium?",
+        "What Is a Claim?",
+        "How to File a Claim",
+        "What Is Coverage?",
+        "Types of Coverage for Auto Insurance",
+        "Factors Affecting Insurance Rates",
+        "Impact of Driving History on Rates",
+        "How to Maintain a Clean Driving Record",
+        "Common Auto Insurance Terms Explained",
+        "How to Choose the Right Insurance Plan",
+        "Importance of Liability Coverage",
+        "Understanding Comprehensive and Collision Coverage",
+        "How to Lower Your Insurance Premiums",
+        "Seasonal Driving Tips and Insurance Implications",
+        "Impact of Traffic Violations on Insurance Rates",
+        "How to Read Your Insurance Policy",
+        "Benefits of Bundling Insurance Policies",
+        "Understanding No-Fault Insurance",
+        "What to Do in Case of a Total Loss",
+        "How to Handle Uninsured Motorist Situations",
+        "Understanding Policy Endorsements",
+        "How to Dispute a Denied Claim",
+        "Understanding Rental Car Coverage",
     ]
         
     curriculum_plan = [
@@ -1038,65 +1038,97 @@ def _topic_for_module(module_title: str, module_description: str) -> str:
     """
 
     title_l = (module_title or "").lower()
+    title_norm = title_l.replace("’", "'").strip()
+    title_map = {
+        "what is car insurance?": "car_insurance_basics",
+        "understanding deductibles": "deductibles_full",
+        "what is a premium?": "premium_basics",
+        "steps to take during a car accident": "accident_steps",
+        "do's and don'ts of safe driving": "safe_driving",
+        "filing a claim after an accident": "claim_after_accident",
+        "types of car insurance coverage": "coverage_types",
+        "liability insurance": "liability",
+        "collision coverage": "collision",
+        "comprehensive coverage": "comprehensive",
+        "medical payments / pip": "medical_payments",
+        "uninsured / underinsured motorist coverage": "uninsured_underinsured",
+        "gap insurance": "gap_insurance",
+        "rental car coverage": "rental_car",
+        "deductibles": "deductibles_short",
+        "premiums": "premiums_short",
+        "insurance claims": "claims_short",
+        "insurance adjusters": "adjusters",
+        "insurance policy": "policy",
+        "coverage limits": "coverage_limits",
+        "policy renewal and cancellation": "policy_renewal",
+        "state insurance requirements": "state_requirements",
+        "factors affecting insurance rates": "rate_factors_short",
+        "driving record impact": "driving_record_impact",
+        "discounts": "discounts_short",
+        "avoiding insurance fraud": "fraud",
+        "responsible driving and insurance": "responsible_driving",
+    }
+    if title_norm in title_map:
+        return title_map[title_norm]
     desc_l = (module_description or "").lower()
     combined = f"{title_l} {desc_l}".strip()
 
     topic_keywords: list[tuple[str, list[str]]] = [
         ("car_insurance_basics", ["what is car insurance"]),
-        ("accident_steps", ["steps to take", "car accident", " accident", " crash"]),
+        ("deductible", ["understanding deductibles", "deductible", "deductibles", "deduct"]),
+        ("premium", ["what is a premium", "premium", "premiums", "grace period"]),
+        ("claim_filing", ["how to file a claim", "file a claim"]),
+    ("claim", ["what is a claim", "claim", "claims process", "claims"]),
+    ("rental_car", ["rental car", "rental coverage"]),
+    ("roadside", ["roadside assistance", "roadside assistance coverage"]),
+    ("coverage_types", ["types of coverage for auto insurance", "types of coverage"]),
+    ("coverage", ["what is coverage", "coverage", "coverages", "state minimum"]),
+        ("liability", ["liability coverage", "liability"]),
         (
-            "safe_driving",
+            "comp_collision",
             [
-                "safe driving",
-                "do's and don'ts",
-                "driving tips",
-                "seasonal driving",
-                "clean driving record",
+                "comprehensive and collision",
+                "comprehensive coverage",
+                "collision coverage",
             ],
         ),
+        ("choose_plan", ["choose the right insurance plan", "choose the right", "choose a plan", "insurance plan"]),
+        ("terms", ["common auto insurance terms", "terms explained", "auto insurance terms"]),
+        ("lower_premium", ["how to lower your insurance premiums", "lower your insurance premiums", "lower your premiums"]),
+        ("bundling", ["bundling", "bundle policies", "bundling insurance"]),
+        ("no_fault", ["no-fault", "no fault"]),
+        (
+            "policy_interpretation",
+            ["read your insurance policy", "insurance policy", "policy interpretation", "declarations", "endorsement"],
+        ),
+        ("endorsements", ["policy endorsements", "endorsement"]),
+    ("dispute", ["dispute a denied claim", "denied claim", "appeal a claim"]),
+        ("uninsured_motorist", ["uninsured motorist"]),
+        ("total_loss", ["total loss"]),
+        ("accident_steps", ["steps to take", "car accident", " accident", " crash"]),
+        ("seasonal", ["seasonal driving", "winter driving", "summer driving"]),
+        ("clean_record", ["clean driving record", "maintain a clean driving record"]),
+        ("driving_history", ["driving history"]),
+        ("violations", ["traffic violations", "violations", "tickets", "speeding"]),
         (
             "rate_factors",
             [
+                "factors affecting insurance rates",
                 "insurance rates",
                 "rates",
-                "factors affecting",
-                "traffic violations",
-                "driving history",
                 "credit score",
                 "telematics",
+                "location",
+                "mileage",
             ],
         ),
-        ("discounts", ["discount", "discounts", "lower your insurance premiums", "bundling"]),
-        ("uninsured_motorist", ["uninsured motorist"]),
-        ("rental_car", ["rental car"]),
-        ("roadside", ["roadside assistance"]),
-        ("total_loss", ["total loss"]),
+        ("safe_driving", ["safe driving", "do's and don'ts", "defensive driving", "driving tips"]),
+    ("discounts", ["discount", "discounts"]),
         ("gap", ["gap insurance"]),
         ("fraud", ["insurance fraud", " fraud"]),
-        ("deductible", ["deduct"]),
-        ("premium", ["premium", "grace period"]),
-    ("claim_filing", ["how to file a claim"]),
-    ("denied_claim", ["dispute a denied claim", "denied claim"]),
-    ("claim", ["claim", "claims process", "file a claim", "dispute"]),
-        ("coverage_types", ["types of coverage for auto insurance", "types of coverage"]),
-        ("choose_plan", ["choose the right insurance plan", "choose the right"]),
-        ("terms", ["terms explained", "auto insurance terms"]),
-        ("lower_premium", ["lower your insurance premiums", "lower your premiums"]),
-    ("endorsements", ["policy endorsements", "endorsement"]),
-        (
-            "policy_interpretation",
-            ["read your insurance policy", "policy", "declarations", "endorsement"],
-        ),
-        ("liability", ["liability"]),
-        ("coverage", ["types of coverage", "coverage", "coverages", "state minimum"]),
-        (
-            "comp_collision",
-            ["comprehensive coverage", "collision coverage", " collision", " comprehensive "],
-        ),
         ("vehicle_mods", ["vehicle modifications"]),
         ("maintenance", ["vehicle maintenance"]),
         ("switch_provider", ["switch insurance", "switch providers"]),
-        ("no_fault", ["no-fault", "no fault"]),
         ("commercial_vs_personal", ["commercial auto", "personal and commercial"]),
         ("multi_vehicle", ["multiple vehicles"]),
         (
@@ -1122,11 +1154,13 @@ def generate_topic_aligned_questions(
 ) -> List[Dict]:
     """Generate *new* deterministic questions aligned to the detected topic.
 
+    This function is intentionally **LLM-free** and deterministic.
+
     Contract:
     - Returns `count` questions (default 10).
-    - Mix: ~70% multiple-choice, ~30% true/false.
     - Ids are unique per (module_order, seed) so quiz attempts can safely re-fetch.
-    - LLM-free.
+    - For known curricula topics, returns the **exact** fixed question text/choices
+      (verbatim) used by the frontend Knowledge Quiz.
     """
 
     mo = int(module_order)
@@ -1153,13 +1187,14 @@ def generate_topic_aligned_questions(
             "weight": 1.0,
         }
 
-    def tf(i: int, statement: str, correct: bool, explanation: str) -> Dict:
+    def tf(i: int, prompt: str, correct: bool, explanation: str) -> Dict:
         return {
             "id": qid("tf", i),
             "moduleOrder": mo,
             "topic": topic,
             "type": "true_false",
-            "prompt": f"True/False: {statement}",
+            # NOTE: prompt is passed in verbatim because we must not deviate.
+            "prompt": prompt,
             "choices": ["True", "False"],
             "correctIndex": 0 if bool(correct) else 1,
             "expected": "True" if bool(correct) else "False",
@@ -1167,302 +1202,1166 @@ def generate_topic_aligned_questions(
             "weight": 0.5,
         }
 
+    def _explanation_generic() -> str:
+        # Keep explanations short and stable; UI doesn't require them.
+        return "Answer is based on standard auto insurance concepts."
+
+    def _mc10(
+        prompts_and_choices: List[tuple[str, List[str], int]],
+        tf_prompts_and_truth: List[tuple[str, bool]],
+    ) -> List[Dict]:
+        out: List[Dict] = []
+        mc_i = 0
+        for p, choices, idx in prompts_and_choices:
+            mc_i += 1
+            out.append(mc(mc_i, p, choices, idx, _explanation_generic()))
+        tf_i = mc_i
+        for p, truth in tf_prompts_and_truth:
+            tf_i += 1
+            out.append(tf(tf_i, p, truth, _explanation_generic()))
+        # Ensure ordering is exactly MC first then TF (matches provided layout).
+        return out
+
+    def _ordered(defs: List[Dict]) -> List[Dict]:
+        out: List[Dict] = []
+        i = 0
+        for d in defs:
+            i += 1
+            if d.get("type") == "mc":
+                out.append(mc(i, d["prompt"], d["choices"], d["correct"], _explanation_generic()))
+            else:
+                out.append(tf(i, d["prompt"], d["correct"], _explanation_generic()))
+        return out
+
+    # Exact, fixed question banks (verbatim) keyed by detected topic.
+    EXACT_BANKS: dict[str, List[Dict]] = {
+        "car_insurance_basics": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is the primary purpose of car insurance?",
+                    "choices": [
+                        "Improve driving skills",
+                        "Protect drivers financially after accidents or losses",
+                        "Reduce fuel costs",
+                        "Increase resale value",
+                    ],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Which best describes car insurance?",
+                    "choices": ["Savings account", "Legal contract", "Driving permit", "Warranty"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What does liability insurance cover?",
+                    "choices": [
+                        "Your car",
+                        "Injuries and damages you cause to others",
+                        "Maintenance",
+                        "Theft",
+                    ],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Why is car insurance required in most states?",
+                    "choices": [
+                        "Ensure cars are new",
+                        "Reduce traffic",
+                        "Ensure drivers can pay for damages",
+                        "Track habits",
+                    ],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Who pays the premium?",
+                    "choices": ["Insurer", "Government", "Manufacturer", "Policyholder"],
+                    "correct": 3,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Which factor affects insurance cost?",
+                    "choices": ["Favorite color", "Driving history", "Shoe size", "Phone brand"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What happens if you stop paying premiums?",
+                    "choices": ["Coverage increases", "Policy canceled", "Free repairs", "Nothing"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Car insurance helps cover financial losses.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Insurance only covers your own vehicle.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Insurance protects against large unexpected expenses.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "deductibles_full": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is a deductible?",
+                    "choices": [
+                        "Monthly payment",
+                        "Amount you pay before insurance covers costs",
+                        "Fee",
+                        "Interest",
+                    ],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When do you pay a deductible?",
+                    "choices": ["Buying insurance", "Filing a claim", "Before driving", "Monthly"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Higher deductible usually means:",
+                    "choices": ["Higher premium", "Lower premium", "No coverage", "Free repairs"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "$500 deductible, $2,000 repair — insurance pays:",
+                    "choices": ["$500", "$1,500", "$2,000", "$0"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Deductibles usually apply to:",
+                    "choices": ["Liability", "Collision", "Medical", "Roadside"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Who chooses deductible amount?",
+                    "choices": ["Government", "Insurer", "Policyholder", "Mechanic"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Deductibles help prevent:",
+                    "choices": ["Accidents", "Fraud/small claims", "Rate increases", "Cancellation"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Deductibles are paid out of pocket.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Liability coverage usually has a deductible.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Higher deductibles can lower premiums.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "accident_steps": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "First thing to check after accident?",
+                    "choices": ["Phone", "Injuries", "Policy", "Damage"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Who to call if injuries occur?",
+                    "choices": ["Agent", "Tow truck", "Emergency services", "Mechanic"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What info should be exchanged?",
+                    "choices": ["Social media", "Insurance/contact info", "Salary", "Driving record"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Why take photos?",
+                    "choices": ["Social media", "Document damage", "DIY estimate", "Avoid police"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When contact police?",
+                    "choices": ["Never", "Minor accidents", "Injuries/major damage", "Only asked"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What should you avoid admitting?",
+                    "choices": ["Name", "Fault", "Provider", "License"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When notify insurer?",
+                    "choices": ["ASAP", "After repair", "After court", "Never"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Leaving scene is allowed if damage is minor.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Photos support claims.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Staying calm is important.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "safe_driving": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "Safe driving habit?",
+                    "choices": ["Speeding", "Seat belts", "Texting", "Tailgating"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What should NOT be done?",
+                    "choices": ["Focus", "Use mirrors", "Text", "Signal"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Defensive driving means:",
+                    "choices": ["Aggressive", "Anticipating hazards", "Slow always", "Ignore others"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Biggest accident risk?",
+                    "choices": ["Awareness", "Distracted driving", "Obeying laws", "Signals"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Safe distance prevents:",
+                    "choices": ["Tickets", "Rear-end collisions", "Flats", "Theft"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When use headlights?",
+                    "choices": ["Night only", "Low visibility", "Tunnels", "Never"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Road rage is:",
+                    "choices": ["Safe", "Encouraged", "Dangerous", "Legal"],
+                    "correct": 2,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Speed limits optional.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Defensive driving reduces risk.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Safe driving can lower insurance costs.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "premium_basics": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "Premium is:",
+                    "choices": ["Repair cost", "Insurance payment", "Deductible", "Fine"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Premiums are paid:",
+                    "choices": ["Once", "Monthly/annually", "After accidents", "Never"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Who pays premium?",
+                    "choices": ["Insurer", "Government", "Policyholder", "Mechanic"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Premium cost depends on:",
+                    "choices": ["Driving history", "Shoe size", "Color", "Weather"],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Missing payments can cause:",
+                    "choices": ["Discounts", "Cancellation", "Free coverage", "Refund"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Premiums lower for:",
+                    "choices": ["Risky drivers", "Safe drivers", "New drivers", "Uninsured"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Premiums help insurers:",
+                    "choices": ["Pay claims", "Ticket drivers", "Fix roads", "Sell cars"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Premiums refunded after accidents.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Premiums vary by driver.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Premiums required to keep coverage.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "coverage_types": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "Which type of insurance is required in most states?",
+                    "choices": ["Collision", "Comprehensive", "Liability", "Gap"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Which coverage pays for damage to your car after an accident?",
+                    "choices": ["Liability", "Collision", "Medical Payments", "Rental"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Which coverage protects against theft or vandalism?",
+                    "choices": ["Collision", "Liability", "Comprehensive", "Uninsured Motorist"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What does uninsured motorist coverage protect against?",
+                    "choices": ["Weather damage", "Mechanical failure", "Drivers without insurance", "Your deductible"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Which coverage helps pay medical bills regardless of fault?",
+                    "choices": ["Liability", "Medical Payments / PIP", "Collision", "Gap"],
+                    "correct": 1,
+                },
+            ]
+        ),
+        "liability": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What does bodily injury liability cover?",
+                    "choices": ["Your injuries", "Injuries to others", "Vehicle repairs", "Theft"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Property damage liability covers damage to what?",
+                    "choices": ["Your car", "Your home", "Other people’s property", "Medical bills"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Who does liability insurance protect?",
+                    "choices": ["Passengers", "Other drivers", "You as the driver", "Mechanics"],
+                    "correct": 2,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Is liability insurance required by law in most states?",
+                    "choices": ["Yes", "No"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Liability insurance pays for your own car repairs.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "collision": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "Collision coverage applies when you hit what?",
+                    "choices": ["Another vehicle or object", "A medical bill", "Theft", "Weather"],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Does collision cover hit-and-run accidents?",
+                    "choices": ["Yes", "No"],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Is collision coverage required by law?",
+                    "choices": ["Yes", "No"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Who usually requires collision coverage?",
+                    "choices": ["State government", "Lenders/leasing companies", "Police", "Mechanics"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Collision coverage includes a deductible.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "comprehensive": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What type of damage does comprehensive cover?",
+                    "choices": ["Accidents only", "Non-collision events", "Medical bills", "Traffic tickets"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Which is covered by comprehensive insurance?",
+                    "choices": ["Car accident", "Theft", "Speeding ticket", "Oil change"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Does comprehensive cover natural disasters?",
+                    "choices": ["Yes", "No"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Comprehensive insurance requires a deductible.",
+                    "correct": True,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Is comprehensive mandatory in all states?",
+                    "choices": ["Yes", "No"],
+                    "correct": 1,
+                },
+            ]
+        ),
+        "deductibles_short": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is a deductible?",
+                    "choices": ["Monthly bill", "Amount you pay before insurance", "Coverage limit", "Refund"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "A higher deductible usually means what?",
+                    "choices": ["Higher premium", "Lower premium", "No coverage", "Free repairs"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When do you pay a deductible?",
+                    "choices": ["Every month", "At renewal", "When filing a claim", "When buying a car"],
+                    "correct": 2,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Deductibles apply to liability coverage.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Choosing a deductible affects premium cost.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "premiums_short": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is an insurance premium?",
+                    "choices": ["Claim payout", "Monthly or annual cost", "Deductible", "Discount"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Which factor affects premium cost?",
+                    "choices": ["Driving record", "Eye color", "Shoe size", "Favorite food"],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Safer drivers usually pay what?",
+                    "choices": ["Higher premiums", "Lower premiums", "No premiums", "Same premiums"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Premiums are paid to whom?",
+                    "choices": ["Police", "Insurance company", "DMV", "Repair shop"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Premiums can be paid monthly or annually.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "claims_short": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is an insurance claim?",
+                    "choices": ["Policy document", "Request for payment", "Traffic citation", "Bill"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When should you file a claim?",
+                    "choices": ["After an accident", "Before driving", "Every month", "At renewal"],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Who investigates a claim?",
+                    "choices": ["Judge", "Insurance adjuster", "Police officer", "Mechanic"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Claims can affect future premiums.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "False claims are legal.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "policy": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is an insurance policy?",
+                    "choices": ["Receipt", "Legal contract", "Claim form", "License"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What does a policy outline?",
+                    "choices": ["Coverage and limits", "Driving routes", "Gas prices", "Repair shops"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Policies include coverage limits.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Policies can be canceled for nonpayment.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Policy terms are negotiable after signing.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "coverage_limits": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is a coverage limit?",
+                    "choices": ["Minimum premium", "Maximum payout", "Deductible", "Discount"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What happens if damages exceed limits?",
+                    "choices": ["Insurance pays all", "You pay the rest", "Claim denied", "No effect"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Higher limits usually mean what?",
+                    "choices": ["Lower cost", "Higher premium", "No coverage", "Same price"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Coverage limits apply to liability insurance.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Limits protect against large financial loss.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "discounts_short": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "Which can qualify you for a discount?",
+                    "choices": ["Safe driving", "Speeding tickets", "Late payments", "Claims"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Bundling policies can reduce premiums.",
+                    "correct": True,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Student discounts are based on what?",
+                    "choices": ["GPA", "Age", "Income", "Vehicle size"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Discounts are automatic.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Anti-theft devices may reduce premiums.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "driving_record_impact": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What affects your insurance rate most?",
+                    "choices": ["Driving history", "Music taste", "Phone brand", "Weather"],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Accidents can cause premiums to do what?",
+                    "choices": ["Decrease", "Increase", "Disappear", "Stay the same"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Tickets remain on record for several years.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "A clean record leads to lower premiums.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Insurance companies ignore driving history.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "claim_after_accident": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is the first thing you should do after an accident?",
+                    "choices": [
+                        "Leave the scene",
+                        "Ensure safety and call for help",
+                        "Call your insurance immediately",
+                        "Fix the car",
+                    ],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When should you contact your insurance company?",
+                    "choices": ["Weeks later", "Immediately or soon after", "Only if forced", "Never"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What information is helpful when filing a claim?",
+                    "choices": ["Photos and police report", "Social media posts", "Opinions", "Repair estimates only"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Fault must be admitted at the scene.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Claims should be reported honestly.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "adjusters": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is an insurance adjuster?",
+                    "choices": ["Lawyer", "Investigator of claims", "Mechanic", "Agent"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "What does an adjuster determine?",
+                    "choices": ["Fault and payout", "Ticket fines", "Vehicle price", "Insurance laws"],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Adjusters work for whom?",
+                    "choices": ["DMV", "Insurance company", "Police", "Court"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Adjusters inspect vehicle damage.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Adjusters decide insurance premiums.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "rental_car": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What does rental car coverage provide?",
+                    "choices": ["Gas", "Temporary vehicle", "Repairs", "Insurance discount"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When is rental coverage used?",
+                    "choices": ["After an accident", "During oil changes", "When selling a car", "When renewing policy"],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Is rental coverage mandatory?",
+                    "choices": ["Yes", "No"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Rental coverage has daily limits.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Rental coverage replaces collision insurance.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "medical_payments": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What does Medical Payments coverage pay for?",
+                    "choices": ["Car repairs", "Medical expenses", "Property damage", "Tickets"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "PIP stands for what?",
+                    "choices": [
+                        "Personal Injury Protection",
+                        "Payment Insurance Plan",
+                        "Premium Increase Program",
+                        "Property Insurance Policy",
+                    ],
+                    "correct": 0,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Does PIP cover passengers?",
+                    "choices": ["Yes", "No"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "PIP applies regardless of fault.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "PIP is required in some states.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "uninsured_underinsured": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What does uninsured motorist coverage protect against?",
+                    "choices": ["Theft", "Drivers without insurance", "Weather damage", "Repairs"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Underinsured motorist coverage applies when?",
+                    "choices": [
+                        "Other driver has no insurance",
+                        "Other driver lacks enough coverage",
+                        "You are uninsured",
+                        "You are at fault",
+                    ],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "This coverage protects you and passengers.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "It covers vehicle damage and injuries.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "This coverage is required in all states.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "gap_insurance": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is gap insurance?",
+                    "choices": ["Covers repair gaps", "Pays difference between loan and value", "Covers rental cars", "Covers tickets"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Who benefits most from gap insurance?",
+                    "choices": ["Owners of older cars", "Leased or financed vehicle owners", "Pedestrians", "Mechanics"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "When is gap insurance useful?",
+                    "choices": ["Theft or total loss", "Oil change", "Flat tire", "Maintenance"],
+                    "correct": 0,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Gap insurance is mandatory.",
+                    "correct": False,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Gap insurance pays your deductible.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "policy_renewal": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is policy renewal?",
+                    "choices": ["Ending coverage", "Continuing coverage", "Filing a claim", "Buying a car"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Policies usually renew how often?",
+                    "choices": ["Monthly", "Every 6 or 12 months", "Daily", "Never"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Nonpayment can result in what?",
+                    "choices": ["Discount", "Cancellation", "Refund", "Bonus"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Insurers must notify before cancellation.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "You can change insurers at renewal.",
+                    "correct": True,
+                },
+            ]
+        ),
+        "state_requirements": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "Who sets minimum insurance requirements?",
+                    "choices": ["Federal government", "State government", "Insurance companies", "Police"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Most states require what coverage?",
+                    "choices": ["Collision", "Liability", "Comprehensive", "Gap"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Driving uninsured can lead to what?",
+                    "choices": ["Discounts", "Fines or license suspension", "Free insurance", "Lower premiums"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Requirements vary by state.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Insurance laws never change.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "rate_factors_short": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What affects insurance rates?",
+                    "choices": ["Driving record", "Location", "Vehicle type", "All of the above"],
+                    "correct": 3,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Younger drivers usually pay what?",
+                    "choices": ["Less", "More"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Sports cars usually cost more to insure.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Credit history can affect rates in some states.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Rates are the same for everyone.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "fraud": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "What is insurance fraud?",
+                    "choices": ["Honest mistake", "Lying for benefits", "Filing claims", "Paying premiums"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Which is an example of fraud?",
+                    "choices": ["Reporting a real accident", "Exaggerating damages", "Paying deductible", "Buying insurance"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Fraud can lead to legal penalties.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Fraud affects premiums for everyone.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Fraud is harmless.",
+                    "correct": False,
+                },
+            ]
+        ),
+        "responsible_driving": _ordered(
+            [
+                {
+                    "type": "mc",
+                    "prompt": "Responsible driving helps do what?",
+                    "choices": ["Increase premiums", "Lower insurance costs", "Cancel policies", "Avoid coverage"],
+                    "correct": 1,
+                },
+                {
+                    "type": "mc",
+                    "prompt": "Defensive driving courses can provide what?",
+                    "choices": ["Tickets", "Discounts", "Fines", "Claims"],
+                    "correct": 1,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Following traffic laws reduces accidents.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Safe drivers are considered lower risk.",
+                    "correct": True,
+                },
+                {
+                    "type": "tf",
+                    "prompt": "Insurance encourages responsible driving.",
+                    "correct": True,
+                },
+            ]
+        ),
+    }
+
+    topic_aliases = {
+        "deductible": "deductibles_full",
+        "premium": "premium_basics",
+        "claim": "claims_short",
+        "claim_filing": "claim_after_accident",
+        "coverage": "coverage_limits",
+        "coverage_types": "coverage_types",
+        "liability": "liability",
+        "comp_collision": "collision",
+        "choose_plan": "policy",
+        "terms": "policy",
+        "lower_premium": "discounts_short",
+        "bundling": "discounts_short",
+        "no_fault": "policy",
+        "policy_interpretation": "policy",
+        "endorsements": "policy",
+        "dispute": "claims_short",
+        "uninsured_motorist": "uninsured_underinsured",
+        "total_loss": "gap_insurance",
+        "seasonal": "responsible_driving",
+        "clean_record": "responsible_driving",
+        "driving_history": "driving_record_impact",
+        "violations": "driving_record_impact",
+        "rate_factors": "rate_factors_short",
+    }
+
+    exact = EXACT_BANKS.get(topic) or EXACT_BANKS.get(topic_aliases.get(topic, ""))
+    if exact:
+        # Respect requested `count` (default 10).
+        # If the exact bank is shorter than `count` (some topics only define 5),
+        # repeat deterministically so callers always get `count` items.
+        if count <= 0:
+            return []
+        if len(exact) >= int(count):
+            return exact[: int(count)]
+        if not exact:
+            return []
+        out: List[Dict] = []
+        i = 0
+        while len(out) < int(count):
+            out.append(exact[i % len(exact)])
+            i += 1
+        return out
+
+    # Fallback: keep prior behavior (generate deterministic, generic questions)
+    # for topics that don't have an exact question bank yet.
     templates: dict[str, list[Dict]] = {
-        "car_insurance_basics": [
-            mc(
-                1,
-                "What is car insurance mainly designed to do?",
-                [
-                    "Help pay for covered losses and protect you financially",
-                    "Pay for routine gas and oil changes",
-                    "Guarantee you never have an accident",
-                    "Replace your car every year",
-                ],
-                0,
-                "Insurance transfers some financial risk from you to the insurer.",
-            ),
-            mc(
-                2,
-                "Which is a common part of an auto policy?",
-                ["Coverages + limits + deductibles", "A free maintenance plan", "A loan contract", "A driver score"],
-                0,
-                "Policies describe what’s covered, up to what limits, and what you pay (deductibles).",
-            ),
-            tf(1, "Insurance is a contract between you and an insurer.", True, "A policy is a legal contract."),
-            tf(2, "Car insurance only matters after an accident.", False, "It also matters for legal compliance and peace of mind."),
-        ],
-        "accident_steps": [
-            mc(
-                1,
-                "After ensuring everyone’s safety, what’s a good next step at the scene?",
-                [
-                    "Exchange info and document the scene",
-                    "Leave immediately",
-                    "Argue to decide fault",
-                    "Tell your insurer you already fixed everything",
-                ],
-                0,
-                "Documentation and exchanging info help with claims and safety.",
-            ),
-            mc(
-                2,
-                "Which information is most useful to collect from the other driver?",
-                [
-                    "Name, contact info, insurer, policy number, vehicle plate",
-                    "Their social media handle",
-                    "Their favorite restaurant",
-                    "Only their first name",
-                ],
-                0,
-                "Insurance and vehicle details are key for reporting.",
-            ),
-            tf(1, "Taking photos of vehicle damage and the intersection can help your claim.", True, "Photos are strong evidence."),
-            tf(2, "You should admit fault at the scene to speed everything up.", False, "Stick to facts; let insurers/police determine fault."),
-        ],
-        "safe_driving": [
-            mc(
-                1,
-                "Which habit best reduces crash risk in bad weather?",
-                ["Increase following distance", "Drive faster to get home", "Tailgate", "Turn off headlights"],
-                0,
-                "Space gives you time to react.",
-            ),
-            mc(
-                2,
-                "What’s a common insurance benefit of safe driving?",
-                ["Potential lower premiums/discounts", "Free gas", "No need for a license", "Guaranteed zero deductibles"],
-                0,
-                "Some carriers offer discounts for good driving behavior.",
-            ),
-            tf(1, "Distracted driving can lead to tickets and higher premiums.", True, "Violations and claims can increase cost."),
-            tf(2, "A clean driving record can help with both safety and cost.", True, "Lower risk often means lower price."),
-        ],
-        "rate_factors": [
-            mc(
-                1,
-                "Which factor commonly affects your auto insurance rate?",
-                ["Driving history", "Phone wallpaper", "Shoe size", "Favorite color"],
-                0,
-                "Past driving behavior is a key risk signal.",
-            ),
-            mc(
-                2,
-                "Why might an insurer offer telematics-based pricing?",
-                ["To price based on observed driving behavior", "To monitor your music", "To change your engine", "To avoid all claims"],
-                0,
-                "Usage-based insurance can reflect driving patterns.",
-            ),
-            tf(1, "Tickets and accidents can increase premiums.", True, "More risk often means higher cost."),
-            tf(2, "Your premium is always the same regardless of risk.", False, "Rates are tied to risk and underwriting."),
-        ],
-        "discounts": [
-            mc(
-                1,
-                "Which is a common way to earn an auto insurance discount?",
-                ["Bundling policies", "Driving with headlights off", "Ignoring renewal notices", "Paying late fees"],
-                0,
-                "Multi-policy bundling is a common discount.",
-            ),
-            mc(
-                2,
-                "Which practice can help keep costs down over time?",
-                ["Maintain a clean driving record", "Get more tickets", "File unnecessary claims", "Skip comparing quotes"],
-                0,
-                "Risk and claims frequency affect cost.",
-            ),
-            tf(1, "Some insurers offer good-student discounts.", True, "It depends on the carrier and eligibility."),
-            tf(2, "Discounts never change.", False, "Eligibility can change at renewal."),
-        ],
-        "claim_filing": [
-            mc(
-                1,
-                "What’s a good first step when filing an auto claim?",
-                [
-                    "Report the loss and provide basic facts (time, place, what happened)",
-                    "Wait until repairs are finished",
-                    "Guess the other driver’s policy number",
-                    "Change the story if details are missing",
-                ],
-                0,
-                "Start by reporting promptly and sticking to facts.",
-            ),
-            mc(
-                2,
-                "Which documentation can help when you file a claim?",
-                ["Photos + police report (if applicable) + witness info", "Only your opinion", "Only a meme", "Nothing"],
-                0,
-                "Evidence helps the insurer evaluate the loss.",
-            ),
-            tf(1, "It’s generally better to report claims promptly.", True, "Many policies require prompt notice."),
-            tf(2, "Filing a claim automatically guarantees payment.", False, "Payment depends on coverage, limits, and exclusions."),
-        ],
-        "coverage_types": [
-            mc(
-                1,
-                "Which coverage commonly pays for damage to your car from a crash?",
-                ["Collision", "Liability", "Property tax", "Registration"],
-                0,
-                "Collision covers damage to your vehicle from a collision (subject to deductible).",
-            ),
-            mc(
-                2,
-                "Comprehensive coverage is most associated with:",
-                ["Theft, vandalism, hail, or animal strikes", "Rear-ending another car", "Your premium amount", "Traffic tickets"],
-                0,
-                "Comprehensive is for many non-collision losses (subject to deductible).",
-            ),
-            tf(1, "Liability coverage is mainly for injuries/damage you cause to others.", True, "That’s the core purpose."),
-            tf(2, "Every coverage has the same deductible.", False, "Deductibles vary and some coverages have none."),
-        ],
         "choose_plan": [
             mc(
                 1,
                 "When choosing an insurance plan, what should you compare?",
-                ["Coverages, limits, deductibles, exclusions, and price", "Only the logo", "Only the agent’s favorite", "Only the lowest deductible"],
+                [
+                    "Coverage limits + deductibles + premium cost",
+                    "Only the logo",
+                    "Only how fast it loads",
+                    "Only the color of your insurance card",
+                ],
                 0,
-                "You want a balance of protection and cost.",
+                "Comparing coverage, limits, and cost helps you pick an appropriate plan.",
             ),
-            mc(
-                2,
-                "If you drive an older car with low value, one common approach is:",
-                ["Consider whether collision/comprehensive still make sense for the cost", "Always buy maximum everything", "Always remove liability", "Never review your policy"],
-                0,
-                "Coverage choices depend on risk, car value, and budget.",
-            ),
-            tf(1, "Higher limits generally provide more protection.", True, "More limit can reduce out-of-pocket exposure."),
-            tf(2, "The cheapest policy is always the best policy.", False, "Cheap can mean less protection or more exclusions."),
-        ],
-        "terms": [
-            mc(
+            tf(
                 1,
-                "Which pairing is correct?",
-                ["Premium = what you pay; deductible = what you pay first on a covered claim", "Premium = claim; deductible = limit", "Premium = ticket; deductible = discount", "Premium = repair; deductible = refund"],
-                0,
-                "Premium keeps coverage active; deductible is your share on many covered claims.",
+                "True/False: The cheapest policy is always the best policy.",
+                False,
+                "Cheapest can mean less protection or more exclusions.",
             ),
-            mc(
-                2,
-                "A policy limit is best described as:",
-                ["The maximum the insurer will pay for a covered loss", "The amount you pay monthly", "A repair estimate", "A vehicle registration fee"],
-                0,
-                "Limits cap insurer payment.",
-            ),
-            tf(1, "An exclusion describes something the policy doesn’t cover.", True, "Exclusions are ‘not covered’ items."),
-            tf(2, "A deductible is the same as a policy limit.", False, "They’re different: deductible is your part; limit is insurer cap."),
-        ],
-        "lower_premium": [
-            mc(
-                1,
-                "Which change often lowers premium (all else equal)?",
-                ["Raising your deductible", "Adding more tickets", "Lowering liability limits below legal minimums", "Filing many small claims"],
-                0,
-                "Higher deductibles can reduce premium because you take on more out-of-pocket risk.",
-            ),
-            mc(
-                2,
-                "Which is a smart way to reduce costs without changing coverage?",
-                ["Shop/compare quotes at renewal", "Cancel insurance for a month", "Ignore discounts", "Drive uninsured"],
-                0,
-                "Comparing quotes and asking about discounts can help.",
-            ),
-            tf(1, "Maintaining a clean driving record can help reduce costs.", True, "Lower risk often means lower rates."),
-            tf(2, "Insurance costs never change over time.", False, "Rates can change based on risk, location, and market factors."),
-        ],
-        "no_fault": [
-            mc(
-                1,
-                "In a no-fault system, a common idea is:",
-                ["Your own insurer may pay certain benefits regardless of fault", "Fault never matters for anything", "You can’t file any claims", "Liability coverage is illegal"],
-                0,
-                "No-fault typically affects how some injury benefits are handled.",
-            ),
-            mc(
-                2,
-                "Even in no-fault states, which can still be important?",
-                ["Limits and coverage types in your policy", "Your car’s paint color", "Your music playlist", "None of the above"],
-                0,
-                "You still need to understand your coverages and limits.",
-            ),
-            tf(1, "No-fault laws vary by state.", True, "Rules differ depending on jurisdiction."),
-            tf(2, "‘No-fault’ means no one is ever responsible for damages.", False, "Fault can still matter for property damage and lawsuits depending on rules."),
-        ],
-        "endorsements": [
-            mc(
-                1,
-                "A policy endorsement is best described as:",
-                ["A change/add-on that modifies your policy coverage", "A traffic ticket", "A claim payment", "A deductible"],
-                0,
-                "Endorsements change policy terms (add/remove/alter coverage).",
-            ),
-            mc(
-                2,
-                "If you add a new driver or car, what’s a good step?",
-                ["Update the policy so it reflects the new risk", "Keep it secret", "Assume it’s automatically covered", "Wait for a claim"],
-                0,
-                "Policies must be updated to match reality.",
-            ),
-            tf(1, "Endorsements can change premium.", True, "Coverage changes can affect price."),
-            tf(2, "Endorsements are the same as exclusions.", False, "Endorsements modify terms; exclusions limit coverage."),
-        ],
-        "denied_claim": [
-            mc(
-                1,
-                "If a claim is denied, what’s a reasonable next step?",
-                ["Ask for the written denial reason and review your policy language", "Threaten without reading anything", "Invent new facts", "Stop documenting"],
-                0,
-                "Start with the reason and the policy terms/exclusions.",
-            ),
-            mc(
-                2,
-                "Which is most helpful when disputing a denial?",
-                ["Evidence and policy references", "Only anger", "Only rumors", "A random guess"],
-                0,
-                "Documentation and policy language support your position.",
-            ),
-            tf(1, "Denials can happen due to exclusions, missed payments, or ineligible losses.", True, "Many reasons are possible."),
-            tf(2, "If you disagree with a denial, you can never appeal.", False, "Most insurers have an internal review/appeal process."),
         ],
     }
 
-    base = templates.get(topic)
-    if not base:
-        base = [
-            mc(
-                1,
-                f"What is the main goal of the topic '{module_title}'?",
-                [
-                    "Learn an insurance concept and how to apply it",
-                    "Pick a new car color",
-                    "Learn cooking techniques",
-                    "Plan a vacation itinerary",
-                ],
-                0,
-                "This module is part of an insurance curriculum.",
-            ),
-            mc(
-                2,
-                "What’s a good first step if you’re unsure about coverage details?",
-                ["Review your policy documents and limits", "Assume full coverage for everything", "Ignore it", "Wait for a claim"],
-                0,
-                "Your declarations page/endorsements define coverage.",
-            ),
-            tf(1, "Insurance policies can include exclusions.", True, "Exclusions specify what’s not covered."),
-            tf(2, "Reading your policy can help you avoid surprises.", True, "Knowing limits/deductibles helps decisions."),
-        ]
-
+    bank = templates.get(topic) or templates.get("choose_plan")
+    if not bank:
+        return []
+    if count <= 0:
+        return []
+    if len(bank) >= int(count):
+        return bank[: int(count)]
     out: List[Dict] = []
     i = 0
     while len(out) < int(count):
-        item = base[i % len(base)]
+        out.append(bank[i % len(bank)])
         i += 1
-        cloned = dict(item)
-        kind = "mc" if cloned.get("type") == "multiple_choice" else "tf"
-        cloned["id"] = qid(kind, i)
-        out.append(cloned)
-
-    return out[: int(count)]
-
-
+    return out
 def knowledge_bank_for_module(module_title: str, module_description: str, module_order: int) -> List[Dict]:
     """Deterministic question bank for a single curriculum module.
 
@@ -1489,13 +2388,13 @@ def knowledge_bank_for_module(module_title: str, module_description: str, module
             "weight": 1.0,
         }
 
-    def tf(suffix: str, statement: str, correct: bool, explanation: str) -> Dict:
+    def tf(suffix: str, prompt: str, correct: bool, explanation: str) -> Dict:
         return {
             "id": qid(suffix),
             "moduleOrder": int(module_order),
             "topic": topic,
             "type": "true_false",
-            "prompt": f"True/False: {statement}",
+            "prompt": prompt,
             "choices": ["True", "False"],
             "correctIndex": 0 if bool(correct) else 1,
             "expected": "True" if bool(correct) else "False",
@@ -1503,927 +2402,1274 @@ def knowledge_bank_for_module(module_title: str, module_description: str, module
             "weight": 0.5,
         }
 
-    if topic == "deductible":
-        return [
-            mc(
-                "mc1",
-                "What does a deductible mean?",
-                [
-                    "The amount you pay first on a covered claim",
-                    "A discount you always get on repairs",
-                    "The maximum your insurer will ever pay",
-                    "A fee the other driver pays",
-                ],
-                0,
-                "A deductible is the amount you pay out of pocket before insurance pays the rest of a covered claim.",
-            ),
-            mc(
-                "mc2",
-                "Your deductible is $500 and repairs cost $1,800 (covered). How much do you pay?",
-                ["$0", "$500", "$1,300", "$1,800"],
-                1,
-                "You pay the deductible ($500) first; insurance typically covers the remaining $1,300.",
-            ),
-            mc(
-                "mc3",
-                "If you raise your deductible, what often happens to your premium?",
-                ["It goes up", "It goes down", "It becomes illegal", "It becomes your limit"],
-                1,
-                "Higher deductibles usually mean lower premiums because you agree to pay more if a claim happens.",
-            ),
-            mc(
-                "mc4",
-                "When a deductible applies, it is usually:",
-                [
-                    "Charged once per claim",
-                    "Charged every day",
-                    "Charged only if police arrive",
-                    "Charged only for liability claims",
-                ],
-                0,
-                "Most deductibles apply per claim (commonly for collision/comprehensive), not per month.",
-            ),
-            mc(
-                "mc5",
-                "Which coverage commonly has a deductible?",
-                ["Collision", "Liability", "Both always", "Neither"],
-                0,
-                "Collision/comprehensive commonly have deductibles; liability typically does not.",
-            ),
-            tf(
-                "tf1",
-                "A deductible is the amount insurance pays first.",
-                False,
-                "You pay the deductible first; then insurance pays the remaining covered amount.",
-            ),
-            tf(
-                "tf2",
-                "A higher deductible can make your monthly premium lower.",
-                True,
-                "Often true: you trade a lower premium for higher out-of-pocket cost if a claim happens.",
-            ),
-            tf(
-                "tf3",
-                "If repairs cost less than your deductible, insurance usually pays nothing.",
-                True,
-                "If the claim amount doesn’t exceed the deductible, there’s typically nothing left for insurance to pay.",
-            ),
-            tf(
-                "tf4",
-                "You pay your deductible even for excluded (not covered) damage.",
-                False,
-                "If it’s excluded/not covered, the claim is denied and the deductible usually isn’t the deciding factor.",
-            ),
-            tf(
-                "tf5",
-                "Deductibles are chosen when you buy your policy, not when an accident happens.",
-                True,
-                "You pick deductibles as part of your policy terms upfront.",
-            ),
-        ]
+    def mc_q(suffix: str, prompt: str, choices: List[str], correct_index: int) -> Dict:
+        return mc(suffix, prompt, choices, correct_index, "")
 
-    if topic == "claim":
-        return [
-            mc(
-                "mc1",
-                "What is an insurance claim?",
-                [
-                    "A request to your insurer to cover/pay for a loss",
-                    "A traffic ticket",
-                    "Your monthly premium",
-                    "A type of deductible",
-                ],
-                0,
-                "A claim is what you file with your insurer to request coverage/payment for a covered loss.",
-            ),
-            mc(
-                "mc2",
-                "Which detail helps a claim go smoother?",
-                ["Photos and a clear timeline", "Guessing the other driver’s name", "Deleting messages", "Waiting weeks"],
-                0,
-                "Documentation like photos, locations, and timelines helps insurers evaluate the claim faster.",
-            ),
-            mc(
-                "mc3",
-                "Accident vs claim: which statement is correct?",
-                ["They mean the same thing", "Accident is the event; claim is what you file", "Claim happens first", "Accident is optional"],
-                1,
-                "The accident is the event; the claim is the request you submit to your insurance.",
-            ),
-            mc(
-                "mc4",
-                "If you’re not sure who is at fault, what should you do?",
-                ["Make up a story", "Collect facts and report honestly", "Hide evidence", "Stop cooperating"],
-                1,
-                "Stick to facts (photos, statements) and let insurers decide fault based on evidence.",
-            ),
-            mc(
-                "mc5",
-                "A common first step after a crash is:",
-                ["Ensure safety and check injuries", "Argue with the other driver", "Leave immediately", "Post on social media"],
-                0,
-                "Safety comes first: check for injuries and move to a safe location if possible.",
-            ),
-            tf("tf1", "Filing a claim always means your insurance will definitely pay.", False,
-               "Not always—coverage depends on policy terms, exclusions, and what happened."),
-            tf("tf2", "Photos of damage can help support your claim.", True,
-               "Photos provide evidence of what happened and the extent of damage."),
-            tf("tf3", "A claim is filed with your insurance company (or theirs).", True,
-               "Claims are submitted to insurers."),
-            tf("tf4", "It’s fine to wait months to report a brand-new accident.", False,
-               "Policies often require prompt notice."),
-            tf("tf5", "A police report can sometimes help clarify what happened.", True,
-               "A report can document facts, especially for serious accidents or disputes."),
-        ]
+    def tf_q(suffix: str, prompt: str, correct: bool) -> Dict:
+        return tf(suffix, prompt, correct, "")
 
-    if topic == "coverage":
-        return [
-            mc(
+    bank_by_title: Dict[str, List[Dict]] = {
+        "what_is_car_insurance": [
+            mc_q(
                 "mc1",
-                "What does coverage tell you?",
+                "What is the primary purpose of car insurance?",
                 [
-                    "What the policy will pay for and under what conditions",
-                    "Your car’s color",
-                    "The other driver’s opinion",
-                    "A guaranteed payout amount for any event",
+                    "Improve driving skills",
+                    "Protect drivers financially after accidents or losses",
+                    "Reduce fuel costs",
+                    "Increase resale value",
                 ],
-                0,
-                "Coverage defines what’s included (and excluded) and the conditions/limits for payment.",
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "What is an exclusion?",
-                ["Something the policy does NOT cover", "A bonus feature", "A deductible", "A payment plan"],
-                0,
-                "Exclusions are situations or damage types the policy won’t cover.",
+                "Which best describes car insurance?",
+                [
+                    "Savings account",
+                    "Legal contract",
+                    "Driving permit",
+                    "Warranty",
+                ],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "Policy limits are best described as:",
-                ["The max the insurer will pay", "The deductible amount", "A ticket limit", "A repair estimate"],
-                0,
-                "Limits cap how much the insurer can pay.",
+                "What does liability insurance cover?",
+                [
+                    "Your car",
+                    "Injuries and damages you cause to others",
+                    "Maintenance",
+                    "Theft",
+                ],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "State minimum coverage is:",
-                ["Always enough", "The legal minimum, not always enough protection", "A luxury upgrade", "Only for teens"],
-                1,
-                "Minimums meet legal requirements but might not cover all costs in serious accidents.",
+                "Why is car insurance required in most states?",
+                [
+                    "Ensure cars are new",
+                    "Reduce traffic",
+                    "Ensure drivers can pay for damages",
+                    "Track habits",
+                ],
+                2,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "If damage is excluded, what happens?",
-                ["Insurance pays anyway", "Insurance usually doesn’t pay", "Deductible doubles", "Premium becomes zero"],
-                1,
-                "Excluded means not covered.",
-            ),
-            tf("tf1", "Coverage includes limits.", True, "Coverage is defined alongside limits and conditions."),
-            tf("tf2", "Exclusions mean 'not covered'.", True, "That’s what exclusions are."),
-            tf("tf3", "If something isn’t covered, you can force the insurer to pay by filing anyway.", False,
-               "Filing doesn’t create coverage—policy terms control."),
-            tf("tf4", "Coverage can differ depending on the policy you bought.", True,
-               "Policies vary by selections and endorsements."),
-            tf("tf5", "Coverage answers what will be paid for.", True, "That’s the core purpose of coverage."),
-        ]
-
-    if topic == "premium":
-        return [
-            mc(
-                "mc1",
-                "What is a premium?",
-                ["The amount you pay to keep insurance active", "A deductible", "A claim", "A police report"],
-                0,
-                "Premium is the payment to keep coverage active (monthly/6-month/annual).",
-            ),
-            mc(
-                "mc2",
-                "Which factor can raise a premium?",
-                ["More risk (tickets/accidents)", "Driving less safely", "Moving to a higher-risk area", "All of the above"],
+                "Who pays the premium?",
+                [
+                    "Insurer",
+                    "Government",
+                    "Manufacturer",
+                    "Policyholder",
+                ],
                 3,
-                "Premium is tied to risk and coverage.",
             ),
-            mc(
-                "mc3",
-                "If you stop paying premium, what can happen?",
-                ["Policy stays active forever", "Policy can lapse/cancel", "Deductible disappears", "Coverage becomes unlimited"],
+            mc_q(
+                "mc6",
+                "Which factor affects insurance cost?",
+                ["Favorite color", "Driving history", "Shoe size", "Phone brand"],
                 1,
-                "Nonpayment can lead to lapse/cancellation.",
             ),
-            mc(
-                "mc4",
-                "Premium frequency can be:",
-                ["Monthly", "6-month", "Annual", "All of the above"],
-                3,
-                "Premiums can be billed in different cycles.",
-            ),
-            mc(
-                "mc5",
-                "More coverage typically means:",
-                ["Lower premium", "Higher premium", "No change", "Illegal"],
-                1,
-                "More coverage shifts more risk to insurer, often raising premium.",
-            ),
-            tf("tf1", "Premium is what you pay to keep coverage active.", True, "That’s the definition."),
-            tf("tf2", "Riskier driving can increase premium.", True, "Premiums reflect risk."),
-            tf("tf3", "Premium and deductible are the same thing.", False, "They are different concepts."),
-            tf("tf4", "A premium can be paid monthly.", True, "Common billing cycle."),
-            tf("tf5", "If you lapse, you may have no coverage.", True, "That’s the consequence of cancellation/lapse."),
-        ]
-
-    if topic == "policy_interpretation":
-        return [
-            mc(
-                "mc1",
-                "When reading your auto policy, which section tells you what the insurer will pay for?",
-                ["Insuring agreement / coverage section", "Declaration page only", "Marketing brochure", "Vehicle title"],
-                0,
-                "The coverage/insuring agreement describes what is covered (and under what conditions).",
-            ),
-            mc(
-                "mc2",
-                "What do policy limits represent?",
-                ["The maximum the insurer will pay (per person/per accident/per claim)", "Your deductible amount", "A required police report", "Your vehicle’s resale value"],
-                0,
-                "Limits cap how much the insurer will pay for a covered loss.",
-            ),
-            mc(
-                "mc3",
-                "An exclusion in a policy is best described as:",
-                ["Something the policy does NOT cover", "A discount", "A type of premium", "A guarantee of payment"],
-                0,
-                "Exclusions list situations/damage the policy won’t cover.",
-            ),
-            mc(
-                "mc4",
-                "Where would you usually find your chosen deductibles and coverages summarized?",
-                ["Declarations page (Declarations)", "Police report", "Repair invoice", "Driver’s license"],
-                0,
-                "The declarations page summarizes coverages, limits, deductibles, and named insured/vehicles.",
-            ),
-            mc(
-                "mc5",
-                "If two parts of the policy seem to conflict, what’s a good first step?",
+            mc_q(
+                "mc7",
+                "What happens if you stop paying premiums?",
                 [
-                    "Re-read definitions + the relevant coverage and exclusions, then ask the insurer/agent for clarification",
-                    "Assume the cheaper outcome",
-                    "Ignore exclusions",
-                    "Only rely on social media advice",
+                    "Coverage increases",
+                    "Policy canceled",
+                    "Free repairs",
+                    "Nothing",
                 ],
-                0,
-                "Definitions and exclusions matter; when in doubt, ask the insurer/agent and get it in writing.",
+                1,
             ),
-            tf(
-                "tf1",
-                "The declarations page usually lists your coverages, limits, and deductibles.",
+            tf_q(
+                "tf8",
+                "Car insurance helps cover financial losses.",
                 True,
-                "That’s one of the main purposes of the declarations page.",
             ),
-            tf(
-                "tf2",
-                "An exclusion means the insurer is promising to pay for that situation.",
+            tf_q(
+                "tf9",
+                "Insurance only covers your own vehicle.",
                 False,
-                "Exclusions mean the opposite: it’s not covered.",
             ),
-            tf(
-                "tf3",
-                "Policy definitions can change how a word like 'insured' or 'vehicle' is interpreted.",
+            tf_q(
+                "tf10",
+                "Insurance protects against large unexpected expenses.",
                 True,
-                "Policies define terms precisely; those definitions control interpretation.",
             ),
-            tf(
-                "tf4",
-                "If something is not covered, paying your deductible will make it covered.",
-                False,
-                "Deductibles apply to covered claims; they don't create coverage.",
-            ),
-            tf(
-                "tf5",
-                "It can help to compare the coverage section with exclusions and conditions when reading a policy.",
-                True,
-                "Coverage is defined by what’s included AND what’s excluded/limited.",
-            ),
-        ]
-
-    if topic == "liability":
-        return [
-            mc(
+        ],
+        "understanding_deductibles": [
+            mc_q(
                 "mc1",
-                "Liability coverage primarily helps pay for:",
-                ["Injuries/damage you cause to others", "Your own car’s collision repairs", "Oil changes", "Your deductible"],
-                0,
-                "Liability is for harm you cause to others (subject to limits).",
+                "What is a deductible?",
+                [
+                    "Monthly payment",
+                    "Amount you pay before insurance covers costs",
+                    "Fee",
+                    "Interest",
+                ],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "If your state requires liability insurance, that usually means:",
-                ["You must carry at least the legal minimum limits", "You must buy comprehensive", "You can't buy collision", "You can skip insurance"],
-                0,
-                "Most states require minimum liability limits.",
+                "When do you pay a deductible?",
+                ["Buying insurance", "Filing a claim", "Before driving", "Monthly"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "Which is an example of a liability claim?",
-                ["You rear-end someone and damage their bumper", "Your windshield cracks from a rock", "A hail storm dents your hood", "Your car is stolen"],
-                0,
-                "Damaging someone else’s property/injuring someone triggers liability.",
+                "Higher deductible usually means:",
+                ["Higher premium", "Lower premium", "No coverage", "Free repairs"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "A limit like 25/50/25 most commonly refers to:",
-                ["Bodily injury per person / bodily injury per accident / property damage", "Deductible / premium / claim count", "Tire pressure / engine size / mpg", "Road speed limits"],
-                0,
-                "It’s a shorthand for liability limits.",
+                "$500 deductible, $2,000 repair — insurance pays:",
+                ["$500", "$1,500", "$2,000", "$0"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "If you cause a crash and damages exceed your liability limits, what can happen?",
-                ["You may owe the difference out of pocket", "Insurance must pay unlimited amounts", "Your deductible becomes zero", "The claim is automatically denied"],
-                0,
-                "Limits cap insurer payment; excess can become your responsibility.",
+                "Deductibles usually apply to:",
+                ["Liability", "Collision", "Medical", "Roadside"],
+                1,
             ),
-            tf("tf1", "Liability coverage protects other people, not typically your own car repairs.", True, "That’s the basic purpose."),
-            tf("tf2", "Higher liability limits can offer more financial protection.", True, "Higher limits can reduce out-of-pocket exposure."),
-            tf("tf3", "Liability coverage usually has a deductible like collision does.", False, "Liability typically doesn’t have a deductible."),
-            tf("tf4", "State minimum liability limits are always enough for serious accidents.", False, "Minimums may be too low for large losses."),
-            tf("tf5", "Liability can apply to property damage you cause.", True, "Yes—property damage is part of liability."),
-        ]
-
-    if topic == "comp_collision":
-        return [
-            mc(
+            mc_q(
+                "mc6",
+                "Who chooses deductible amount?",
+                ["Government", "Insurer", "Policyholder", "Mechanic"],
+                2,
+            ),
+            mc_q(
+                "mc7",
+                "Deductibles help prevent:",
+                [
+                    "Accidents",
+                    "Fraud/small claims",
+                    "Rate increases",
+                    "Cancellation",
+                ],
+                1,
+            ),
+            tf_q("tf8", "Deductibles are paid out of pocket.", True),
+            tf_q("tf9", "Liability coverage usually has a deductible.", False),
+            tf_q("tf10", "Higher deductibles can lower premiums.", True),
+        ],
+        "steps_to_take_during_a_car_accident": [
+            mc_q(
                 "mc1",
-                "Collision coverage generally helps pay for:",
-                ["Damage to your car from a crash (subject to deductible)", "Medical bills for others", "Your monthly premium", "Traffic tickets"],
-                0,
-                "Collision is for damage to your own vehicle from a collision.",
+                "First thing to check after accident?",
+                ["Phone", "Injuries", "Policy", "Damage"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "Comprehensive coverage generally helps pay for damage from:",
-                ["Non-collision events like theft, vandalism, hail", "Only crashes", "Only oil leaks", "Only speeding tickets"],
-                0,
-                "Comprehensive is for non-collision losses (often called 'other than collision').",
+                "Who to call if injuries occur?",
+                ["Agent", "Tow truck", "Emergency services", "Mechanic"],
+                2,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "Which scenario is typically a comprehensive claim?",
-                ["Your car is stolen", "You hit another car", "You rear-end someone", "You run a red light"],
-                0,
-                "Theft is usually covered under comprehensive.",
+                "What info should be exchanged?",
+                ["Social media", "Insurance/contact info", "Salary", "Driving record"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "Which scenario is typically a collision claim?",
-                ["You hit a guardrail", "A tree branch falls on your car", "A deer scratches your paint while parked", "Your car is stolen"],
-                0,
-                "Hitting an object/vehicle is typically collision.",
+                "Why take photos?",
+                ["Social media", "Document damage", "DIY estimate", "Avoid police"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "Comprehensive and collision often have:",
-                ["Deductibles", "No limits", "No policy terms", "Guaranteed payouts"],
-                0,
-                "They commonly have deductibles and policy conditions.",
+                "When contact police?",
+                ["Never", "Minor accidents", "Injuries/major damage", "Only asked"],
+                2,
             ),
-            tf("tf1", "Collision is for crash-related damage to your car.", True, "That’s the basic definition."),
-            tf("tf2", "Comprehensive is only for crashes.", False, "Comprehensive is for non-collision events."),
-            tf("tf3", "Hail damage is often handled under comprehensive.", True, "Hail is a common comprehensive loss."),
-            tf("tf4", "Comprehensive and collision can be optional depending on the policy/vehicle.", True, "They can be optional, but lenders may require them."),
-            tf("tf5", "If you choose a higher deductible, your premium can sometimes be lower.", True, "That tradeoff is common."),
-        ]
-
-    if topic == "accident_steps":
-        return [
-            mc(
+            mc_q(
+                "mc6",
+                "What should you avoid admitting?",
+                ["Name", "Fault", "Provider", "License"],
+                1,
+            ),
+            mc_q(
+                "mc7",
+                "When notify insurer?",
+                ["ASAP", "After repair", "After court", "Never"],
+                0,
+            ),
+            tf_q("tf8", "Leaving scene is allowed if damage is minor.", False),
+            tf_q("tf9", "Photos support claims.", True),
+            tf_q("tf10", "Staying calm is important.", True),
+        ],
+        "dos_and_donts_of_safe_driving": [
+            mc_q(
                 "mc1",
-                "Right after a crash, what should you do first?",
-                ["Check for injuries and get to safety", "Argue with the other driver", "Drive away immediately", "Post online"],
-                0,
-                "Safety comes first: check injuries and move to a safe spot if you can.",
+                "Safe driving habit?",
+                ["Speeding", "Seat belts", "Texting", "Tailgating"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "Which item is most helpful to document for an accident report/claim?",
-                ["Photos of damage + scene", "Only your favorite song", "The weather next week", "A random guess"],
-                0,
-                "Photos, location, and a timeline help insurers understand what happened.",
+                "What should NOT be done?",
+                ["Focus", "Use mirrors", "Text", "Signal"],
+                2,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "When should you exchange information with the other driver?",
-                ["After everyone is safe", "Never", "Only if they admit fault", "Only if you have full coverage"],
-                0,
-                "Once safe, exchange contact/insurance info and stick to facts.",
+                "Defensive driving means:",
+                ["Aggressive", "Anticipating hazards", "Slow always", "Ignore others"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "If police are required/appropriate, you should:",
-                ["Call and cooperate, then get the report number", "Wait a week", "Hide details", "Refuse to give any info"],
-                0,
-                "A police report can help document key facts.",
+                "Biggest accident risk?",
+                ["Awareness", "Distracted driving", "Obeying laws", "Signals"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "A good rule when talking about fault at the scene is:",
-                ["Share facts; let insurers decide fault", "Sign any document given", "Admit fault immediately", "Blame someone loudly"],
-                0,
-                "Stick to facts and evidence; fault decisions come later.",
+                "Safe distance prevents:",
+                ["Tickets", "Rear-end collisions", "Flats", "Theft"],
+                1,
             ),
-            tf("tf1", "It’s helpful to take photos after an accident (if it’s safe).", True, "Photos are strong evidence."),
-            tf("tf2", "You should exchange insurance information after a crash.", True, "This is a standard step."),
-            tf("tf3", "You should leave the scene even if someone is injured.", False, "Leaving can be dangerous and illegal."),
-            tf("tf4", "Writing down the time/location can help later.", True, "It supports a clear timeline."),
-            tf("tf5", "Reporting promptly can matter for coverage.", True, "Policies often require prompt notice."),
-        ]
-
-    if topic == "safe_driving":
-        return [
-            mc(
-                "mc1",
-                "What’s a ‘do’ of safe driving?",
-                ["Keep a safe following distance", "Text while driving", "Speed in bad weather", "Ignore traffic signs"],
-                0,
-                "Space gives you time to react and reduces crash risk.",
+            mc_q(
+                "mc6",
+                "When use headlights?",
+                ["Night only", "Low visibility", "Tunnels", "Never"],
+                1,
             ),
-            mc(
+            mc_q("mc7", "Road rage is:", ["Safe", "Encouraged", "Dangerous", "Legal"], 2),
+            tf_q("tf8", "Speed limits optional.", False),
+            tf_q("tf9", "Defensive driving reduces risk.", True),
+            tf_q("tf10", "Safe driving can lower insurance costs.", True),
+        ],
+        "what_is_a_premium": [
+            mc_q("mc1", "Premium is:", ["Repair cost", "Insurance payment", "Deductible", "Fine"], 1),
+            mc_q(
                 "mc2",
-                "In rain/snow, you should generally:",
-                ["Slow down and increase following distance", "Drive the same speed as dry roads", "Brake late", "Turn off headlights"],
-                0,
-                "Bad weather reduces traction and visibility.",
+                "Premiums are paid:",
+                ["Once", "Monthly/annually", "After accidents", "Never"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "Why do safe driving habits matter for insurance?",
-                ["They can reduce accidents and keep rates lower", "They guarantee free insurance", "They replace a policy", "They remove all deductibles"],
-                0,
-                "Fewer violations/claims usually means lower risk (and often lower premiums).",
+                "Who pays premium?",
+                ["Insurer", "Government", "Policyholder", "Mechanic"],
+                2,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "A ‘don’t’ of safe driving is:",
-                ["Driving distracted", "Scanning mirrors", "Using seatbelts", "Stopping at lights"],
+                "Premium cost depends on:",
+                ["Driving history", "Shoe size", "Color", "Weather"],
                 0,
-                "Distraction increases crash risk.",
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "A defensive driving course might help by:",
-                ["Improving skills and sometimes earning a discount", "Making tickets disappear automatically", "Changing your deductible", "Canceling claims"],
-                0,
-                "Some insurers offer discounts for approved courses.",
+                "Missing payments can cause:",
+                ["Discounts", "Cancellation", "Free coverage", "Refund"],
+                1,
             ),
-            tf("tf1", "Speeding can increase accident risk.", True, "Higher speeds reduce reaction time."),
-            tf("tf2", "Safe driving can help keep your insurance rates lower over time.", True, "Rates track risk and history."),
-            tf("tf3", "Weather never affects stopping distance.", False, "Rain/snow increases stopping distance."),
-            tf("tf4", "Distracted driving can lead to tickets and accidents.", True, "Both can affect rates."),
-            tf("tf5", "Seatbelts help reduce injury severity.", True, "They’re a key safety feature."),
-        ]
-
-    if topic == "rate_factors":
-        return [
-            mc(
+            mc_q(
+                "mc6",
+                "Premiums lower for:",
+                ["Risky drivers", "Safe drivers", "New drivers", "Uninsured"],
+                1,
+            ),
+            mc_q("mc7", "Premiums help insurers:", ["Pay claims", "Ticket drivers", "Fix roads", "Sell cars"], 0),
+            tf_q("tf8", "Premiums refunded after accidents.", False),
+            tf_q("tf9", "Premiums vary by driver.", True),
+            tf_q("tf10", "Premiums required to keep coverage.", True),
+        ],
+        "what_is_a_claim": [
+            mc_q(
                 "mc1",
-                "Which can affect your auto insurance rate?",
-                ["Driving history", "Where you live", "How much coverage you buy", "All of the above"],
+                "A claim is:",
+                ["A monthly bill", "A request for payment from insurance", "A deductible", "A discount"],
+                1,
+            ),
+            mc_q(
+                "mc2",
+                "When do you file a claim?",
+                ["Before driving", "After a covered loss", "When buying insurance", "Every month"],
+                1,
+            ),
+            mc_q(
+                "mc3",
+                "Who reviews a claim?",
+                ["Police", "Mechanic", "Insurance company", "DMV"],
+                2,
+            ),
+            mc_q(
+                "mc4",
+                "Claims are filed to receive:",
+                ["Tickets", "Compensation", "Premium increases", "Warnings"],
+                1,
+            ),
+            mc_q(
+                "mc5",
+                "What can trigger a claim?",
+                ["Accident", "Theft", "Damage", "All of the above"],
                 3,
-                "Rates reflect risk, location, and coverage choices.",
             ),
-            mc(
-                "mc2",
-                "A traffic violation can:",
-                ["Increase your premium", "Always lower your premium", "Erase your deductible", "Guarantee claim payment"],
-                0,
-                "Violations can signal higher risk.",
+            mc_q(
+                "mc6",
+                "Filing many claims may:",
+                ["Lower premiums", "Raise premiums", "Cancel license", "Fix credit"],
+                1,
             ),
-            mc(
-                "mc3",
-                "Why might a higher annual mileage increase rates?",
-                ["More time driving can mean more exposure to crashes", "Because insurers dislike road trips", "It changes paint color", "It reduces coverage"],
-                0,
-                "More exposure can mean higher claim likelihood.",
-            ),
-            mc(
-                "mc4",
-                "Telematics programs generally track:",
-                ["Driving behavior (speeding/braking/time of day)", "Your car’s resale value", "Your phone contacts", "The weather"],
-                0,
-                "Usage-based insurance uses driving behavior/usage signals.",
-            ),
-            mc(
-                "mc5",
-                "More coverage/ lower deductibles often leads to:",
-                ["Higher premiums", "Lower premiums", "No change ever", "Illegal coverage"],
-                0,
-                "More protection usually costs more.",
-            ),
-            tf("tf1", "Tickets/accidents can impact your premium.", True, "They’re common rating factors."),
-            tf("tf2", "Where you park/garage a vehicle can affect risk.", True, "Location affects theft/crash risk."),
-            tf("tf3", "Rates are the same for everyone.", False, "Rates vary by risk factors."),
-            tf("tf4", "Coverage selections can change your premium.", True, "More coverage often costs more."),
-            tf("tf5", "Driving history is irrelevant to insurance rates.", False, "It’s one of the biggest factors."),
-        ]
-
-    if topic == "discounts":
-        return [
-            mc(
+            mc_q("mc7", "Claims require:", ["Documentation", "Guessing", "No evidence", "Court approval"], 0),
+            tf_q("tf8", "A claim guarantees payment.", False),
+            tf_q("tf9", "Claims must be approved.", True),
+            tf_q("tf10", "Claims can affect rates.", True),
+        ],
+        "how_to_file_a_claim": [
+            mc_q(
                 "mc1",
-                "Which is a common way to lower your premium?",
-                ["Ask about discounts and adjust deductible/coverage thoughtfully", "File unnecessary claims", "Hide tickets", "Cancel insurance"],
-                0,
-                "Discounts and smart coverage choices can reduce cost.",
+                "First step when filing a claim:",
+                ["Repair car", "Contact insurer", "Pay deductible", "Call lawyer"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "Bundling usually means:",
-                ["Buying multiple policies (auto + renters/home) with one insurer", "Adding more deductibles", "Filing two claims", "Driving two cars"],
-                0,
-                "Bundling can sometimes earn a discount.",
+                "Claims can be filed:",
+                ["Online", "By phone", "Through an app", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "A higher deductible often results in:",
-                ["Lower premium but more out-of-pocket if a claim happens", "Lower out-of-pocket always", "Guaranteed payout", "No change"],
-                0,
-                "You trade lower premiums for higher claim cost to you.",
+                "What info is needed?",
+                ["Accident details", "Photos", "Police report", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "Which could qualify as a discount?",
-                ["Good student / safe driver / multi-policy (depends on insurer)", "Late payments", "Multiple accidents", "Expired license"],
-                0,
-                "Discounts vary, but safe driving and bundling are common.",
+                "Who may inspect damage?",
+                ["Police", "Adjuster", "DMV", "Judge"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "The safest way to shop for savings is to:",
-                ["Compare quotes with the same coverages/limits", "Compare random prices with different coverages", "Pick the lowest without reading", "Ignore deductibles"],
+                "Filing quickly helps:",
+                ["Approval speed", "Premium increase", "Denial", "Ticket dismissal"],
                 0,
-                "Comparisons only make sense when coverage is comparable.",
             ),
-            tf("tf1", "Bundling can sometimes reduce premiums.", True, "Many insurers offer multi-policy discounts."),
-            tf("tf2", "Raising your deductible can reduce premium.", True, "Common tradeoff."),
-            tf("tf3", "Discounts are identical at every insurer.", False, "They vary by insurer and state."),
-            tf("tf4", "Comparing quotes requires matching coverages.", True, "Otherwise it’s apples-to-oranges."),
-            tf("tf5", "Safe driving can help you earn discounts.", True, "Some programs reward behavior."),
-        ]
-
-    if topic == "uninsured_motorist":
-        return [
-            mc(
+            mc_q("mc6", "Claims must be:", ["Honest", "Exaggerated", "Hidden", "Anonymous"], 0),
+            mc_q(
+                "mc7",
+                "After approval, insurer will:",
+                ["Pay claim", "Cancel policy", "Issue fine", "Ignore you"],
+                0,
+            ),
+            tf_q("tf8", "You must always file a claim.", False),
+            tf_q("tf9", "False info can deny a claim.", True),
+            tf_q("tf10", "Adjusters evaluate claims.", True),
+        ],
+        "what_is_coverage": [
+            mc_q(
                 "mc1",
-                "Uninsured motorist coverage helps when:",
-                ["The at-fault driver has no insurance", "Your car needs gas", "You get a parking ticket", "You cancel your policy"],
-                0,
-                "It can protect you if the other driver is uninsured.",
+                "Coverage refers to:",
+                ["Deductible", "What insurance pays for", "Premium", "Claim form"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "What should you do after being hit by an uninsured driver?",
-                ["Report the accident and gather evidence", "Leave without info", "Hide the damage", "Wait months"],
+                "More coverage usually means:",
+                ["Higher protection", "Lower cost", "Less safety", "No benefit"],
                 0,
-                "Prompt reporting and evidence matter.",
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "Uninsured motorist may cover:",
-                ["Injuries to you/your passengers (varies by state/policy)", "Oil changes", "Your premium payments", "Traffic court fees"],
+                "Coverage limits are:",
+                ["Maximum payouts", "Minimum premiums", "Fees", "Discounts"],
                 0,
-                "Coverage details vary, but it can help with injuries and sometimes property damage.",
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "A key reason to consider this coverage is:",
-                ["Not everyone carries enough insurance", "It replaces liability", "It cancels deductibles", "It forces the other driver to pay"],
-                0,
-                "It’s protection against others’ lack of coverage.",
+                "Coverage varies by:",
+                ["Policy", "Driver", "State", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "If the other driver flees (hit-and-run), uninsured motorist may:",
-                ["Apply depending on your policy/state", "Never apply", "Always pay instantly", "Replace your premium"],
+                "Insufficient coverage can lead to:",
+                ["Out-of-pocket costs", "Refunds", "Discounts", "Free repairs"],
                 0,
-                "Many policies treat hit-and-run as uninsured, but rules vary.",
             ),
-            tf("tf1", "Uninsured motorist coverage can be useful in a hit-and-run.", True, "Often, but depends on policy/state."),
-            tf("tf2", "It’s impossible to be hit by an uninsured driver.", False, "It happens."),
-            tf("tf3", "Coverage details can vary by state.", True, "Insurance is state-regulated."),
-            tf("tf4", "You should document and report promptly.", True, "Helps establish facts."),
-            tf("tf5", "Uninsured motorist is the same as liability coverage.", False, "They serve different purposes."),
-        ]
-
-    if topic == "rental_car":
-        return [
-            mc(
+            mc_q(
+                "mc6",
+                "Coverage applies only to:",
+                ["Covered events", "All damage", "Any loss", "Any driver"],
+                0,
+            ),
+            mc_q(
+                "mc7",
+                "Coverage types include:",
+                ["Liability", "Collision", "Comprehensive", "All of the above"],
+                3,
+            ),
+            tf_q("tf8", "Coverage is unlimited.", False),
+            tf_q("tf9", "Coverage details are in the policy.", True),
+            tf_q("tf10", "More coverage usually costs more.", True),
+        ],
+        "types_of_coverage_for_auto_insurance": [
+            mc_q(
                 "mc1",
-                "Rental reimbursement typically helps pay for:",
-                ["A rental car while your car is being repaired for a covered claim", "Gas forever", "A new car", "Your deductible"],
-                0,
-                "It can cover rental costs up to a daily/total limit.",
+                "Liability covers:",
+                ["Your car", "Others’ damages", "Maintenance", "Theft"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "Rental reimbursement usually has:",
-                ["Daily and total limits", "Unlimited coverage", "No rules", "No paperwork"],
-                0,
-                "Policies often cap $/day and max days.",
+                "Collision covers:",
+                ["Weather damage", "Accidents", "Theft", "Vandalism"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "When would rental coverage apply?",
-                ["After a covered loss where your car can’t be used", "For vacations", "Any weekend", "Only when you speed"],
-                0,
-                "It’s tied to a covered claim.",
+                "Comprehensive covers:",
+                ["Collisions only", "Non-collision damage", "Tickets", "Oil changes"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "Before relying on this, you should check:",
-                ["Your policy limits and eligibility", "Your tire brand", "The other driver’s playlist", "Your car’s color"],
-                0,
-                "Limits and conditions matter.",
+                "Medical payments cover:",
+                ["Vehicle repairs", "Injuries", "Theft", "Rentals"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "If the claim is denied, rental reimbursement typically:",
-                ["Wouldn’t apply", "Would still pay", "Becomes liability", "Cancels your premium"],
-                0,
-                "Coverage generally follows the covered claim.",
+                "Uninsured motorist covers:",
+                ["You only", "Others without insurance", "Police", "Mechanics"],
+                1,
             ),
-            tf("tf1", "Rental coverage often has a daily limit.", True, "Common structure."),
-            tf("tf2", "Rental coverage is usually unrelated to having a covered claim.", False, "It’s usually tied to covered loss."),
-            tf("tf3", "You should review limits/terms in your policy.", True, "Always."),
-            tf("tf4", "Rental reimbursement is the same as collision.", False, "Different coverage."),
-            tf("tf5", "Rental coverage may not be included unless you add it.", True, "Often optional."),
-        ]
-
-    if topic == "roadside":
-        return [
-            mc(
+            mc_q(
+                "mc6",
+                "Required coverage varies by:",
+                ["State", "Age", "Gender", "Car color"],
+                0,
+            ),
+            mc_q("mc7", "Optional coverage adds:", ["Protection", "Risk", "Penalties", "Tickets"], 0),
+            tf_q("tf8", "Liability is mandatory in most states.", True),
+            tf_q("tf9", "Collision is always required.", False),
+            tf_q("tf10", "Coverage types protect different risks.", True),
+        ],
+        "factors_affecting_insurance_rates": [
+            mc_q(
                 "mc1",
-                "Roadside assistance may help with:",
-                ["Towing, flat tire, jump-start (depending on plan)", "Paying your premium", "Replacing your car", "Traffic tickets"],
-                0,
-                "It’s for common breakdown-related services.",
+                "Rates depend on:",
+                ["Driving history", "Age", "Location", "All of the above"],
+                3,
             ),
-            mc(
-                "mc2",
-                "Roadside assistance is typically:",
-                ["Optional add-on or included with some policies", "The same as liability", "Illegal", "Only for new cars"],
-                0,
-                "Depends on insurer/policy.",
-            ),
-            mc(
+            mc_q("mc2", "Young drivers often pay:", ["Less", "More", "Same", "Nothing"], 1),
+            mc_q(
                 "mc3",
-                "A key thing to check is:",
-                ["Service limits and number of uses", "Your paint color", "Your radio station", "Your favorite snack"],
-                0,
-                "Many plans cap towing miles or calls.",
+                "Expensive cars usually have:",
+                ["Lower rates", "Higher rates", "No effect", "Free coverage"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "Roadside assistance primarily addresses:",
-                ["Breakdowns, not crash repairs", "Collision repairs", "Medical liability", "Policy limits"],
+                "Credit history can affect:",
+                ["Rates", "License", "Car value", "Deductible"],
                 0,
-                "It’s separate from collision/comprehensive.",
             ),
-            mc(
-                "mc5",
-                "If you also have a car club/credit card roadside benefit, you should:",
-                ["Compare benefits so you don’t pay twice", "Assume they’re identical", "Cancel insurance", "Ignore limits"],
+            mc_q("mc5", "Urban drivers often pay:", ["Less", "More", "Same", "Nothing"], 1),
+            mc_q(
+                "mc6",
+                "Mileage affects:",
+                ["Risk", "Premiums", "Claims", "All of the above"],
+                3,
+            ),
+            mc_q("mc7", "Insurance companies assess:", ["Risk", "Looks", "Personality", "Luck"], 0),
+            tf_q("tf8", "Rates are the same for everyone.", False),
+            tf_q("tf9", "Riskier drivers pay more.", True),
+            tf_q("tf10", "Rates can change over time.", True),
+        ],
+        "impact_of_driving_history_on_rates": [
+            mc_q("mc1", "Accidents usually:", ["Lower rates", "Raise rates", "No effect", "Cancel license"], 1),
+            mc_q(
+                "mc2",
+                "Tickets affect rates by:",
+                ["Increasing risk", "Lowering premiums", "Offering discounts", "Fixing credit"],
                 0,
-                "Avoid duplicate coverage when possible.",
             ),
-            tf("tf1", "Roadside assistance can include towing.", True, "Often included."),
-            tf("tf2", "Roadside assistance and collision coverage are the same.", False, "Different purposes."),
-            tf("tf3", "Roadside services may have limits.", True, "Common."),
-            tf("tf4", "You should know who to call (insurer/app/number).", True, "Helps in emergencies."),
-            tf("tf5", "Roadside assistance automatically covers any accident damage.", False, "That’s handled by other coverages."),
-        ]
-
-    if topic == "total_loss":
-        return [
-            mc(
+            mc_q(
+                "mc3",
+                "Clean history often leads to:",
+                ["Discounts", "Penalties", "Cancellations", "Fines"],
+                0,
+            ),
+            mc_q(
+                "mc4",
+                "DUI convictions:",
+                ["Lower rates", "Greatly increase rates", "No effect", "Reduce coverage"],
+                1,
+            ),
+            mc_q("mc5", "Insurers review history for:", ["Risk", "Fun", "Speed", "Color"], 0),
+            mc_q(
+                "mc6",
+                "Minor violations usually:",
+                ["Have no impact", "Slight impact", "Huge impact", "Cancel insurance"],
+                1,
+            ),
+            mc_q(
+                "mc7",
+                "Driving history includes:",
+                ["Accidents", "Tickets", "Claims", "All of the above"],
+                3,
+            ),
+            tf_q("tf8", "History stays forever.", False),
+            tf_q("tf9", "Good history saves money.", True),
+            tf_q("tf10", "Bad history raises premiums.", True),
+        ],
+        "how_to_maintain_a_clean_driving_record": [
+            mc_q(
                 "mc1",
-                "A total loss usually means:",
-                ["Repair cost is too high compared to the vehicle’s value", "The car has no tires", "You missed a payment", "You got a ticket"],
-                0,
-                "Insurers compare repair cost to the car’s value and state rules.",
+                "Obeying laws helps:",
+                ["Avoid tickets", "Save money", "Reduce accidents", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "If your car is totaled, the settlement is often based on:",
-                ["Actual cash value (ACV)", "Original sticker price always", "Your monthly premium", "A random number"],
-                0,
-                "Many policies pay ACV (market value) minus deductible (if applicable).",
+                "Defensive driving reduces:",
+                ["Risk", "Accidents", "Claims", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "If you still owe money on a totaled car, you might consider:",
-                ["Gap insurance (if eligible)", "Lowering liability limits", "Skipping documentation", "Ignoring the lender"],
-                0,
-                "Gap can cover the difference between ACV and loan balance in some cases.",
+                "Avoiding distractions means:",
+                ["Texting", "Calling", "Focusing", "Speeding"],
+                2,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "Asking for the valuation report helps because:",
-                ["You can review comparable vehicles and assumptions", "It makes coverage unlimited", "It cancels the deductible", "It changes your premium"],
-                0,
-                "You can verify comps, condition adjustments, etc.",
+                "Speeding increases:",
+                ["Risk", "Tickets", "Insurance costs", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "If you disagree with the value, a good next step is:",
-                ["Provide evidence (comps/condition/records) and ask for review", "Threaten without evidence", "Do nothing", "Delete records"],
+                "Traffic school may:",
+                ["Remove points", "Add points", "Cancel license", "Raise rates"],
                 0,
-                "Support your position with documentation.",
             ),
-            tf("tf1", "Total loss settlements often use actual cash value.", True, "Common policy structure."),
-            tf("tf2", "A total loss always means the car is unrecoverable.", False, "It can be repairable but not economical."),
-            tf("tf3", "You can ask how the insurer calculated the value.", True, "You can request the valuation details."),
-            tf("tf4", "If you have a deductible, it may apply to certain coverages.", True, "Depending on the claim type."),
-            tf("tf5", "Keeping maintenance records can help support condition/value.", True, "Documentation helps."),
-        ]
-
-    if topic == "fraud":
-        return [
-            mc(
+            mc_q(
+                "mc6",
+                "Driving sober helps:",
+                ["Safety", "Record", "Rates", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc7",
+                "Awareness prevents:",
+                ["Accidents", "Claims", "Tickets", "All of the above"],
+                3,
+            ),
+            tf_q("tf8", "Safe driving has no benefits.", False),
+            tf_q("tf9", "Clean records lower rates.", True),
+            tf_q("tf10", "Habits affect insurance.", True),
+        ],
+        "common_auto_insurance_terms_explained": [
+            mc_q("mc1", "Premium means:", ["Payment", "Claim", "Deductible", "Coverage"], 0),
+            mc_q(
+                "mc2",
+                "Deductible means:",
+                ["Fee before payout", "Refund", "Discount", "Fine"],
+                0,
+            ),
+            mc_q(
+                "mc3",
+                "Policyholder is:",
+                ["Insurer", "Driver", "Owner of policy", "Adjuster"],
+                2,
+            ),
+            mc_q("mc4", "Claim is:", ["Request for payment", "Policy", "Deductible", "Premium"], 0),
+            mc_q(
+                "mc5",
+                "Coverage limit is:",
+                ["Max payout", "Min payment", "Fee", "Discount"],
+                0,
+            ),
+            mc_q("mc6", "Adjuster:", ["Sells cars", "Evaluates claims", "Issues tickets", "Repairs vehicles"], 1),
+            mc_q("mc7", "Liability means:", ["Responsibility", "Damage", "Theft", "Bonus"], 0),
+            tf_q("tf8", "Insurance terms have legal meaning.", True),
+            tf_q("tf9", "Understanding terms helps decisions.", True),
+            tf_q("tf10", "Policies explain terms.", True),
+        ],
+        "how_to_choose_the_right_insurance_plan": [
+            mc_q(
                 "mc1",
-                "Insurance fraud is:",
-                ["Lying or exaggerating to get paid by insurance", "Paying your premium", "Getting a quote", "Reading your policy"],
-                0,
-                "Fraud involves intentional deception.",
+                "First step in choosing a plan:",
+                ["Pick cheapest", "Assess needs", "Ask friends", "Ignore coverage"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "Which is a red flag you should avoid?",
-                ["A shop encouraging you to claim old damage as new", "Taking photos", "Keeping receipts", "Reporting honestly"],
-                0,
-                "Misrepresenting damage can be fraud.",
+                "Coverage should match:",
+                ["Budget", "Risk", "Vehicle value", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "A possible consequence of fraud is:",
-                ["Denied claim and legal trouble", "Guaranteed payout", "Lower premiums", "Free upgrades"],
-                0,
-                "Fraud can lead to denial, cancellation, and prosecution.",
+                "Comparing plans helps:",
+                ["Save money", "Get better coverage", "Avoid gaps", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "If you make an honest mistake on a claim, you should:",
-                ["Correct it as soon as possible", "Double down", "Destroy evidence", "Ignore the insurer"],
-                0,
-                "Prompt correction is best.",
+                "Deductibles affect:",
+                ["Premium", "Out-of-pocket costs", "Risk", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "The best approach when reporting is:",
-                ["Tell the truth and provide supporting documentation", "Guess details", "Inflate costs", "Copy someone else"],
-                0,
-                "Accuracy helps claims and avoids issues.",
+                "Older cars may need:",
+                ["More coverage", "Less coverage", "No insurance", "Only liability"],
+                1,
             ),
-            tf("tf1", "Exaggerating damage to get more money is fraud.", True, "That’s a classic example."),
-            tf("tf2", "Fraud can affect premiums for everyone.", True, "It increases costs system-wide."),
-            tf("tf3", "Fraud has no consequences.", False, "It can be serious."),
-            tf("tf4", "Honesty and documentation matter in claims.", True, "Best practice."),
-            tf("tf5", "It’s okay to claim damage that didn’t happen in the accident.", False, "That’s misrepresentation."),
-        ]
-
-    if topic == "gap":
-        return [
-            mc(
+            mc_q(
+                "mc6",
+                "Discounts should be:",
+                ["Ignored", "Asked about", "Avoided", "Hidden"],
+                1,
+            ),
+            mc_q(
+                "mc7",
+                "Policy limits protect against:",
+                ["Small losses", "Large expenses", "Tickets", "Inspections"],
+                1,
+            ),
+            tf_q("tf8", "Cheapest plan is always best.", False),
+            tf_q("tf9", "Needs change over time.", True),
+            tf_q("tf10", "Comparing quotes is helpful.", True),
+        ],
+        "importance_of_liability_coverage": [
+            mc_q(
                 "mc1",
-                "Gap insurance is most relevant when:",
-                ["You owe more on a loan/lease than the car’s value", "You have a slow tire leak", "You want a lower deductible", "You got a ticket"],
-                0,
-                "It’s designed for loan/lease ‘gap’ scenarios.",
+                "Liability covers:",
+                ["Your injuries", "Others’ damages", "Maintenance", "Theft"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "Why might there be a ‘gap’?",
-                ["Cars can depreciate faster than the loan balance", "Premiums are too low", "Liability limits are high", "Policies expire early"],
+                "Liability is required in:",
+                ["Most states", "All countries", "No states", "Only cities"],
                 0,
-                "Depreciation can outpace principal payoff.",
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "Gap coverage typically applies after:",
-                ["A total loss covered by the policy", "Any oil change", "A parking ticket", "Switching insurers"],
-                0,
-                "It’s tied to total loss settlements.",
+                "Without liability, you may pay:",
+                ["Nothing", "Out of pocket", "Less premium", "Discounts"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "Gap insurance usually does NOT replace:",
-                ["Collision/comprehensive", "A phone plan", "A driver’s license", "A repair invoice"],
-                0,
-                "It complements your base coverage.",
+                "Liability includes:",
+                ["Bodily injury", "Property damage", "Legal costs", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "A good way to know if you need gap is to compare:",
-                ["Loan/lease payoff vs current market value", "Your premium vs your deductible", "Your age vs your mileage", "Your tire pressure"],
+                "Low limits can result in:",
+                ["Financial risk", "Safety", "Savings", "Refunds"],
                 0,
-                "Compare payoff and vehicle value.",
             ),
-            tf("tf1", "Gap insurance is mainly about loan/lease balance vs vehicle value.", True, "That’s the point of gap."),
-            tf("tf2", "Gap is most relevant in a total loss scenario.", True, "It applies when the vehicle is totaled."),
-            tf("tf3", "Gap insurance is the same as liability.", False, "Different coverages."),
-            tf("tf4", "Depreciation can create a gap.", True, "Yes."),
-            tf("tf5", "You should review eligibility/terms.", True, "Rules vary by policy/lender."),
-        ]
-
-    if topic == "young_driver":
-        return [
-            mc(
+            mc_q(
+                "mc6",
+                "Liability protects against:",
+                ["Lawsuits", "Tickets", "Theft", "Repairs"],
+                0,
+            ),
+            mc_q(
+                "mc7",
+                "Higher limits offer:",
+                ["More protection", "Less coverage", "More risk", "No benefit"],
+                0,
+            ),
+            tf_q("tf8", "Liability protects you legally.", True),
+            tf_q("tf9", "Liability covers your own car.", False),
+            tf_q("tf10", "Liability limits matter.", True),
+        ],
+        "understanding_comprehensive_and_collision_coverage": [
+            mc_q(
                 "mc1",
-                "For new drivers, a key way to keep costs down is:",
-                ["Drive safely and avoid tickets/accidents", "File lots of claims", "Ignore seatbelts", "Speed to save time"],
+                "Collision covers:",
+                ["Accidents", "Theft", "Weather", "Fire"],
                 0,
-                "Driving history is a major pricing factor.",
             ),
-            mc(
+            mc_q(
                 "mc2",
-                "A common discount for teen/student drivers is:",
-                ["Good student discount (if offered)", "Late payment discount", "Accident discount", "Ticket discount"],
-                0,
-                "Many insurers offer good student discounts.",
+                "Comprehensive covers:",
+                ["Crashes only", "Non-collision damage", "Tickets", "Maintenance"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc3",
-                "Being listed correctly on a policy matters because:",
-                ["It ensures the insurer knows who drives the car", "It lowers deductible to zero", "It guarantees claim payment", "It changes car color"],
-                0,
-                "Accurate driver info is important for coverage and rating.",
+                "Hitting a deer is:",
+                ["Collision", "Comprehensive", "Liability", "Medical"],
+                1,
             ),
-            mc(
+            mc_q(
                 "mc4",
-                "A safe driving course can:",
-                ["Improve skills and maybe qualify for a discount", "Remove all limits", "Replace insurance", "Make you immune to accidents"],
-                0,
-                "Some policies offer discounts for course completion.",
+                "Collision usually applies when:",
+                ["Another car is involved", "Object impact", "Single-car accident", "All of the above"],
+                3,
             ),
-            mc(
+            mc_q(
                 "mc5",
-                "For young drivers, why is insurance often more expensive?",
-                ["Less driving experience can mean higher risk", "Because cars are heavier", "Because deductibles are illegal", "Because premiums are random"],
-                0,
-                "Rates often reflect risk and experience.",
+                "Comprehensive includes:",
+                ["Theft", "Vandalism", "Weather damage", "All of the above"],
+                3,
             ),
-            tf("tf1", "Tickets can raise premiums for many drivers.", True, "Especially for new drivers."),
-            tf("tf2", "Good grades can sometimes help lower premiums.", True, "If the insurer offers a discount."),
-            tf("tf3", "It’s okay to leave a regular driver off the policy.", False, "That can create coverage/rating issues."),
-            tf("tf4", "Experience and history can affect rates.", True, "Common factor."),
-            tf("tf5", "Safe driving habits matter for both safety and cost.", True, "Win-win."),
-        ]
+            mc_q(
+                "mc6",
+                "Both cover:",
+                ["Your vehicle", "Others’ vehicles", "Injuries", "Lawsuits"],
+                0,
+            ),
+            mc_q(
+                "mc7",
+                "These coverages are:",
+                ["Optional", "Required everywhere", "Free", "Illegal"],
+                0,
+            ),
+            tf_q("tf8", "Comprehensive covers floods.", True),
+            tf_q("tf9", "Collision covers theft.", False),
+            tf_q("tf10", "Both usually have deductibles.", True),
+        ],
+        "how_to_lower_your_insurance_premiums": [
+            mc_q(
+                "mc1",
+                "Safe driving can:",
+                ["Raise rates", "Lower premiums", "Cancel insurance", "Increase claims"],
+                1,
+            ),
+            mc_q(
+                "mc2",
+                "Raising deductibles usually:",
+                ["Raises premium", "Lowers premium", "No effect", "Cancels policy"],
+                1,
+            ),
+            mc_q(
+                "mc3",
+                "Bundling policies may:",
+                ["Increase cost", "Offer discounts", "Remove coverage", "Add fees"],
+                1,
+            ),
+            mc_q(
+                "mc4",
+                "Good credit can:",
+                ["Increase rates", "Lower rates", "Cancel policy", "Remove coverage"],
+                1,
+            ),
+            mc_q(
+                "mc5",
+                "Reducing mileage helps:",
+                ["Risk", "Premiums", "Claims", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc6",
+                "Comparing insurers helps:",
+                ["Find savings", "Waste time", "Increase rates", "Remove discounts"],
+                0,
+            ),
+            mc_q(
+                "mc7",
+                "Discounts are often for:",
+                ["Safe drivers", "Students", "Multiple policies", "All of the above"],
+                3,
+            ),
+            tf_q("tf8", "Premiums can never change.", False),
+            tf_q("tf9", "Behavior affects cost.", True),
+            tf_q("tf10", "Discounts are automatic.", False),
+        ],
+        "seasonal_driving_tips_and_insurance_implications": [
+            mc_q(
+                "mc1",
+                "Winter driving increases risk due to:",
+                ["Ice", "Snow", "Visibility", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc2",
+                "Summer driving risks include:",
+                ["Heat", "Long trips", "Tire blowouts", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc3",
+                "Seasonal accidents may lead to:",
+                ["Claims", "Rate increases", "Repairs", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc4",
+                "Proper tires improve:",
+                ["Safety", "Control", "Accident prevention", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc5",
+                "Weather-related damage is often:",
+                ["Collision", "Comprehensive", "Liability", "Medical"],
+                1,
+            ),
+            mc_q(
+                "mc6",
+                "Seasonal maintenance helps:",
+                ["Reduce risk", "Avoid claims", "Save money", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc7",
+                "Poor weather requires:",
+                ["Faster driving", "More caution", "Less attention", "No change"],
+                1,
+            ),
+            tf_q("tf8", "Weather affects accident risk.", True),
+            tf_q("tf9", "Insurance ignores seasons.", False),
+            tf_q("tf10", "Preparedness reduces claims.", True),
+        ],
+        "impact_of_traffic_violations_on_insurance_rates": [
+            mc_q(
+                "mc1",
+                "Speeding tickets usually:",
+                ["Lower rates", "Raise rates", "No effect", "Cancel license"],
+                1,
+            ),
+            mc_q(
+                "mc2",
+                "Multiple violations show:",
+                ["Low risk", "High risk", "No risk", "Safety"],
+                1,
+            ),
+            mc_q(
+                "mc3",
+                "Serious violations include:",
+                ["DUI", "Reckless driving", "Hit-and-run", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc4",
+                "Points on license affect:",
+                ["Rates", "Coverage", "Risk level", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc5",
+                "Violations stay on record for:",
+                ["A period of time", "One day", "Forever", "Never"],
+                0,
+            ),
+            mc_q(
+                "mc6",
+                "Clean driving helps:",
+                ["Lower rates", "Get discounts", "Reduce risk", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc7",
+                "Insurance companies view violations as:",
+                ["Risk indicators", "Rewards", "Irrelevant", "Discounts"],
+                0,
+            ),
+            tf_q("tf8", "One ticket has no impact.", False),
+            tf_q("tf9", "Violations affect premiums.", True),
+            tf_q("tf10", "Good driving can offset past mistakes.", True),
+        ],
+        "how_to_read_your_insurance_policy": [
+            mc_q(
+                "mc1",
+                "Policy explains:",
+                ["Coverage", "Limits", "Exclusions", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc2",
+                "Declarations page shows:",
+                ["Premium", "Coverage", "Insured vehicle", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc3",
+                "Exclusions list:",
+                ["What’s covered", "What’s not covered", "Discounts", "Claims"],
+                1,
+            ),
+            mc_q("mc4", "Limits define:", ["Maximum payout", "Minimum payment", "Fees", "Refunds"], 0),
+            mc_q("mc5", "Endorsements:", ["Change policy", "Cancel coverage", "Ignore rules", "Raise tickets"], 0),
+            mc_q(
+                "mc6",
+                "Reading policy helps avoid:",
+                ["Surprises", "Gaps", "Confusion", "All of the above"],
+                3,
+            ),
+            mc_q("mc7", "Policies are legally:", ["Binding", "Optional", "Informal", "Suggestions"], 0),
+            tf_q("tf8", "Policies are easy to guess.", False),
+            tf_q("tf9", "Reading helps understanding.", True),
+            tf_q("tf10", "Policies vary by insurer.", True),
+        ],
+        "benefits_of_bundling_insurance_policies": [
+            mc_q(
+                "mc1",
+                "Bundling means:",
+                ["One policy", "Multiple policies together", "Cancel coverage", "Increase cost"],
+                1,
+            ),
+            mc_q(
+                "mc2",
+                "Common bundles include:",
+                ["Auto + home", "Auto + renters", "Auto + life", "All of the above"],
+                3,
+            ),
+            mc_q("mc3", "Bundling often provides:", ["Discounts", "Penalties", "Fines", "Cancellations"], 0),
+            mc_q(
+                "mc4",
+                "Bundling simplifies:",
+                ["Billing", "Management", "Payments", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc5",
+                "Bundling may improve:",
+                ["Loyalty benefits", "Savings", "Convenience", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc6",
+                "Not all insurers offer:",
+                ["Bundling", "Coverage", "Policies", "Claims"],
+                0,
+            ),
+            mc_q(
+                "mc7",
+                "Bundling works best when:",
+                ["Policies fit needs", "Cheapest option", "Required", "Forced"],
+                0,
+            ),
+            tf_q("tf8", "Bundling always costs more.", False),
+            tf_q("tf9", "Bundling can save money.", True),
+            tf_q("tf10", "Bundling reduces paperwork.", True),
+        ],
+        "understanding_no_fault_insurance": [
+            mc_q(
+                "mc1",
+                "No-fault means:",
+                ["No one pays", "Each driver uses own insurance", "Police decide fault", "No claims allowed"],
+                1,
+            ),
+            mc_q("mc2", "No-fault applies mainly to:", ["Property damage", "Injuries", "Theft", "Tickets"], 1),
+            mc_q(
+                "mc3",
+                "States with no-fault require:",
+                ["PIP coverage", "Liability only", "Collision only", "No insurance"],
+                0,
+            ),
+            mc_q(
+                "mc4",
+                "PIP stands for:",
+                ["Personal Injury Protection", "Policy Insurance Plan", "Premium Increase Program", "Private Insurance Policy"],
+                0,
+            ),
+            mc_q("mc5", "No-fault reduces:", ["Lawsuits", "Claims", "Accidents", "Premiums"], 0),
+            mc_q(
+                "mc6",
+                "Drivers still may sue for:",
+                ["Severe injuries", "Property damage", "Fraud", "All of the above"],
+                0,
+            ),
+            mc_q("mc7", "No-fault laws vary by:", ["State", "City", "Driver", "Insurer"], 0),
+            tf_q("tf8", "No-fault means no responsibility.", False),
+            tf_q("tf9", "No-fault applies everywhere.", False),
+            tf_q("tf10", "PIP covers medical costs.", True),
+        ],
+        "what_to_do_in_case_of_a_total_loss": [
+            mc_q(
+                "mc1",
+                "Total loss means:",
+                ["Car stolen", "Repair cost exceeds value", "Minor damage", "Flat tire"],
+                1,
+            ),
+            mc_q(
+                "mc2",
+                "Insurer determines total loss using:",
+                ["Market value", "Repair costs", "State rules", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc3",
+                "After total loss, insurer pays:",
+                ["Original price", "Actual cash value", "Replacement cost", "Premium"],
+                1,
+            ),
+            mc_q(
+                "mc4",
+                "Gap insurance helps if:",
+                ["Car is old", "Loan exceeds value", "Repairs cheap", "Policy expired"],
+                1,
+            ),
+            mc_q(
+                "mc5",
+                "You may need to:",
+                ["Transfer title", "Remove plates", "Cancel registration", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc6",
+                "Salvage vehicles are:",
+                ["Repaired cheaply", "Severely damaged", "Brand new", "Rental cars"],
+                1,
+            ),
+            mc_q(
+                "mc7",
+                "Total loss settlements can be:",
+                ["Negotiated", "Fixed", "Random", "Ignored"],
+                0,
+            ),
+            tf_q("tf8", "Total loss means no compensation.", False),
+            tf_q("tf9", "ACV is based on depreciation.", True),
+            tf_q("tf10", "Gap insurance is optional.", True),
+        ],
+        "how_to_handle_uninsured_motorist_situations": [
+            mc_q(
+                "mc1",
+                "Uninsured motorists lack:",
+                ["License", "Insurance", "Registration", "Vehicle"],
+                1,
+            ),
+            mc_q(
+                "mc2",
+                "Uninsured motorist coverage protects:",
+                ["Other driver", "You", "Police", "Insurer"],
+                1,
+            ),
+            mc_q(
+                "mc3",
+                "Hit-and-run incidents may use:",
+                ["Collision", "Uninsured coverage", "Liability", "Comprehensive"],
+                1,
+            ),
+            mc_q(
+                "mc4",
+                "UM coverage may pay for:",
+                ["Injuries", "Damage", "Medical bills", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc5",
+                "Police reports help:",
+                ["Claims", "Proof", "Documentation", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc6",
+                "UM coverage is required in:",
+                ["Some states", "All states", "No states", "Every country"],
+                0,
+            ),
+            mc_q(
+                "mc7",
+                "UM reduces risk of:",
+                ["Paying out of pocket", "Claims", "Accidents", "Tickets"],
+                0,
+            ),
+            tf_q("tf8", "Uninsured drivers are rare.", False),
+            tf_q("tf9", "UM coverage is useful.", True),
+            tf_q("tf10", "Hit-and-run qualifies as uninsured.", True),
+        ],
+        "understanding_policy_endorsements": [
+            mc_q("mc1", "Endorsements are:", ["Policy changes", "Claims", "Discounts", "Deductibles"], 0),
+            mc_q(
+                "mc2",
+                "Endorsements can:",
+                ["Add coverage", "Remove coverage", "Modify limits", "All of the above"],
+                3,
+            ),
+            mc_q("mc3", "Endorsements are part of:", ["Policy", "Claim", "Premium", "Deductible"], 0),
+            mc_q(
+                "mc4",
+                "Adding endorsements may:",
+                ["Change cost", "Change protection", "Change limits", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc5",
+                "Common endorsement example:",
+                ["Rental coverage", "Liability", "Deductible", "Claim"],
+                0,
+            ),
+            mc_q("mc6", "Endorsements should be:", ["Reviewed", "Ignored", "Hidden", "Avoided"], 0),
+            mc_q("mc7", "Endorsements are legally:", ["Binding", "Optional", "Informal", "Suggested"], 0),
+            tf_q("tf8", "Endorsements automatically apply.", False),
+            tf_q("tf9", "Endorsements customize coverage.", True),
+            tf_q("tf10", "Endorsements appear in policy.", True),
+        ],
+        "how_to_dispute_a_denied_claim": [
+            mc_q(
+                "mc1",
+                "First step in dispute:",
+                ["Sue immediately", "Review denial letter", "Cancel policy", "Ignore insurer"],
+                1,
+            ),
+            mc_q(
+                "mc2",
+                "Denials often occur due to:",
+                ["Exclusions", "Lapsed coverage", "Missing info", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc3",
+                "Supporting documents include:",
+                ["Photos", "Reports", "Receipts", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc4",
+                "Appeals should be:",
+                ["Written", "Clear", "Timely", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc5",
+                "Adjusters may:",
+                ["Re-evaluate claim", "Ignore dispute", "Cancel policy", "Raise premiums"],
+                0,
+            ),
+            mc_q(
+                "mc6",
+                "If dispute fails, you may:",
+                ["File complaint", "Seek mediation", "Consult attorney", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc7",
+                "Staying organized helps:",
+                ["Outcome", "Speed", "Clarity", "All of the above"],
+                3,
+            ),
+            tf_q("tf8", "Denied claims are final.", False),
+            tf_q("tf9", "Documentation matters.", True),
+            tf_q("tf10", "Appeals have deadlines.", True),
+        ],
+        "understanding_rental_car_coverage": [
+            mc_q(
+                "mc1",
+                "Rental coverage pays for:",
+                ["Rental during repairs", "Gas", "Maintenance", "Tickets"],
+                0,
+            ),
+            mc_q(
+                "mc2",
+                "Rental coverage applies when:",
+                ["Claim is covered", "Any accident", "Car serviced", "Policy expires"],
+                0,
+            ),
+            mc_q(
+                "mc3",
+                "Coverage limits include:",
+                ["Daily cap", "Total cap", "Time limit", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc4",
+                "Rental coverage is:",
+                ["Required", "Optional", "Illegal", "Automatic"],
+                1,
+            ),
+            mc_q(
+                "mc5",
+                "Without coverage, rental costs are:",
+                ["Free", "Out of pocket", "Discounted", "Refunded"],
+                1,
+            ),
+            mc_q(
+                "mc6",
+                "Rental companies may offer:",
+                ["Insurance", "Waivers", "Add-ons", "All of the above"],
+                3,
+            ),
+            mc_q(
+                "mc7",
+                "Rental coverage increases:",
+                ["Convenience", "Cost slightly", "Protection", "All of the above"],
+                3,
+            ),
+            tf_q("tf8", "Rental coverage pays for luxury cars.", False),
+            tf_q("tf9", "Rental coverage has limits.", True),
+            tf_q("tf10", "Rental coverage is useful after accidents.", True),
+        ],
+    }
 
-    return [
-        mc(
-            "mc1",
-            f"Which best describes the main idea of '{module_title}'?",
-            [
-                "A key insurance concept you should be able to explain",
-                "A type of car model",
-                "A phone plan",
-                "A weather report",
-            ],
-            0,
-            "The module is teaching an insurance concept.",
-        ),
-        mc(
-            "mc2",
-            "What should you do if you're unsure what your policy covers?",
-            ["Check your policy details (coverage/limits/exclusions)", "Assume it covers everything", "Ignore it", "Wait for an accident"],
-            0,
-            "Policies define coverage, limits, and exclusions.",
-        ),
-        mc(
-            "mc3",
-            "Why do insurers care about risk?",
-            ["Because it affects how likely a claim is", "Because it changes the color of your car", "Because it changes the weather", "Because it changes your phone"],
-            0,
-            "Risk influences pricing and coverage decisions.",
-        ),
-        mc(
-            "mc4",
-            "Which is an example of good documentation after an event?",
-            ["Photos and notes", "Deleting evidence", "Guessing details", "Making up numbers"],
-            0,
-            "Evidence helps decisions.",
-        ),
-        mc(
-            "mc5",
-            "What’s a good habit as you learn insurance?",
-            ["Ask questions and learn key terms", "Avoid reading policy", "Ignore definitions", "Only learn after crashes"],
-            0,
-            "Learning key terms helps you make better decisions.",
-        ),
-        tf("tf1", "Insurance terms can affect what you pay.", True, "They impact costs and coverage."),
-        tf("tf2", "Policies can include exclusions.", True, "Exclusions define what’s not covered."),
-        tf("tf3", "You never need to read your policy.", False, "Reading policy helps you know coverage."),
-        tf("tf4", "Good evidence can speed up processes.", True, "Documentation helps."),
-        tf("tf5", "Coverage and cost depend on what you purchased.", True, ""),
-    ]
+    title_map = {
+        "What is Car Insurance?": "what_is_car_insurance",
+        "Understanding Deductibles": "understanding_deductibles",
+        "Steps to Take During a Car Accident": "steps_to_take_during_a_car_accident",
+        "Do’s and Don’ts of Safe Driving": "dos_and_donts_of_safe_driving",
+        "What Is a Premium?": "what_is_a_premium",
+        "What Is a Claim?": "what_is_a_claim",
+        "How to File a Claim": "how_to_file_a_claim",
+        "What Is Coverage?": "what_is_coverage",
+        "Types of Coverage for Auto Insurance": "types_of_coverage_for_auto_insurance",
+        "Factors Affecting Insurance Rates": "factors_affecting_insurance_rates",
+        "Impact of Driving History on Rates": "impact_of_driving_history_on_rates",
+        "How to Maintain a Clean Driving Record": "how_to_maintain_a_clean_driving_record",
+        "Common Auto Insurance Terms Explained": "common_auto_insurance_terms_explained",
+        "How to Choose the Right Insurance Plan": "how_to_choose_the_right_insurance_plan",
+        "Importance of Liability Coverage": "importance_of_liability_coverage",
+        "Understanding Comprehensive and Collision Coverage": "understanding_comprehensive_and_collision_coverage",
+        "How to Lower Your Insurance Premiums": "how_to_lower_your_insurance_premiums",
+        "Seasonal Driving Tips and Insurance Implications": "seasonal_driving_tips_and_insurance_implications",
+        "Impact of Traffic Violations on Insurance Rates": "impact_of_traffic_violations_on_insurance_rates",
+        "How to Read Your Insurance Policy": "how_to_read_your_insurance_policy",
+        "Benefits of Bundling Insurance Policies": "benefits_of_bundling_insurance_policies",
+        "Understanding No-Fault Insurance": "understanding_no_fault_insurance",
+        "What to Do in Case of a Total Loss": "what_to_do_in_case_of_a_total_loss",
+        "How to Handle Uninsured Motorist Situations": "how_to_handle_uninsured_motorist_situations",
+        "Understanding Policy Endorsements": "understanding_policy_endorsements",
+        "How to Dispute a Denied Claim": "how_to_dispute_a_denied_claim",
+        "Understanding Rental Car Coverage": "understanding_rental_car_coverage",
+    }
+
+    normalized_title = _slugify_topic(module_title)
+    canonical_title = title_map.get((module_title or "").strip(), normalized_title)
+    bank = bank_by_title.get(canonical_title) or bank_by_title.get(normalized_title)
+    if bank:
+        return bank
+
+    if normalized_title == "insurance_basics":
+        return bank_by_title.get("what_is_car_insurance", [])
+
+    fallback_by_topic = {
+        "car_insurance_basics": "what_is_car_insurance",
+        "deductible": "understanding_deductibles",
+        "accident_steps": "steps_to_take_during_a_car_accident",
+        "safe_driving": "dos_and_donts_of_safe_driving",
+        "premium": "what_is_a_premium",
+        "claim": "what_is_a_claim",
+        "claim_filing": "how_to_file_a_claim",
+        "coverage": "what_is_coverage",
+        "coverage_types": "types_of_coverage_for_auto_insurance",
+        "rate_factors": "factors_affecting_insurance_rates",
+        "terms": "common_auto_insurance_terms_explained",
+        "choose_plan": "how_to_choose_the_right_insurance_plan",
+        "liability": "importance_of_liability_coverage",
+        "comp_collision": "understanding_comprehensive_and_collision_coverage",
+        "discounts": "how_to_lower_your_insurance_premiums",
+        "lower_premium": "how_to_lower_your_insurance_premiums",
+        "uninsured_motorist": "how_to_handle_uninsured_motorist_situations",
+        "endorsements": "understanding_policy_endorsements",
+        "denied_claim": "how_to_dispute_a_denied_claim",
+        "rental_car": "understanding_rental_car_coverage",
+        "total_loss": "what_to_do_in_case_of_a_total_loss",
+        "no_fault": "understanding_no_fault_insurance",
+    }
+
+    fallback_title = fallback_by_topic.get(topic)
+    if fallback_title:
+        return bank_by_title.get(fallback_title, [])
+    return bank_by_title.get("what_is_car_insurance", [])
 
 
 @mcp.tool()
@@ -2435,20 +3681,11 @@ def get_knowledge_questions_impl(
     customer_id: int,
     limit: int = 3,
     module_order: int | None = None,
-    mode: str = "generated",
+    mode: str = "bank",
     seed: str | None = None,
     database_path: str | None = None,
 ) -> List[Dict]:
-    """Return a mixed question bank (MC + True/False) based on the user's curriculum.
-
-    Design notes:
-    - Generates 10 questions per curriculum module (so typically 10–20+ total depending on modules)
-    - Multiple-choice questions are worth 1 point; True/False are worth 0.5 points
-
-    Args:
-        customer_id: Customer id whose curriculum we use
-        limit: Maximum number of questions to return
-    """
+    """Return a mixed question bank (MC + True/False) based on the user's curriculum."""
 
     prior_db_path = globals().get("db_path")
     if database_path is not None:
@@ -2460,8 +3697,13 @@ def get_knowledge_questions_impl(
             globals()["db_path"] = prior_db_path
 
     bank: List[Dict] = []
-
     selected_order = int(module_order) if module_order is not None else None
+
+    # If a module is selected, always return the full 10-question bank
+    # for that module (per the exact curriculum requirements).
+    resolved_limit = int(limit)
+    if selected_order is not None and resolved_limit < 10:
+        resolved_limit = 10
 
     mode_l = (mode or "").strip().lower()
     effective_seed = seed if seed is not None else "default"
@@ -2474,7 +3716,10 @@ def get_knowledge_questions_impl(
         module_title = str(m.get("module"))
         module_description = str(m.get("description"))
 
-        if mode_l in {"legacy", "bank", "question_bank"}:
+        # Modes:
+        # - bank/question_bank: deterministic 10-question exact bank (requested behavior)
+        # - legacy: older smaller mixed bank
+        if mode_l in {"legacy"}:
             bank.extend(
                 knowledge_bank_for_module(
                     module_title=module_title,
@@ -2494,8 +3739,7 @@ def get_knowledge_questions_impl(
             )
 
     bank.sort(key=lambda q: (int(q.get("moduleOrder", 0)), str(q.get("id", ""))))
-
-    return bank[: int(limit)]
+    return bank[: resolved_limit]
 
 
 @mcp.tool()
@@ -2509,127 +3753,79 @@ def grade_knowledge_answer_impl(
     answer: str,
     database_path: str | None = None,
 ) -> Dict:
-    """Grade a knowledge validation answer and log a feedback event."""
+    """Grade a knowledge validation answer and return scoring details."""
 
-    qid_text = str(question_id or "")
-
-    inferred_module_order: int | None = None
-    inferred_seed: str | None = None
-
+    prior_db_path = globals().get("db_path")
+    if database_path is not None:
+        globals()["db_path"] = database_path
     try:
-        if qid_text.startswith("kv2_m"):
-            parts = qid_text.split("_")
-            if len(parts) >= 5:
-                m_part = parts[1]  
-                if m_part.startswith("m") and m_part[1:].isdigit():
-                    inferred_module_order = int(m_part[1:])
-                inferred_seed = parts[3] or None
-        elif qid_text.startswith("kv_m"):
-            tail = qid_text.split("kv_m", 1)[1]
-            digits = ""
-            for ch in tail:
-                if ch.isdigit():
-                    digits += ch
-                else:
-                    break
-            inferred_module_order = int(digits) if digits else None
-    except Exception:
-        inferred_module_order = None
-        inferred_seed = None
+        bank = get_knowledge_questions_impl(
+            customer_id=int(customer_id),
+            limit=200,
+            module_order=None,
+            mode="bank",
+            seed=None,
+            database_path=None,
+        )
+    finally:
+        if database_path is not None:
+            globals()["db_path"] = prior_db_path
 
-    bank_mode = "generated" if qid_text.startswith("kv2_") else "legacy"
-    if bank_mode == "generated" and not inferred_seed:
-        inferred_seed = "default"
-    bank = get_knowledge_questions_impl(
-        int(customer_id),
-        limit=400,
-        module_order=inferred_module_order,
-        mode=bank_mode,
-        seed=inferred_seed,
-        database_path=database_path,
-    )
     q = next((x for x in bank if x.get("id") == question_id), None)
     if not q:
         raise ValueError("Unknown question_id")
 
-    expected = str(q.get("expected", ""))
     q_type = str(q.get("type", "multiple_choice"))
-    weight = float(q.get("weight", knowledge_question_weight(q_type)))
-
+    choices = q.get("choices") if isinstance(q.get("choices"), list) else []
+    correct_index = int(q.get("correctIndex", 0))
+    expected = q.get("expected") or (choices[correct_index] if choices else None)
 
     ans = (answer or "").strip()
-    ans_l = ans.lower().strip()
-
-    choices: List[str] = list(q.get("choices", []))
-    correct_index = int(q.get("correctIndex", 0))
-
+    ans_l = ans.lower()
     selected_index: int | None = None
-    if q_type == "true_false":
-        if ans_l in {"t", "true"}:
-            selected_index = 0
-        elif ans_l in {"f", "false"}:
-            selected_index = 1
-        else:
-            if ans_l == "true":
-                selected_index = 0
-            elif ans_l == "false":
-                selected_index = 1
-    else:
+
+    if q_type == "multiple_choice":
         if ans_l in {"a", "b", "c", "d"}:
-            selected_index = {"a": 0, "b": 1, "c": 2, "d": 3}[ans_l]
-        elif ans_l.isdigit():
-            n = int(ans_l)
-            if 1 <= n <= len(choices):
-                selected_index = n - 1
+            selected_index = ord(ans_l) - ord("a")
+        elif ans.isdigit() and 1 <= int(ans) <= 4:
+            selected_index = int(ans) - 1
         else:
-            for idx, c in enumerate(choices):
-                if ans_l == str(c).lower().strip():
+            for idx, choice in enumerate(choices):
+                if ans_l == str(choice).strip().lower():
                     selected_index = idx
                     break
+    else:
+        if ans_l in {"true", "t", "a"}:
+            selected_index = 0
+        elif ans_l in {"false", "f", "b"}:
+            selected_index = 1
 
-    correct = selected_index is not None and int(selected_index) == int(correct_index)
-    score = float(weight if correct else 0.0)
+    correct = selected_index == correct_index
+    weight = float(q.get("weight", knowledge_question_weight(q_type)))
+    score = weight if correct else 0.0
 
     try:
         log_feedback_event_impl(
-            customer_id=customer_id,
+            customer_id=int(customer_id),
             agent_name="knowledge_validation",
             event_type="graded",
             payload={
-                "questionId": question_id,
-                "moduleOrder": q.get("moduleOrder"),
-                "topic": q.get("topic"),
-                "type": q_type,
-                "weight": weight,
-                "score": score,
-                "correct": correct,
+                "questionId": str(question_id),
+                "correct": bool(correct),
+                "score": float(score),
             },
         )
     except Exception:
         pass
 
     return {
-        "customerId": int(customer_id),
-        "questionId": question_id,
-        "correct": correct,
-        "score": score,
-        "weight": weight,
-        "type": q_type,
+        "questionId": str(question_id),
+        "correct": bool(correct),
+        "score": float(score),
         "expected": expected,
-    "feedback": "Nice!" if correct else "Not quite",
         "explanation": q.get("explanation", ""),
+        "weight": weight,
     }
-
-
-def get_plan_id_for_customer(customer_id: int, database_path: str | None = None) -> int:
-    with connect(database_path) as conn:
-        conn.row_factory = sqlite3.Row
-        row = conn.execute(
-            "SELECT id FROM curriculum_plans WHERE customer_id = ?;", (int(customer_id),)
-        ).fetchone()
-    if row is None:
-        raise ValueError("No curriculum plan found for this customer.")
-    return int(row["id"])
 
 
 @mcp.tool()
@@ -2647,72 +3843,67 @@ def start_knowledge_quiz_attempt_impl(
     module_order: int | None = None,
     database_path: str | None = None,
 ) -> Dict:
-    """Create a knowledge validation quiz attempt tied to the customer's curriculum plan.
+    """Create a new knowledge quiz attempt and persist it."""
 
-    This enables saving scores and unlimited reattempts.
-    """
+    with connect(database_path) as conn:
+        conn.row_factory = sqlite3.Row
+        plan_row = conn.execute(
+            "SELECT id FROM curriculum_plans WHERE customer_id = ? ORDER BY id DESC LIMIT 1;",
+            (int(customer_id),),
+        ).fetchone()
+    if plan_row is None:
+        raise ValueError("No curriculum plan found for customer")
 
-    plan_id = get_plan_id_for_customer(int(customer_id), database_path=database_path)
-    attempt_id = str(uuid.uuid4())
-    now = now_date()
-
-    prior_db_path = globals().get("db_path")
-    if database_path is not None:
-        globals()["db_path"] = database_path
-    try:
-        qs = get_knowledge_questions_impl(
-            int(customer_id),
-            limit=int(questions_limit),
-            module_order=module_order,
-            mode="generated",
-            seed=attempt_id,
-        )
-    finally:
-        if database_path is not None:
-            globals()["db_path"] = prior_db_path
-    points_possible = float(
-        sum(
-            float(q.get("weight", knowledge_question_weight(str(q.get("type", "")))))
-            for q in qs
-        )
+    plan_id = int(plan_row["id"])
+    questions = get_knowledge_questions_impl(
+        customer_id=int(customer_id),
+        limit=int(questions_limit),
+        module_order=int(module_order) if module_order is not None else None,
+        mode="bank",
+        seed="default",
+        database_path=database_path,
     )
+    questions_count = len(questions)
+    points_possible = float(sum(float(q.get("weight", 1.0)) for q in questions))
+    now = now_date()
+    attempt_id = str(uuid.uuid4())
 
     with connect(database_path) as conn:
         conn.execute(
             """
             INSERT INTO knowledge_quiz_attempts
-                            (
-                                id, customer_id, plan_id, created_at, module_order,
-                                questions_count, points_possible, points_earned,
-                                questions_total, questions_answered, total_points, earned_points,
-                                mode
-                            )
+                (id, customer_id, plan_id, created_at, module_order,
+                 questions_count, points_possible, points_earned,
+                 questions_total, questions_answered, total_points, earned_points, mode)
             VALUES
-                            (?, ?, ?, ?, ?, ?, ?, 0.0, ?, 0, ?, 0.0, 'question_bank');
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """,
             (
                 attempt_id,
                 int(customer_id),
-                int(plan_id),
+                plan_id,
                 now,
                 int(module_order) if module_order is not None else None,
-                int(len(qs)),
+                int(questions_count),
                 float(points_possible),
-                                int(len(qs)),
-                                float(points_possible),
+                0.0,
+                int(questions_count),
+                0,
+                float(points_possible),
+                0.0,
+                "question_bank",
             ),
         )
 
     return {
         "attemptId": attempt_id,
         "customerId": int(customer_id),
-        "planId": int(plan_id),
         "moduleOrder": int(module_order) if module_order is not None else None,
-        "questionsCount": int(len(qs)),
+        "questionsCount": int(questions_count),
         "pointsPossible": float(points_possible),
+        "pointsEarned": 0.0,
         "createdAt": now,
     }
-
 
 @mcp.tool()
 def record_knowledge_quiz_answer(customer_id: int, attempt_id: str, question_id: str, answer: str) -> Dict:
@@ -2773,7 +3964,7 @@ def record_knowledge_quiz_answer_impl(
             int(customer_id),
             limit=200,
             module_order=attempt_module_order_int,
-            mode="generated",
+            mode="bank",
             seed=generation_seed,
         )
     finally:

@@ -113,7 +113,7 @@ async def run_cli():
 			)
 			attempt_id = attempt["attemptId"]
 			qs = insurance_mcp.get_knowledge_questions_impl(
-				customer_id=customer_id, limit=10, module_order=module_order
+				customer_id=customer_id, limit=10, module_order=module_order, mode="bank"
 			)
 
 		print("\nKnowledge Validation Quiz (question bank):")

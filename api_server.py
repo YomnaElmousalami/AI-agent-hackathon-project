@@ -11,6 +11,7 @@ from typing import Any
 import urllib.parse
 import urllib.request
 import json
+import base64
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -286,16 +287,11 @@ def _run_llm_sync(fn, *args, **kwargs) -> tuple[str | None, str | None]:
 
 
 def _analyze_accident_images(evidence_urls: list[str]) -> tuple[dict | None, str | None]:
-	if OpenAI is None:
-		return None, "openai_unavailable"
 	api_key = os.getenv("OPENAI_API_KEY")
-	if not api_key:
-		return None, "openai_api_key_missing"
 	if not evidence_urls:
 		return None, "no_evidence_images"
 
 	model = os.getenv("OPENAI_VISION_MODEL", "gpt-4o-mini")
-	client = OpenAI(api_key=api_key)
 	images = [url for url in evidence_urls if isinstance(url, str) and url.strip()]
 	if not images:
 		return None, "no_evidence_images"
@@ -314,16 +310,31 @@ def _analyze_accident_images(evidence_urls: list[str]) -> tuple[dict | None, str
 		content.append({"type": "image_url", "image_url": {"url": url}})
 
 	try:
-		response = client.chat.completions.create(
-			model=model,
-			messages=[
-				{"role": "system", "content": "You are an insurance accident severity assessor."},
-				{"role": "user", "content": content},
-			],
-			temperature=0.2,
-			response_format={"type": "json_object"},
-		)
-		raw = response.choices[0].message.content or ""
+		raw = ""
+		if OpenAI is not None and api_key:
+			client = OpenAI(api_key=api_key)
+			response = client.chat.completions.create(
+				model=model,
+				messages=[
+					{"role": "system", "content": "You are an insurance accident severity assessor."},
+					{"role": "user", "content": content},
+				],
+				temperature=0.2,
+				response_format={"type": "json_object"},
+			)
+			raw = response.choices[0].message.content or ""
+		else:
+			raw, _ = _ollama_generate_json(
+				prompt=(
+					"Analyze the accident images and assess severity. "
+					"Return JSON with: severity_score (1-10 integer), summary (1-3 sentences), "
+					"suggested_actions (array of 3-6 short actions)."
+				),
+				image_urls=images[:4],
+				model=os.getenv("OLLAMA_VISION_MODEL", "llava"),
+			)
+			if not raw:
+				return None, "ollama_unavailable"
 		data = json.loads(raw)
 		score = data.get("severity_score")
 		try:
@@ -350,6 +361,45 @@ def _analyze_accident_images(evidence_urls: list[str]) -> tuple[dict | None, str
 		return None, str(e)
 
 
+def _data_url_to_b64(url: str) -> str | None:
+	if not url:
+		return None
+	if "," in url:
+		return url.split(",", 1)[1]
+	return None
+
+
+def _ollama_generate_json(prompt: str, image_urls: list[str] | None = None, model: str | None = None) -> tuple[str | None, str | None]:
+	base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+	model_name = model or os.getenv("OLLAMA_VISION_MODEL", "llava")
+	images_b64 = []
+	for url in image_urls or []:
+		b64 = _data_url_to_b64(url)
+		if b64:
+			images_b64.append(b64)
+	payload = json.dumps(
+		{
+			"model": model_name,
+			"prompt": prompt,
+			"stream": False,
+			"format": "json",
+			"images": images_b64,
+		}
+	).encode("utf-8")
+	try:
+		req = urllib.request.Request(
+			f"{base_url}/api/generate",
+			data=payload,
+			headers={"Content-Type": "application/json"},
+		)
+		with urllib.request.urlopen(req, timeout=120) as resp:
+			body = resp.read().decode("utf-8")
+			data = json.loads(body)
+			return data.get("response"), None
+	except Exception as e:
+		return None, str(e)
+
+
 def _extract_pdf_text(policy_pdf_base64: str) -> tuple[str | None, str | None]:
 	if PdfReader is None:
 		return None, "pypdf_unavailable"
@@ -366,17 +416,13 @@ def _extract_pdf_text(policy_pdf_base64: str) -> tuple[str | None, str | None]:
 		return None, str(e)
 
 
+
 def _analyze_policy_pdf(text: str, accident_context: str | None = None, image_urls: list[str] | None = None) -> tuple[dict | None, str | None]:
-	if OpenAI is None:
-		return None, "openai_unavailable"
 	api_key = os.getenv("OPENAI_API_KEY")
-	if not api_key:
-		return None, "openai_api_key_missing"
 	if not text:
 		return None, "missing_policy_text"
 
 	model = os.getenv("OPENAI_VISION_MODEL", "gpt-4o-mini")
-	client = OpenAI(api_key=api_key)
 	trimmed = text[:6000]
 	context = (accident_context or "").strip()
 	images = [url for url in (image_urls or []) if isinstance(url, str) and url.strip()]
@@ -398,16 +444,35 @@ def _analyze_policy_pdf(text: str, accident_context: str | None = None, image_ur
 		for url in images[:4]:
 			content.append({"type": "image_url", "image_url": {"url": url}})
 
-		response = client.chat.completions.create(
-			model=model,
-			messages=[
-				{"role": "system", "content": "You are an insurance policy analyst."},
-				{"role": "user", "content": content},
-			],
-			temperature=0.2,
-			response_format={"type": "json_object"},
-		)
-		raw = response.choices[0].message.content or ""
+		raw = ""
+		if OpenAI is not None and api_key:
+			client = OpenAI(api_key=api_key)
+			response = client.chat.completions.create(
+				model=model,
+				messages=[
+					{"role": "system", "content": "You are an insurance policy analyst."},
+					{"role": "user", "content": content},
+				],
+				temperature=0.2,
+				response_format={"type": "json_object"},
+			)
+			raw = response.choices[0].message.content or ""
+		else:
+			raw, _ = _ollama_generate_json(
+				prompt=(
+					"Analyze this auto insurance policy text and return JSON with fields: "
+					"coverageSummary (string), estimatedDeductible (number or null), "
+					"estimatedOutOfPocket (number or null), assumptions (array of strings), "
+					"exclusions (array of strings). If unknown, use null or empty arrays. "
+					"Consider the accident details when summarizing coverage.\n\n"
+					f"Accident details:\n{context or 'N/A'}\n\n"
+					f"Policy text:\n{trimmed}"
+				),
+				image_urls=images[:4],
+				model=os.getenv("OLLAMA_VISION_MODEL", "llava"),
+			)
+			if not raw:
+				return None, "ollama_unavailable"
 		data = json.loads(raw)
 		assumptions = data.get("assumptions") or []
 		exclusions = data.get("exclusions") or []
@@ -561,6 +626,8 @@ def show_curriculum(customer_id: int):
 def knowledge_questions(req: KnowledgeQuestionsRequest):
 	"""Return knowledge validation questions for a customer (optionally for a single module)."""
 	try:
+		if req.module_order is not None and int(req.limit) < 10:
+			req.limit = 10
 		seed: str | None = str(req.attempt_id) if req.attempt_id else None
 		if seed is None:
 			with sqlite3.connect(DB_PATH) as conn:
@@ -587,7 +654,7 @@ def knowledge_questions(req: KnowledgeQuestionsRequest):
 			customer_id=int(req.customer_id),
 			limit=int(req.limit),
 			module_order=int(req.module_order) if req.module_order is not None else None,
-			mode="generated",
+			mode="bank",
 			seed=seed,
 		)
 		return {"ok": True, "customerId": int(req.customer_id), "questions": qs}
@@ -601,9 +668,12 @@ def knowledge_questions(req: KnowledgeQuestionsRequest):
 def knowledge_start_attempt(req: KnowledgeStartAttemptRequest):
 	"""Start a persisted knowledge quiz attempt (saves attempt + can be re-attempted)."""
 	try:
+		questions_limit = int(req.questions_limit)
+		if req.module_order is not None and questions_limit < 10:
+			questions_limit = 10
 		attempt = insurance_mcp.start_knowledge_quiz_attempt_impl(
 			customer_id=int(req.customer_id),
-			questions_limit=int(req.questions_limit),
+			questions_limit=questions_limit,
 			module_order=int(req.module_order) if req.module_order is not None else None,
 		)
 		return {"ok": True, **attempt}
