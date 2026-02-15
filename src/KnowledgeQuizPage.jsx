@@ -2303,7 +2303,10 @@ export default function KnowledgeQuizPage() {
 	const [error, setError] = useState('');
 	const [notice, setNotice] = useState('');
 	const [curriculum] = useState(() =>
-		QUIZ_MODULES.map((module) => ({ order: module.order, module: module.moduleTitle }))
+		QUIZ_MODULES.map((module) => ({
+			order: module.order,
+			module: `Topic ${module.order}: ${module.moduleTitle}`,
+		}))
 	);
 	const [questions, setQuestions] = useState([]);
 	const [idx, setIdx] = useState(0);
@@ -2461,7 +2464,7 @@ export default function KnowledgeQuizPage() {
 					>
 						{curriculum.map((m) => (
 							<option key={String(m?.order ?? m?.module)} value={String(m?.order ?? '')}>
-								{m?.order}. {m?.module}
+								{m?.module}
 							</option>
 						))}
 					</select>
