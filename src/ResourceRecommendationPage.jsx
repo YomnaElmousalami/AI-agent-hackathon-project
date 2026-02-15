@@ -5,10 +5,11 @@ const API_BASE = import.meta.env?.VITE_API_BASE || '';
 
 function normalizeResource(r) {
 	return {
-		type: String(r?.type || 'article'),
+		type: String(r?.type || r?.source || 'resource'),
 		title: String(r?.title || 'Resource'),
-		summary: String(r?.summary || ''),
+		summary: String(r?.summary || r?.whyItMatches || ''),
 		url: String(r?.url || ''),
+		source: String(r?.source || ''),
 	};
 }
 
@@ -79,11 +80,11 @@ export default function ResourceRecommendationPage() {
 		<div style={{ padding: 24, maxWidth: 980, margin: '0 auto' }}>
 			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
 				<h1 style={{ margin: 0 }}>Resource Recommendations</h1>
-				<div style={{ display: 'flex', gap: 12 }}>
-					<button onClick={() => navigate(backUrl)} disabled={busy}>
+				<div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+					<button onClick={() => navigate(backUrl)} disabled={busy} style={{ padding: '10px 20px', fontSize: 16 }}>
 						Back
 					</button>
-					<Link to="/">
+					<Link to="/" style={{ color: '#fff', display: 'inline-flex', alignItems: 'center', padding: '10px 20px', fontSize: 16 }}>
 						Home
 					</Link>
 				</div>
@@ -127,10 +128,11 @@ export default function ResourceRecommendationPage() {
 									<strong style={{ fontSize: 16 }}>{r.title}</strong>
 									<span style={{ opacity: 0.75, fontSize: 12, textTransform: 'uppercase' }}>{r.type}</span>
 								</div>
+								{r.source ? <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>Source: {r.source}</div> : null}
 								{r.summary ? <div style={{ marginTop: 8, opacity: 0.9, lineHeight: 1.5 }}>{r.summary}</div> : null}
 								{r.url ? (
 									<div style={{ marginTop: 10 }}>
-										<a href={r.url} target="_blank" rel="noreferrer">
+										<a href={r.url} target="_blank" rel="noreferrer" style={{ color: '#fff' }}>
 											Open
 										</a>
 									</div>

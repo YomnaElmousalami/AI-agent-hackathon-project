@@ -129,6 +129,11 @@ Learning & Education Mode:
 - To run the resource recommendation agent:
 "python .\langchain\resource_recommendation_agent.py"
 
+Resource Recommendation Agent notes:
+- Recommendations are sourced from `verified_resources.json`.
+- Add 2–3 verified, topic-specific resources per module topic (exact string match).
+- If no verified entries exist for a topic, the agent returns "No verified resource found.".
+
 Accident Mode (Real-Time Assistance):
 
 - To run the accident reporting agent:

@@ -6,6 +6,7 @@ import json
 import uuid
 import re
 from io import BytesIO
+from pathlib import Path
 
 from database.insurance_db import init_db
 import os
@@ -4067,94 +4068,58 @@ def recommend_resources(customer_id: int, topic: str, state: str | None = None, 
 
 
 def recommend_resources_impl(customer_id: int, topic: str, state: str | None = None, limit: int = 5) -> List[Dict]:
-    """Return curated, state-aware resources (deterministic, no external calls).
+    """Return verified, topic-specific resources that meet strict matching rules.
 
-    Contract:
-    - Uses the customer's saved state when `state` isn't provided.
-    - Produces simple, deterministic resource cards with the state encoded in titles/summaries.
-    - Persists the result list to `recommended_resources`.
+    Rules enforced:
+    - Only use pre-verified resources (no guessing URLs).
+    - Only return resources that explicitly match the exact module topic.
+    - Return 2-3 resources when available; otherwise return "No verified resource found.".
+    - Persist the raw response to `recommended_resources` for auditability.
     """
 
-    if state is None:
-        with sqlite3.connect(db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            row = conn.execute("SELECT state FROM customers WHERE id = ?;", (int(customer_id),)).fetchone()
-        state = row["state"] if row else None
+    def normalize_topic(raw: str) -> str:
+        return re.sub(r"\s+", " ", (raw or "").strip()).lower()
 
-    t = (topic or "").strip().lower()
-    st = (state or "").strip().upper() if state else ""
+    def load_verified_registry() -> Dict[str, List[Dict]]:
+        registry_path = Path(__file__).resolve().parent / "verified_resources.json"
+        if not registry_path.exists():
+            return {}
+        try:
+            payload = json.loads(registry_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+        return payload if isinstance(payload, dict) else {}
 
-    base = [
-        {
-            "type": "video",
-            "title": "Auto insurance basics in 5 minutes",
-            "summary": "A quick explanation of premium, deductible, and coverage with simple examples.",
-            "url": "https://www.naic.org/consumer.htm",
-        },
-        {
-            "type": "article",
-            "title": "How claims work (step-by-step)",
-            "summary": "What to do after an accident, what info to collect, and when to contact your insurer.",
-            "url": "https://www.usa.gov/insurance",
-        },
-    ]
+    def is_valid_resource(item: Dict) -> bool:
+        if not isinstance(item, dict):
+            return False
+        title = str(item.get("title") or "").strip()
+        source = str(item.get("source") or "").strip()
+        url = str(item.get("url") or "").strip()
+        why = str(item.get("whyItMatches") or "").strip()
+        if not title or not source or not url or not why:
+            return False
+        if not url.startswith("https://"):
+            return False
+        return True
 
-    by_topic: List[Dict] = []
-    if "deduct" in t:
-        by_topic.append(
+    normalized_topic = normalize_topic(topic)
+    registry = load_verified_registry()
+    candidates = registry.get(normalized_topic, []) if normalized_topic else []
+
+    verified = [r for r in candidates if is_valid_resource(r)]
+
+    if len(verified) < 2 or len(verified) > 3:
+        resources = [
             {
-                "type": "video",
-                "title": "Deductibles explained with examples",
-                "summary": "See how a $500 deductible changes what you pay on a claim.",
-                "url": "https://www.iii.org/",
+                "title": "No verified resource found.",
+                "source": "System",
+                "url": "",
+                "whyItMatches": "No verified resource found.",
             }
-        )
-    if "claim" in t:
-        by_topic.append(
-            {
-                "type": "checklist",
-                "title": "Accident checklist (what to collect)",
-                "summary": "Photos, other driver's info, witness notes, police report, and timeline.",
-                "url": "https://www.usa.gov/",
-            }
-        )
-    if "coverage" in t:
-        by_topic.append(
-            {
-                "type": "article",
-                "title": "Understanding liability vs collision vs comprehensive",
-                "summary": "A simple breakdown of common coverage types and what they generally pay for.",
-                "url": "https://www.naic.org/",
-            }
-        )
-
-    state_note: List[Dict] = []
-    if st:
-        kw = f"{st} {t}".strip()
-        state_note.extend(
-            [
-                {
-                    "type": "state",
-                    "title": f"{st} insurance department (official requirements + complaints)",
-                    "summary": f"Use keywords like '{kw} minimum coverage' and '{kw} file complaint' when searching official sources.",
-                    "url": "https://content.naic.org/state-insurance-departments",
-                },
-                {
-                    "type": "article",
-                    "title": f"{st}: common '{t}' questions (what locals ask most)",
-                    "summary": f"A state-scoped checklist of what to verify for '{t}' (limits, deductibles, timelines).",
-                    "url": "https://www.usa.gov/insurance",
-                },
-            ]
-        )
-
-    resources = (by_topic + base + state_note)[: int(limit)]
-
-    for r in resources:
-        r.setdefault("type", "article")
-        r.setdefault("title", "Resource")
-        r.setdefault("summary", "")
-        r.setdefault("url", "")
+        ]
+    else:
+        resources = verified
 
     now = now_date()
     with sqlite3.connect(db_path) as conn:
@@ -4163,14 +4128,14 @@ def recommend_resources_impl(customer_id: int, topic: str, state: str | None = N
             INSERT INTO recommended_resources (id, customer_id, created_at, state, topic, resources_json)
             VALUES (?, ?, ?, ?, ?, ?);
             """,
-            (str(uuid.uuid4()), int(customer_id), now, st or None, topic, json.dumps(resources)),
+            (str(uuid.uuid4()), int(customer_id), now, None, topic, json.dumps(resources)),
         )
 
     log_feedback_event_impl(
         customer_id=customer_id,
         agent_name="resource_recommendation",
         event_type="recommended",
-        payload={"topic": topic, "state": st, "count": len(resources)},
+        payload={"topic": topic, "count": len(resources)},
     )
 
     return resources
@@ -4188,10 +4153,14 @@ def summarize_resources_impl(resources: List[Dict], style: str = "general") -> D
     if not items:
         return {"style": style, "summary": "No resources found."}
 
+    first_title = str(items[0].get("title") or "").strip()
+    if first_title == "No verified resource found.":
+        return {"style": style, "summary": "No verified resource found."}
+
     if style == "video":
         r = items[0]
         title = (r.get("title") or "this resource").strip()
-        summary = (r.get("summary") or "").strip()
+        summary = (r.get("summary") or r.get("whyItMatches") or "").strip()
         video = (
             f"In this quick video, we cover {title}. "
             f"Main takeaway: {summary or 'focus on the key steps and definitions.'} "
