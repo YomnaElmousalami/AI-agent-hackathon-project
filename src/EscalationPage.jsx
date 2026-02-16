@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
-const API_BASE = '';
+const API_BASE = 'http://localhost:8000';
 
 export default function EscalationPage() {
 	const [searchParams] = useSearchParams();

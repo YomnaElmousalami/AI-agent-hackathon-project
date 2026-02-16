@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { Link, useSearchParams } from 'react-router-dom';
 
-const API_BASE = '';
+const API_BASE = 'http://localhost:8000';
 
 function asText(v) {
 	try {

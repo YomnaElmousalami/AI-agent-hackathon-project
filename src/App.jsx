@@ -10,7 +10,7 @@ import ClaimsPreparationPage from './ClaimsPreparationPage.jsx';
 import ActionPlanPage from './ActionPlanPage.jsx';
 import EscalationPage from './EscalationPage.jsx';
 
-const API_BASE = '';
+const API_BASE = 'http://localhost:8000';
 
 
 function OnboardingPage() {
