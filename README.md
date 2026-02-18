@@ -5,7 +5,6 @@
 **Problem Statement:** Many first-time drivers in the USA (often 16-17 years old) struggle to understand auto insurance. Relevant information is scattered across different websites, PDFs, and YouTube Videos, making it time-consuming and confusing to learn concepts like coverage, claims, and deductibles. When an accident occurs, these drivers often spend excessive time contacting customer service or searching for resources to solve their case. This inefficiency not only frustrates users but also burdens insurance companies. By leveraging ai agents, it is estimated that more than 30% of Tier-1 customer support calls could be reduced during an accident, therefore,
 providing faster guidance for new drivers while improving operational efficiency for insurers.
 
-**Example Workflow:**
 Learning & Education Mode:
 - User Onboarding Agent collects basic context such as id, name, age, state, vehicle name (like Honda Accord), and coverage type to personalize learning for each user
 - Curriculum Planner Agent breaks insurance concepts into easily digestbile driver modules so they can be used for the teacher agent later. Ex: What is insurance, what deductibles mean, what happens during an accident, what to do vs. what not to do? This replaces repetitive "what is X?" calls to insurance workers.
