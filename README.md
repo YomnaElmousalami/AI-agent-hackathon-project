@@ -1,5 +1,7 @@
 # Insurance AI-Agent
 
+# Name of Agent: DriveSafe
+
 ## Phase 1:
 
 **Problem Statement:** Many first-time drivers in the USA (often 16-17 years old) struggle to understand auto insurance. Relevant information is scattered across different websites, PDFs, and YouTube Videos, making it time-consuming and confusing to learn concepts like coverage, claims, and deductibles. When an accident occurs, these drivers often spend excessive time contacting customer service or searching for resources to solve their case. This inefficiency not only frustrates users but also burdens insurance companies. By leveraging ai agents, it is estimated that more than 30% of Tier-1 customer support calls could be reduced during an accident, therefore,
@@ -37,7 +39,7 @@ Hugging face model: llama3.2, in the llm directory llama.py file
 
 ### To run in the frontend:
 
-so database can work:
+so backend API can work (required for frontend onboarding fetch):
 python -m uvicorn api_server:app --host 127.0.0.1 --port 8801
 
 so frontend can work:

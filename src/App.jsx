@@ -10,7 +10,104 @@ import ClaimsPreparationPage from './ClaimsPreparationPage.jsx';
 import ActionPlanPage from './ActionPlanPage.jsx';
 import EscalationPage from './EscalationPage.jsx';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://127.0.0.1:8801';
+
+// --- Module-level pure helpers ---
+// Defined outside components so they are never re-allocated on re-render.
+
+function parseOnboardingSentence(text) {
+	const s = (text || '').trim();
+	if (!s) throw new Error('Please enter your credentials first.');
+
+	const idMatch = s.match(/\b(?:id\s*(?:is)?\s*)(\d+)\b/i) || s.match(/\b(\d+)\b/);
+	if (!idMatch) throw new Error("Couldn't find an id (number) in your message.");
+	const id = Number(idMatch[1]);
+
+	const ageMatch = s.match(/\b(?:i\s*['']?m|i\s*am|age\s*(?:is)?)\s*(\d{1,3})\b/i);
+	if (!ageMatch) throw new Error("Couldn't find an age in your message (e.g. I'm 16).");
+	const age = Number(ageMatch[1]);
+
+	const stateMatch = s.match(/\b(?:live\s*in|i\s*live\s*in|state\s*(?:is)?)\s*([A-Za-z]{2})\b/i);
+	if (!stateMatch) throw new Error("Couldn't find a 2-letter state code (e.g. VA, NY).");
+	const state = String(stateMatch[1]).toUpperCase();
+
+	const nameMatch = s.match(/\bmy\s*name\s*is\s*([^,\.]+)\b/i);
+	if (!nameMatch) throw new Error("Couldn't find 'my name is ...' in your message.");
+	const name = String(nameMatch[1]).trim();
+
+	const vehicleMatch = s.match(/\b(?:vehicle\s*(?:is)?|car\s*(?:is)?)\s*(?:a\s+|an\s+)?([^,\.]+)\b/i);
+	if (!vehicleMatch) throw new Error("Couldn't find 'my vehicle is ...' in your message.");
+	const vehicleName = String(vehicleMatch[1]).trim();
+
+	const coverageMatch = s.match(/\bcoverage\s*(?:type\s*)?is\s*([^,\.]+)\b/i);
+	if (!coverageMatch) throw new Error("Couldn't find 'coverage type is ...' in your message.");
+	const coverageType = String(coverageMatch[1]).trim();
+
+	return { id, name, age, state, vehicleName, coverageType };
+}
+
+function extractCustomerId(customerId) {
+	const id = Number(customerId);
+	if (!Number.isFinite(id) || id <= 0) throw new Error('Missing/invalid customer id.');
+	return id;
+}
+
+function isShowRequest(text) {
+	const t = (text || '').toLowerCase();
+	return t.includes('curriculum') && (t.includes('show') || t.includes('view') || t.includes('get') || t.includes('see'));
+}
+
+function isPlanRequest(text) {
+	const t = (text || '').toLowerCase();
+	return t.includes('curriculum') && (t.includes('plan') || t.includes('create') || t.includes('generate') || t.includes('make'));
+}
+
+function stripLeadingModuleNumber(title) {
+	const raw = String(title || '').trim();
+	return raw.replace(/^\s*\d+\s*[\.)-]\s*/, '').trim() || raw;
+}
+
+function ytSearchUrl(query) {
+	const q = encodeURIComponent(String(query || '').trim() || 'auto insurance basics');
+	return `https://www.youtube.com/results?search_query=${q}`;
+}
+
+function curatedVideoUrlForModuleTitle(title) {
+	const t = String(title || '').trim();
+	if (!t) return ytSearchUrl('auto insurance basics');
+	return CURATED_VIDEO_MAP[t] || ytSearchUrl(t);
+}
+
+// Module-level constant — defined once, never re-allocated on re-render.
+const CURATED_VIDEO_MAP = {
+	'What is Car Insurance?': 'https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s',
+	'Understanding Deductibles': 'https://www.youtube.com/watch?v=UoPN84v2KrU&t=3s',
+	'Steps to Take During a car accident.': 'https://www.youtube.com/watch?v=wToIYkLuwPY',
+	"Do's and Don'ts of Safe Driving": 'https://www.youtube.com/watch?v=qoaF04Lsux4',
+	'What is a premium?': 'https://www.youtube.com/watch?v=Ly3tiv7f4Hg',
+	'What is a claim?': 'https://www.youtube.com/watch?v=S-I6ZLrF3oQ',
+	'How to file a claim?': 'https://www.youtube.com/watch?v=lsq4hD6kg8o',
+	'What is coverage?': 'https://www.youtube.com/watch?v=iAXvv9BM-3U',
+	'Types of coverage for auto insurance': 'https://www.youtube.com/watch?v=g8uMWX1JcC4',
+	'Factors affecting insurance rates': 'https://www.youtube.com/watch?v=-QfmcoYYb5E',
+	'Understanding the impact of driving history on insurance rates': 'https://www.youtube.com/watch?v=e5ESP_FtOzo',
+	'How to maintain a clean driving record': 'https://www.youtube.com/watch?v=csO9yYp-vYE',
+	'Common auto insurance terms explained': 'https://www.youtube.com/watch?v=TVA2xaWzsSY',
+	'How to choose the right insurance plan': 'https://www.youtube.com/watch?v=LWDPRx3k4-8',
+	'Importance of liability coverage': 'https://www.youtube.com/watch?v=sulcwnaHAvI',
+	'Understanding comprehensive and collision coverage': 'https://www.youtube.com/watch?v=lMcxwBLOpjs',
+	'How to lower your insurance premiums': 'https://www.youtube.com/watch?v=IRi5Z7pp1K4',
+	'Seasonal driving tips and insurance implications': 'https://www.youtube.com/watch?v=46xdKVgTbJE',
+	'Impact of traffic violations on insurance rates': 'https://www.youtube.com/watch?v=x-N0jCGr0Bg',
+	'How to read your insurance policy': 'https://www.youtube.com/watch?v=NYwZVxYe8QU',
+	'Benefits of bundling insurance policies': 'https://www.youtube.com/watch?v=M_tpraTiJMk',
+	'Understanding no-fault insurance': 'https://www.youtube.com/watch?v=stdqM-OTmyk',
+	'What to do in case of a total loss': 'https://www.youtube.com/watch?v=Ynbgf5uda7Q',
+	'How to handle uninsured motorist situations': 'https://www.youtube.com/watch?v=jcuN4jDCE3M',
+	'Understanding policy endorsements': 'https://www.youtube.com/watch?v=am8XBrdFHfU',
+	'How to dispute a denied claim': 'https://www.youtube.com/watch?v=vsdXq0WOH8M',
+	'Understanding rental car coverage': 'https://www.youtube.com/watch?v=s6LcnFEqQxY',
+};
 
 
 function OnboardingPage() {
@@ -24,37 +121,6 @@ function OnboardingPage() {
 
 	const canSubmit = useMemo(() => message.trim().length > 0 && !busy, [message, busy]);
 
-	function parseOnboardingSentence(text) {
-		const s = (text || '').trim();
-		if (!s) throw new Error('Please enter your credentials first.');
-
-		const idMatch = s.match(/\b(?:id\s*(?:is)?\s*)(\d+)\b/i) || s.match(/\b(\d+)\b/);
-		if (!idMatch) throw new Error("Couldn't find an id (number) in your message.");
-		const id = Number(idMatch[1]);
-
-		const ageMatch = s.match(/\b(?:i\s*['’]?m|i\s*am|age\s*(?:is)?)\s*(\d{1,3})\b/i);
-		if (!ageMatch) throw new Error("Couldn't find an age in your message (e.g. I'm 16).");
-		const age = Number(ageMatch[1]);
-
-		const stateMatch = s.match(/\b(?:live\s*in|i\s*live\s*in|state\s*(?:is)?)\s*([A-Za-z]{2})\b/i);
-		if (!stateMatch) throw new Error("Couldn't find a 2-letter state code (e.g. VA, NY).");
-		const state = String(stateMatch[1]).toUpperCase();
-
-		const nameMatch = s.match(/\bmy\s*name\s*is\s*([^,\.]+)\b/i);
-		if (!nameMatch) throw new Error("Couldn't find 'my name is ...' in your message.");
-		const name = String(nameMatch[1]).trim();
-
-		const vehicleMatch = s.match(/\b(?:vehicle\s*(?:is)?|car\s*(?:is)?)\s*(?:a\s+|an\s+)?([^,\.]+)\b/i);
-		if (!vehicleMatch) throw new Error("Couldn't find 'my vehicle is ...' in your message.");
-		const vehicleName = String(vehicleMatch[1]).trim();
-
-		const coverageMatch = s.match(/\bcoverage\s*(?:type\s*)?is\s*([^,\.]+)\b/i);
-		if (!coverageMatch) throw new Error("Couldn't find 'coverage type is ...' in your message.");
-		const coverageType = String(coverageMatch[1]).trim();
-
-		return { id, name, age, state, vehicleName, coverageType };
-	}
-
 	async function submit() {
 		setBusy(true);
 		setError('');
@@ -63,20 +129,6 @@ function OnboardingPage() {
 		setLlmResponse('');
 		try {
 			const profile = parseOnboardingSentence(message);
-
-			let lookupStatus = 0;
-			try {
-				const existingRes = await fetch(`${API_BASE}/api/customers/${profile.id}`);
-				lookupStatus = existingRes.status;
-				if (existingRes.ok) {
-					const existingData = await existingRes.json();
-					setResult(existingData);
-					setStatus('exists');
-					navigate(`/curriculum?customerId=${profile.id}`);
-					return;
-				}
-			} catch {
-			}
 
 			const res = await fetch(`${API_BASE}/api/onboard`, {
 				method: 'POST',
@@ -95,22 +147,14 @@ function OnboardingPage() {
 				: null;
 			if (!res.ok) {
 				const detail = data?.detail || raw || 'Onboarding failed';
-				throw new Error(
-					lookupStatus && lookupStatus !== 404
-						? `${detail} (lookup status was ${lookupStatus})`
-						: detail
-				);
+				throw new Error(detail);
 			}
 			if (!data) {
 				throw new Error('Onboarding succeeded, but the server returned an empty response.');
 			}
 			setResult(data);
 			setStatus('saved');
-			if (data?.llmResponse) {
-				setLlmResponse(String(data.llmResponse));
-			} else {
-				navigate(`/curriculum?customerId=${profile.id}`);
-			}
+			navigate(`/curriculum?customerId=${profile.id}`);
 		} catch (e) {
 			setError(e?.message || String(e));
 		} finally {
@@ -193,22 +237,6 @@ function CurriculumPlannerPage() {
 		return Number.isFinite(id) && id > 0 ? `/teacher?customerId=${id}` : '/teacher';
 	}, [customerId]);
 
-	function _extractCustomerId() {
-		const id = Number(customerId);
-		if (!Number.isFinite(id) || id <= 0) throw new Error('Missing/invalid customer id.');
-		return id;
-	}
-
-	function _isShowRequest(text) {
-		const t = (text || '').toLowerCase();
-		return t.includes('curriculum') && (t.includes('show') || t.includes('view') || t.includes('get') || t.includes('see'));
-	}
-
-	function _isPlanRequest(text) {
-		const t = (text || '').toLowerCase();
-		return t.includes('curriculum') && (t.includes('plan') || t.includes('create') || t.includes('generate') || t.includes('make'));
-	}
-
 	async function submit() {
 		setBusy(true);
 		setError('');
@@ -218,12 +246,12 @@ function CurriculumPlannerPage() {
 		setResult(null);
 		setLlmResponse('');
 		try {
-			const id = _extractCustomerId();
+			const id = extractCustomerId(customerId);
 			const text = query.trim();
 
 			let res;
-			const isShow = _isShowRequest(text);
-			const isPlan = _isPlanRequest(text);
+			const isShow = isShowRequest(text);
+			const isPlan = isPlanRequest(text);
 			setAction(isShow ? 'show' : isPlan ? 'plan' : '');
 
 			if (isShow) {
@@ -365,11 +393,6 @@ function TeacherAgentPage() {
 	const [curriculum, setCurriculum] = useState(null);
 	const [moduleOrder, setModuleOrder] = useState('');
 
-	function stripLeadingModuleNumber(title) {
-		const raw = String(title || '').trim();
-		return raw.replace(/^\s*\d+\s*[\.)-]\s*/, '').trim() || raw;
-	}
-
 	const canLoadCurriculum = useMemo(() => !busy && String(customerId).trim().length > 0, [busy, customerId]);
 
 	async function loadCurriculum() {
@@ -397,49 +420,6 @@ function TeacherAgentPage() {
 		} finally {
 			setBusy(false);
 		}
-	}
-
-	function _ytSearchUrl(query) {
-		const q = encodeURIComponent(String(query || '').trim() || 'auto insurance basics');
-		return `https://www.youtube.com/results?search_query=${q}`;
-	}
-
-	function curatedVideoUrlForModuleTitle(title) {
-		const t = String(title || '').trim();
-		if (!t) return _ytSearchUrl('auto insurance basics');
-
-		const map = {
-			'What is Car Insurance?': 'https://www.youtube.com/watch?v=q6ztnQLLZkg&t=372s',
-			'Understanding Deductibles': 'https://www.youtube.com/watch?v=UoPN84v2KrU&t=3s',
-			'Steps to Take During a car accident.': 'https://www.youtube.com/watch?v=wToIYkLuwPY',
-			"Do's and Don'ts of Safe Driving": 'https://www.youtube.com/watch?v=qoaF04Lsux4',
-			'What is a premium?': 'https://www.youtube.com/watch?v=Ly3tiv7f4Hg',
-			'What is a claim?': 'https://www.youtube.com/watch?v=S-I6ZLrF3oQ',
-			'How to file a claim?': 'https://www.youtube.com/watch?v=lsq4hD6kg8o',
-			'What is coverage?': 'https://www.youtube.com/watch?v=iAXvv9BM-3U',
-			'Types of coverage for auto insurance': 'https://www.youtube.com/watch?v=g8uMWX1JcC4',
-			'Factors affecting insurance rates': 'https://www.youtube.com/watch?v=-QfmcoYYb5E',
-			'Understanding the impact of driving history on insurance rates': 'https://www.youtube.com/watch?v=e5ESP_FtOzo',
-			'How to maintain a clean driving record': 'https://www.youtube.com/watch?v=csO9yYp-vYE',
-			'Common auto insurance terms explained': 'https://www.youtube.com/watch?v=TVA2xaWzsSY',
-			'How to choose the right insurance plan': 'https://www.youtube.com/watch?v=LWDPRx3k4-8',
-			'Importance of liability coverage': 'https://www.youtube.com/watch?v=sulcwnaHAvI',
-			'Understanding comprehensive and collision coverage': 'https://www.youtube.com/watch?v=lMcxwBLOpjs',
-			'How to lower your insurance premiums': 'https://www.youtube.com/watch?v=IRi5Z7pp1K4',
-			'Seasonal driving tips and insurance implications': 'https://www.youtube.com/watch?v=46xdKVgTbJE',
-			'Impact of traffic violations on insurance rates': 'https://www.youtube.com/watch?v=x-N0jCGr0Bg',
-			'How to read your insurance policy': 'https://www.youtube.com/watch?v=NYwZVxYe8QU',
-			'Benefits of bundling insurance policies': 'https://www.youtube.com/watch?v=M_tpraTiJMk',
-			'Understanding no-fault insurance': 'https://www.youtube.com/watch?v=stdqM-OTmyk',
-			'What to do in case of a total loss': 'https://www.youtube.com/watch?v=Ynbgf5uda7Q',
-			'How to handle uninsured motorist situations': 'https://www.youtube.com/watch?v=jcuN4jDCE3M',
-			'Understanding policy endorsements': 'https://www.youtube.com/watch?v=am8XBrdFHfU',
-			'How to dispute a denied claim': 'https://www.youtube.com/watch?v=vsdXq0WOH8M',
-			'Understanding rental car coverage': 'https://www.youtube.com/watch?v=s6LcnFEqQxY'
-		};
-
-		if (map[t]) return map[t];
-		return _ytSearchUrl(t);
 	}
 
 	const selectedModule = useMemo(() => {
