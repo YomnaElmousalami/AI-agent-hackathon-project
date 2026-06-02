@@ -1,6 +1,6 @@
 # Insurance AI-Agent
 
-# Name of Agent: DriveSafe
+# Name of Agent: DriveSafe :)
 
 ## Phase 1:
 
